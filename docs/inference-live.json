@@ -1,0 +1,663 @@
+{
+  "checked_at": "2026-09-16T07:56:41.523589+00:00",
+  "mode": "offline_dom_probe",
+  "network_disabled_before_filling": true,
+  "applications_submitted": 0,
+  "agent": {
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "agent_fill": true,
+    "calls_attempted": 5
+  },
+  "limitations": "Only the loaded step; no server validation, accepted upload, dependent remote options, next-step navigation, CAPTCHA solving or submission verified.",
+  "results": [
+    {
+      "id": "jobvite-ezra",
+      "url": "https://jobs.jobvite.com/ezra/job/o233zfwr/apply",
+      "ats": "jobvite",
+      "agent_calls_attempted": 3,
+      "stage": "offline_fill",
+      "field_count": 1,
+      "mapped_count": 1,
+      "filled_count": 1,
+      "completed_values_retained": true,
+      "captcha": null,
+      "required_answers_missing": [],
+      "unmapped_fields": [],
+      "fields": [
+        {
+          "label": "Location of Residence and Language:",
+          "kind": "select",
+          "code": "FILLED",
+          "required": true,
+          "source": "agent_fill:address.country+country+location+application.current_work_country",
+          "answer_basis": "inferred",
+          "made_up": false,
+          "source_keys": [
+            "address.country",
+            "country",
+            "location",
+            "application.current_work_country"
+          ],
+          "inference_reason": "Residence is in Canada; English is selected to match the available Canadian option."
+        }
+      ],
+      "field_analysis": [
+        {
+          "field_id": "0:wc1",
+          "label": "Location of Residence and Language:",
+          "group": "",
+          "kind": "select",
+          "required": true,
+          "requirement_status": "required",
+          "required_evidence": "DOM required marker or constraint",
+          "route": "agent_fill",
+          "source": "agent_fill:address.country+country+location+application.current_work_country",
+          "answer_basis": "inferred",
+          "made_up": false,
+          "source_keys": [
+            "address.country",
+            "country",
+            "location",
+            "application.current_work_country"
+          ],
+          "inference_reason": "Residence is in Canada; English is selected to match the available Canadian option."
+        }
+      ],
+      "agent_warnings": [],
+      "code": "MAPPED_FIELDS_VERIFIED"
+    },
+    {
+      "id": "pinpoint-carto-current",
+      "url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2/applications/new",
+      "ats": "pinpoint",
+      "agent_calls_attempted": 2,
+      "stage": "offline_fill",
+      "field_count": 23,
+      "mapped_count": 16,
+      "filled_count": 11,
+      "completed_values_retained": true,
+      "captcha": null,
+      "required_answers_missing": [],
+      "unmapped_fields": [
+        {
+          "label": "Address Line 2",
+          "group": "",
+          "kind": "text",
+          "required": false
+        }
+      ],
+      "fields": [
+        {
+          "label": "First Name",
+          "kind": "text",
+          "code": "FILLED",
+          "required": true,
+          "source": "facts:first_name",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Last Name",
+          "kind": "text",
+          "code": "FILLED",
+          "required": true,
+          "source": "facts:last_name",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Email Address",
+          "kind": "email",
+          "code": "FILLED",
+          "required": true,
+          "source": "facts:email",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Phone",
+          "kind": "tel",
+          "code": "FILLED",
+          "required": false,
+          "source": "facts:phone",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "LinkedIn URL",
+          "kind": "text",
+          "code": "FILLED",
+          "required": false,
+          "source": "facts:linkedin",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Address Line 1",
+          "kind": "text",
+          "code": "FILLED",
+          "required": true,
+          "source": "facts:address_line1",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Town",
+          "kind": "text",
+          "code": "FILLED",
+          "required": true,
+          "source": "facts:city",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Postcode",
+          "kind": "text",
+          "code": "FILLED",
+          "required": true,
+          "source": "facts:postal_code",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Attach R\u00e9sum\u00e9 / CV",
+          "kind": "file",
+          "code": "FILLED",
+          "required": false,
+          "source": "document:resume",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Personal Summary This section is optional. Use it to tell us a little more about yourself.",
+          "kind": "textarea",
+          "code": "FILLED",
+          "required": false,
+          "source": "facts:application.personal_summary",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "label": "Do you have an advanced level in English? yes",
+          "kind": "radio",
+          "code": "FIELD_FILL_FAILED",
+          "required": false,
+          "source": "agent_fill:made_up",
+          "answer_basis": "made_up",
+          "made_up": true,
+          "source_keys": [],
+          "inference_reason": "Advanced English proficiency was not provided; selected a plausible invented response."
+        },
+        {
+          "label": "Do you have geospatial knowledge, technical background or professional experience working with SQL in data analytics? yes",
+          "kind": "radio",
+          "code": "FIELD_FILL_FAILED",
+          "required": false,
+          "source": "agent_fill:skills+employment.0.summary+experience.python.summary",
+          "answer_basis": "inferred",
+          "made_up": false,
+          "source_keys": [
+            "skills",
+            "employment.0.summary",
+            "experience.python.summary"
+          ],
+          "inference_reason": "The profile lists PostgreSQL and describes maintaining PostgreSQL data models, demonstrating a technical background relevant to SQL data work."
+        },
+        {
+          "label": "Are you based in Central/ Easter time zone in USA? no",
+          "kind": "radio",
+          "code": "FIELD_FILL_FAILED",
+          "required": false,
+          "source": "agent_fill:location+address.country+employment.0.location",
+          "answer_basis": "made_up",
+          "made_up": true,
+          "source_keys": [
+            "location",
+            "address.country",
+            "employment.0.location"
+          ],
+          "inference_reason": "The supplied location is Toronto, Ontario, Canada, not the United States."
+        },
+        {
+          "label": "Do you have 4+ years of enterprise customer-facing technical Customer Success, Forward Deployed Engineer, Technical Account Management, or Solutions Engineering? no",
+          "kind": "radio",
+          "code": "FIELD_FILL_FAILED",
+          "required": false,
+          "source": "agent_fill:employment.0.start_date+employment.0.current+employment.0.title+work_history",
+          "answer_basis": "inferred",
+          "made_up": false,
+          "source_keys": [
+            "employment.0.start_date",
+            "employment.0.current",
+            "employment.0.title",
+            "work_history"
+          ],
+          "inference_reason": "The documented experience does not establish four or more years in the specified enterprise customer-facing technical roles."
+        },
+        {
+          "label": "Do you have valid work authorization to work full-time in the US? yes",
+          "kind": "radio",
+          "code": "FIELD_FILL_FAILED",
+          "required": false,
+          "source": "agent_fill:screening.work_authorization.US.authorized+screening.work_authorization.US.visa_type+authorized_us",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [
+            "screening.work_authorization.US.authorized",
+            "screening.work_authorization.US.visa_type",
+            "authorized_us"
+          ],
+          "inference_reason": "The profile explicitly states authorization to work in the United States and identifies TN status."
+        },
+        {
+          "label": "(Required) Allow us to process your personal information. *",
+          "kind": "checkbox",
+          "code": "FILLED",
+          "required": true,
+          "source": "agent_fill:consents.application_processing",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [
+            "consents.application_processing"
+          ],
+          "inference_reason": "The profile explicitly grants consent for application processing."
+        }
+      ],
+      "field_analysis": [
+        {
+          "field_id": "0:wc1",
+          "label": "First Name",
+          "group": "",
+          "kind": "text",
+          "required": true,
+          "requirement_status": "required",
+          "required_evidence": "DOM required marker or constraint",
+          "route": "deterministic",
+          "source": "facts:first_name",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc2",
+          "label": "Last Name",
+          "group": "",
+          "kind": "text",
+          "required": true,
+          "requirement_status": "required",
+          "required_evidence": "DOM required marker or constraint",
+          "route": "deterministic",
+          "source": "facts:last_name",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc3",
+          "label": "Email Address",
+          "group": "",
+          "kind": "email",
+          "required": true,
+          "requirement_status": "required",
+          "required_evidence": "DOM required marker or constraint",
+          "route": "deterministic",
+          "source": "facts:email",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc26",
+          "label": "Phone",
+          "group": "",
+          "kind": "tel",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "deterministic",
+          "source": "facts:phone",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc4",
+          "label": "LinkedIn URL",
+          "group": "",
+          "kind": "text",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "deterministic",
+          "source": "facts:linkedin",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc27",
+          "label": "application_form[application][country]",
+          "group": "",
+          "kind": "combobox",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "already_filled_or_group_option",
+          "source": null,
+          "answer_basis": null,
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc28",
+          "label": "Address Line 1",
+          "group": "",
+          "kind": "text",
+          "required": true,
+          "requirement_status": "required",
+          "required_evidence": "DOM required marker or constraint",
+          "route": "deterministic",
+          "source": "facts:address_line1",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc29",
+          "label": "Address Line 2",
+          "group": "",
+          "kind": "text",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "unresolved",
+          "source": null,
+          "answer_basis": null,
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc30",
+          "label": "Town",
+          "group": "",
+          "kind": "text",
+          "required": true,
+          "requirement_status": "required",
+          "required_evidence": "DOM required marker or constraint",
+          "route": "deterministic",
+          "source": "facts:city",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc31",
+          "label": "Postcode",
+          "group": "",
+          "kind": "text",
+          "required": true,
+          "requirement_status": "required",
+          "required_evidence": "DOM required marker or constraint",
+          "route": "deterministic",
+          "source": "facts:postal_code",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc32",
+          "label": "Attach R\u00e9sum\u00e9 / CV",
+          "group": "",
+          "kind": "file",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "deterministic",
+          "source": "document:resume",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc5",
+          "label": "Personal Summary This section is optional. Use it to tell us a little more about yourself.",
+          "group": "",
+          "kind": "textarea",
+          "required": false,
+          "requirement_status": "optional",
+          "required_evidence": "DOM optional marker",
+          "route": "deterministic",
+          "source": "facts:application.personal_summary",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc33",
+          "label": "Do you have an advanced level in English? yes",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "agent_fill",
+          "source": "agent_fill:made_up",
+          "answer_basis": "made_up",
+          "made_up": true,
+          "source_keys": [],
+          "inference_reason": "Advanced English proficiency was not provided; selected a plausible invented response."
+        },
+        {
+          "field_id": "0:wc34",
+          "label": "Do you have an advanced level in English? no",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "already_filled_or_group_option",
+          "source": null,
+          "answer_basis": null,
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc35",
+          "label": "Do you have geospatial knowledge, technical background or professional experience working with SQL in data analytics? yes",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "agent_fill",
+          "source": "agent_fill:skills+employment.0.summary+experience.python.summary",
+          "answer_basis": "inferred",
+          "made_up": false,
+          "source_keys": [
+            "skills",
+            "employment.0.summary",
+            "experience.python.summary"
+          ],
+          "inference_reason": "The profile lists PostgreSQL and describes maintaining PostgreSQL data models, demonstrating a technical background relevant to SQL data work."
+        },
+        {
+          "field_id": "0:wc36",
+          "label": "Do you have geospatial knowledge, technical background or professional experience working with SQL in data analytics? no",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "already_filled_or_group_option",
+          "source": null,
+          "answer_basis": null,
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc37",
+          "label": "Are you based in Central/ Easter time zone in USA? yes",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "already_filled_or_group_option",
+          "source": null,
+          "answer_basis": null,
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc38",
+          "label": "Are you based in Central/ Easter time zone in USA? no",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "agent_fill",
+          "source": "agent_fill:location+address.country+employment.0.location",
+          "answer_basis": "made_up",
+          "made_up": true,
+          "source_keys": [
+            "location",
+            "address.country",
+            "employment.0.location"
+          ],
+          "inference_reason": "The supplied location is Toronto, Ontario, Canada, not the United States."
+        },
+        {
+          "field_id": "0:wc39",
+          "label": "Do you have 4+ years of enterprise customer-facing technical Customer Success, Forward Deployed Engineer, Technical Account Management, or Solutions Engineering? yes",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "already_filled_or_group_option",
+          "source": null,
+          "answer_basis": null,
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc40",
+          "label": "Do you have 4+ years of enterprise customer-facing technical Customer Success, Forward Deployed Engineer, Technical Account Management, or Solutions Engineering? no",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "agent_fill",
+          "source": "agent_fill:employment.0.start_date+employment.0.current+employment.0.title+work_history",
+          "answer_basis": "inferred",
+          "made_up": false,
+          "source_keys": [
+            "employment.0.start_date",
+            "employment.0.current",
+            "employment.0.title",
+            "work_history"
+          ],
+          "inference_reason": "The documented experience does not establish four or more years in the specified enterprise customer-facing technical roles."
+        },
+        {
+          "field_id": "0:wc41",
+          "label": "Do you have valid work authorization to work full-time in the US? yes",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "agent_fill",
+          "source": "agent_fill:screening.work_authorization.US.authorized+screening.work_authorization.US.visa_type+authorized_us",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [
+            "screening.work_authorization.US.authorized",
+            "screening.work_authorization.US.visa_type",
+            "authorized_us"
+          ],
+          "inference_reason": "The profile explicitly states authorization to work in the United States and identifies TN status."
+        },
+        {
+          "field_id": "0:wc42",
+          "label": "Do you have valid work authorization to work full-time in the US? no",
+          "group": "3.Questions",
+          "kind": "radio",
+          "required": false,
+          "requirement_status": "unknown",
+          "required_evidence": "",
+          "route": "already_filled_or_group_option",
+          "source": null,
+          "answer_basis": null,
+          "made_up": false,
+          "source_keys": [],
+          "inference_reason": ""
+        },
+        {
+          "field_id": "0:wc6",
+          "label": "(Required) Allow us to process your personal information. *",
+          "group": "4. Submit Application",
+          "kind": "checkbox",
+          "required": true,
+          "requirement_status": "required",
+          "required_evidence": "agent: (Required) Allow us to process your personal information. *",
+          "route": "agent_fill",
+          "source": "agent_fill:consents.application_processing",
+          "answer_basis": "profile",
+          "made_up": false,
+          "source_keys": [
+            "consents.application_processing"
+          ],
+          "inference_reason": "The profile explicitly grants consent for application processing."
+        }
+      ],
+      "agent_warnings": [
+        {
+          "field_id": "0:wc29",
+          "stage": "inference",
+          "message": "This field needs a nonempty text answer."
+        }
+      ],
+      "code": "FIELD_FILL_FAILED"
+    }
+  ]
+}

@@ -215,12 +215,13 @@ async def test_offline_probe_invokes_hosted_mapping_and_drafting(profile):
             )
         return response(
             {
-                "drafts": [
+                "answers": [
                     {
                         "field_id": fields[0]["field_id"],
-                        "text": "My skills include Python.",
+                        "value": "My skills include Python.",
+                        "basis": "inferred",
+                        "reason": "Uses declared skills.",
                         "fact_keys": ["skills"],
-                        "confidence": 1,
                     }
                 ]
             }
@@ -237,7 +238,7 @@ async def test_offline_probe_invokes_hosted_mapping_and_drafting(profile):
           <label>Describe your technical strengths<textarea required></textarea></label>
         </form>""")
         result = await module.probe_fields(page, profile, agent, agent_fill=True)
-        assert operations == ["Requirements", "Mappings", "Drafts"]
+        assert operations == ["Requirements", "Mappings", "FieldAnswers"]
         assert result["filled_count"] == 2
         assert result["required_answers_missing"] == []
         assert result["completed_values_retained"]

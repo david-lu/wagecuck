@@ -1,6 +1,6 @@
 # wagecuck
 
-A job application runner: **one URL + one profile → one structured outcome**. Python owns the workflow. Playwright owns navigation, page inspection, uploads and form actions. A bounded agent can map unfamiliar fields to profile facts and optionally draft prose from supplied career facts; it never controls the browser.
+A job application runner: **one URL + one profile → one structured outcome**. Python owns the workflow. Playwright owns navigation, page inspection, uploads and form actions. A bounded agent can map unfamiliar fields to profile facts and infer remaining answers from the profile and create explicitly marked invented answers; it never controls the browser.
 
 Implemented and tested locally with Chromium. Includes ATS rules for Lever, Greenhouse, Ashby and Workday entry/navigation, a generic labeled-form fallback, CapSolver integration, a synthetic profile, a real résumé PDF, and local application portals. This is an initial supported-control implementation, not universal ATS coverage.
 
@@ -67,7 +67,7 @@ Use `--timeout 240` for slow sites/CAPTCHA tasks or deliberately slowed runs, an
 
 The automated filling stage still uses `--timeout`; there is **no time limit on your review**. This option enables a visible browser automatically and works only in `fill` mode (the default); it cannot be combined with `--headless`, `--mode inspect`, or `--mode submit`. It does not run CapSolver callbacks at handoff because those can submit a form. From Python, use `RunOptions(wait_for_user=True)`. Demo profiles can hand off on the local test portal.
 
-The real profile has the same schema as the demo, `synthetic: false`, your own facts/documents and named declarations. Document paths are relative to the profile JSON. A `false` value is a real answer; `null` means unknown. The demo contains fictional availability, compensation, experience and placeholder social links; replace these with your own data. No default claims about work authorization, sponsorship, demographics or consent are inferred for real profiles.
+The real profile has the same schema as the demo, `synthetic: false`, your own facts/documents and named declarations. Document paths are relative to the profile JSON. A `false` value is a real answer; `null` means unknown. The demo contains fictional availability, compensation, experience and placeholder social links; replace these with your own data. Without `--agent-fill`, missing declarations remain unresolved. With `--agent-fill`, unsupported answers can be invented and are marked `made_up: true` in the run log.
 
 ## CapSolver
 
@@ -157,8 +157,8 @@ The default hosted model is `gpt-5.6-terra`, configurable through `--agent-model
 ```
 
 Navigation is deterministic. The subsequent offline DOM probe runs the configured model for
-requirement assessment, unresolved profile-field mapping, and (with `--agent-fill`) grounded
-prose. Browser networking is blocked before filling; Python model requests remain available.
+requirement assessment, unresolved profile-field mapping, and (with `--agent-fill`) profile
+inference followed by explicitly marked invented answers. Browser networking is blocked before filling; Python model requests remain available.
 The JSON report records provider, model, attempted call counts per case, field routes and
 profile source keys. Model failures produce `AGENT_FAILED`, never silently disable the fallback.
 `--agent-timeout` bounds each request (60 seconds by default); the probe allows additional time
@@ -180,15 +180,15 @@ Every discovered editable application field is considered, including optional fi
 
 1. Parse native/ARIA labels, question groups, adjacent help text, input types and available options. Match named profile fields, declarations, documents and deterministic contact aliases first; legacy exact-question overrides remain supported.
 2. With a configured model, assess unclear requiredness using quoted page evidence and map unresolved fields by choosing from an enumerated list of profile field names. A mapping can select one fact or combine several text facts. Unknown keys, unsupported combinations and invalid evidence are rejected; mappings below 95% confidence are skipped. The model cannot override native required constraints.
-3. With **`--agent-fill`**, draft supported open-ended text questions still lacking a mapping from supplied career facts. This does not fabricate missing qualifications or fill missing legal, demographic, consent or eligibility declarations. Questions without sufficient source facts remain unresolved.
+3. With **`--agent-fill`**, send every remaining supported input to the model with the full raw and derived profile facts. It first infers an answer from that information; when unsupported, it supplies a plausible invented answer marked **`made_up: true`**. This covers text, numeric/date fields, dropdowns, checkboxes and radio groups, including missing personal facts. File paths and credentials are not invented. Explicit supplied facts should not be contradicted. Invalid mapping responses fall through to this stage and are logged as warnings.
 
 ```powershell
 .venv\Scripts\python.exe -m wagecuck run "JOB_APPLICATION_URL" --profile profiles/private/me.json --agent-provider openai --agent-fill --wait-for-user
 ```
 
-Mapping and requirement assessment send field metadata (including nearby page text) and allowed fact **names** to the configured model endpoint. Agent-fill also sends selected career fact **values**, such as skills and employment/education/project facts. It does not send résumé PDF bytes. Browser-rendered text can itself contain personal information. Drafts cite source keys; validation rejects unsupported numbers, but cannot prove every generated sentence is accurate. Use the review option above to inspect drafts before submitting.
+Mapping and requirement assessment send field metadata (including nearby page text) and allowed fact **names** to the configured model endpoint. Agent-fill sends the full resolved profile fact **values**, including contact, address, employment, education, screening and consent declarations. Credential keys and document paths are excluded. It does not send résumé PDF bytes. Browser-rendered text can itself contain personal information. Answers record `answer_basis` (`profile`, `inferred`, or `made_up`), `made_up`, source keys and a reason. Unsupported numbers are allowed in explicitly invented answers. These labels rely on model classification with additional structural checks; they do not prove semantic correctness. Generated answers do not modify the profile JSON. Use the review option above to inspect answers before submitting.
 
-`analysis-NN.json` records every discovered field's label, type, `required`/`optional`/`unknown` status, requirement evidence, chosen route and source keys. Unknown means the page did not provide conclusive evidence. Hidden, disabled, read-only and search controls are excluded; conditional fields are reconsidered when revealed. `inspect` produces this report without entering values or generating prose. No model is needed for deterministic mappings. Agent transport and decisions are tested with controlled responses. Real OpenAI corpus results are recorded in [the model-backed dry-run report](docs/dry-run-openai.md); a local Ollama model has not yet been evaluated in this environment.
+`result.json` includes an `answer_log` with the field, provenance and fill status, including failures. `events.jsonl` and dry-run field outcomes also include `made_up`. `analysis-NN.json` records every discovered field's label, type, `required`/`optional`/`unknown` status, requirement evidence, chosen route and source keys. Unknown means the page did not provide conclusive evidence. Hidden, disabled, read-only and search controls are excluded; conditional fields are reconsidered when revealed. `inspect` produces this report without entering values or generating prose. No model is needed for deterministic mappings. Agent transport and decisions are tested with controlled responses. Real OpenAI corpus results are recorded in [the model-backed dry-run report](docs/dry-run-openai.md); a local Ollama model has not yet been evaluated in this environment.
 
 ### Explicit screening declarations
 

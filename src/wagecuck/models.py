@@ -422,6 +422,10 @@ class Action(BaseModel):
     source: str
     choice_labels: list[str] = Field(default_factory=list)
     random_choice: bool = False
+    answer_basis: Literal["profile", "inferred", "made_up"] = "profile"
+    made_up: bool = False
+    source_keys: list[str] = Field(default_factory=list)
+    inference_reason: str = ""
 
 
 class ApplicationResult(BaseModel):
@@ -442,6 +446,7 @@ class ApplicationResult(BaseModel):
     user_handoff: bool = False
     steps: int = 0
     fields_filled: int = 0
+    answer_log: list[dict] = Field(default_factory=list)
     unresolved: list[str] = Field(default_factory=list)
     evidence: list[str] = Field(default_factory=list)
     artifact_dir: str = ""

@@ -33,7 +33,7 @@ def summarize(report_path):
             f"Model provider: {agent.get('provider', 'not recorded')}. "
             f"Model: {agent.get('model') or 'none'}. "
             f"Model calls attempted: {agent.get('calls_attempted', 'not recorded')}. "
-            f"Grounded drafting: {agent.get('agent_fill', False)}."
+            f"Profile inference and invented-answer fallback: {agent.get('agent_fill', False)}."
         ),
         "",
         (
@@ -52,16 +52,21 @@ def summarize(report_path):
         "",
         "Outcome counts: " + ", ".join(f"{code}: {count}" for code, count in totals.items()) + ".",
         "",
-        "| Case | Outcome | Fields filled / mapped | Missing required answers | CAPTCHA detected |",
-        "|---|---|---:|---:|---|",
+        "| Case | Outcome | Fields filled / mapped | Missing required answers | Made-up answers filled | CAPTCHA detected |",
+        "|---|---|---:|---:|---:|---|",
     ]
     for row in rows:
         mapped = f"{row['filled_count']} / {row['mapped_count']}" if "mapped_count" in row else "—"
         missing = (
             str(len(row["required_answers_missing"])) if "required_answers_missing" in row else "—"
         )
+        made_up = (
+            str(sum(f.get("made_up", False) and f["code"] == "FILLED" for f in row["fields"]))
+            if row.get("fields") and all("made_up" in f for f in row["fields"])
+            else "not recorded"
+        )
         lines.append(
-            f"| [{row['id']}]({row['url']}) | {row['code']} | {mapped} | {missing} | {row.get('captcha') or 'not observed'} |"
+            f"| [{row['id']}]({row['url']}) | {row['code']} | {mapped} | {missing} | {made_up} | {row.get('captcha') or 'not observed'} |"
         )
     lines += [
         "",

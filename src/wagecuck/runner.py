@@ -320,6 +320,8 @@ class ApplicationRunner:
             actions, unresolved = await self.agent.plan(
                 snap.fields, profile, agent_fill=options.agent_fill
             )
+            for warning in self.agent.warnings:
+                event("agent_warning", **warning)
             (directory / f"analysis-{step + 1:02d}.json").write_text(
                 json.dumps(self.agent.describe(snap.fields, actions, unresolved), indent=2),
                 encoding="utf-8",
@@ -335,7 +337,24 @@ class ApplicationRunner:
                 encoding="utf-8",
             )
             for action in actions:
-                await fill(page, action)
+                record = {
+                    "step": step + 1,
+                    "field_id": f"{action.field.frame}:{action.field.id}",
+                    "label": action.field.label,
+                    "source": action.source,
+                    "answer_basis": action.answer_basis,
+                    "made_up": action.made_up,
+                    "source_keys": action.source_keys,
+                    "inference_reason": action.inference_reason,
+                    "status": "planned",
+                }
+                result.answer_log.append(record)
+                try:
+                    await fill(page, action)
+                except ApplicationError:
+                    record["status"] = "failed"
+                    raise
+                record["status"] = "filled"
                 touched.add((action.field.frame, action.field.id))
                 identity_sources.add(action.source)
                 # Validated semantic mappings count toward the same identity check
@@ -346,7 +365,15 @@ class ApplicationRunner:
                     if "documents.resume" in mapped_keys:
                         identity_sources.add("document:resume")
                 result.fields_filled += 1
-                event("filled", field=action.field.id, source=action.source)
+                event(
+                    "filled",
+                    field=action.field.id,
+                    source=action.source,
+                    answer_basis=action.answer_basis,
+                    made_up=action.made_up,
+                    source_keys=action.source_keys,
+                    inference_reason=action.inference_reason,
+                )
             after = await snapshot(page)
             code = blocker(after)
             if code and not (code == Code.CAPTCHA_REQUIRED and challenge):

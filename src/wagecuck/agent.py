@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import UTC, datetime
 from typing import Literal, Protocol
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from .browser import normalize
+from .inference import INFERENCE_PROMPT, FieldAnswers, apply_inferred_answers
 from .models import Action, ApplicationError, Code, FormField, Profile
 from .profile_fields import (
     action_for_key,
@@ -318,6 +320,38 @@ class StructuredMappingAgent:
                 Code.AGENT_FAILED, "Agent-fill returned invalid prose or was unavailable."
             ) from exc
 
+    async def infer(self, fields, facts):
+        schema = FieldAnswers.model_json_schema()
+        props = schema["$defs"]["FieldAnswer"]["properties"]
+        props["field_id"]["enum"] = [f"{f.frame}:{f.id}" for f in fields]
+        if facts:
+            props["fact_keys"]["items"]["enum"] = list(facts)
+        payload = {
+            "model": self.model,
+            "stream": False,
+            "format": schema,
+            "options": {"temperature": 0},
+            "messages": [
+                {"role": "system", "content": INFERENCE_PROMPT},
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "fields": [metadata(f) for f in fields],
+                            "facts": facts,
+                            "reference_date": datetime.now(UTC).date().isoformat(),
+                        }
+                    ),
+                },
+            ],
+        }
+        try:
+            return FieldAnswers.model_validate_json(await self._request(payload)).answers
+        except Exception as exc:
+            raise ApplicationError(
+                Code.AGENT_FAILED, "Answer inference failed or returned invalid data."
+            ) from exc
+
 
 class OllamaMappingAgent(StructuredMappingAgent):
     def __init__(self, model, endpoint="http://localhost:11434", **kwargs):
@@ -336,6 +370,7 @@ class OllamaMappingAgent(StructuredMappingAgent):
 class WorkflowAgent:
     def __init__(self, fallback: MappingAgent | None = None):
         self.fallback = fallback
+        self.warnings = []
 
     async def assess_required(self, fields):
         for field in fields:
@@ -388,6 +423,7 @@ class WorkflowAgent:
         self, fields: list[FormField], profile: Profile, *, agent_fill: bool = False
     ) -> tuple[list[Action], list[FormField]]:
         facts = profile.values()
+        self.warnings = []
         answers = {question(k): v for k, v in profile.answers.items()}
         actions, unresolved = [], []
         source_choices = {}
@@ -442,7 +478,12 @@ class WorkflowAgent:
             elif not field.filled:
                 unresolved.append(field)
         # Deterministic mappings are established before invoking any model.
-        await self.assess_required(fields)
+        try:
+            await self.assess_required(fields)
+        except ApplicationError as exc:
+            if not (agent_fill and getattr(self.fallback, "infer", None)):
+                raise
+            self.warnings.append({"stage": "requirements", "message": str(exc), "code": exc.code})
         eligible = [
             f
             for f in unresolved
@@ -476,141 +517,187 @@ class WorkflowAgent:
             )
         ]
         if self.fallback and eligible:
-            # Only typed declarations may expose sensitive choices; their use is checked per field.
-            declared = profile.declared_values()
-            available = {
-                k: v
-                for k, v in facts.items()
-                if not SENSITIVE.search(k) or k in declared or k == "compensation_expectations"
-            }
-            available["documents.resume"] = str(profile.resume)
-            if profile.cover_letter:
-                available["documents.cover_letter"] = str(profile.cover_letter)
-            allowed = list(available)
-            mappings = await self.fallback.map(eligible, allowed)
-            by_id = {f"{f.frame}:{f.id}": f for f in eligible}
-            accepted = set()
-            for mapping in mappings:
-                keys = mapping.fact_keys or ([mapping.fact_key] if mapping.fact_key else [])
-                if (
-                    mapping.field_id not in by_id
-                    or not keys
-                    or any(key not in allowed for key in keys)
-                    or (mapping.fact_key and mapping.fact_keys)
-                    or len(keys) != len(set(keys))
-                    or mapping.field_id in accepted
-                ):
-                    raise ApplicationError(
-                        Code.AGENT_FAILED, "Agent proposed an invalid or duplicate mapping."
-                    )
-                if mapping.confidence < 0.95:
-                    continue
-                field = by_id[mapping.field_id]
-                if not allowed_named_mapping(
-                    field,
-                    keys,
-                    profile,
-                    bool(SENSITIVE.search(f"{field.label} {field.group} {field.context}")),
-                ):
-                    raise ApplicationError(
-                        Code.AGENT_FAILED,
-                        "Agent selected a declaration with incompatible meaning, jurisdiction or currency.",
-                    )
-                if mapping.evidence and normalize(mapping.evidence) not in normalize(
-                    f"{field.label} {field.group} {field.context}"
-                ):
-                    raise ApplicationError(
-                        Code.AGENT_FAILED, "Mapping agent cited absent evidence."
-                    )
-                document_keys = [key for key in keys if key.startswith("documents.")]
-                if (field.kind == "file" and (len(keys) != 1 or not document_keys)) or (
-                    field.kind != "file" and document_keys
-                ):
-                    raise ApplicationError(
-                        Code.AGENT_FAILED, "Document mappings must target upload fields only."
-                    )
-                if len(keys) > 1 and (
-                    field.kind not in ("text", "textarea")
-                    or not all(isinstance(available[key], str) for key in keys)
-                ):
-                    raise ApplicationError(
-                        Code.AGENT_FAILED, "Only text fields support combined profile values."
-                    )
-                value = (
-                    available[keys[0]]
-                    if len(keys) == 1
-                    else mapping.separator.join(available[key] for key in keys)
+            before_actions, before_unresolved = len(actions), list(unresolved)
+            try:
+                await self._map_unresolved(eligible, fields, facts, profile, actions, unresolved)
+            except ApplicationError as exc:
+                if not (agent_fill and getattr(self.fallback, "infer", None)):
+                    raise
+                del actions[before_actions:]
+                unresolved[:] = before_unresolved
+                self.warnings.append({"stage": "mapping", "message": str(exc), "code": exc.code})
+        if agent_fill:
+            if getattr(self.fallback, "infer", None):
+                await self._infer_unmapped(unresolved, actions, facts)
+            else:
+                await self._draft_unmapped(unresolved, actions, facts)
+        for action in actions:
+            if action.source.startswith("random:"):
+                action.answer_basis, action.made_up = "made_up", True
+                action.inference_reason = "Random source choice requested by the profile."
+        return actions, unresolved
+
+    async def _infer_unmapped(self, unresolved, actions, facts):
+        candidates = [
+            f
+            for f in unresolved
+            if f.kind
+            in (
+                "text",
+                "textarea",
+                "email",
+                "url",
+                "tel",
+                "number",
+                "date",
+                "select",
+                "combobox",
+                "checkbox",
+                "radio",
+            )
+        ]
+        if not candidates:
+            return
+        grounding = {
+            k: v
+            for k, v in facts.items()
+            if not re.search(r"password|secret|token|api_key|documents\.", k, re.IGNORECASE)
+        }
+        answers = await self.fallback.infer(candidates, grounding)
+        inferred, resolved, warnings = apply_inferred_answers(candidates, answers, grounding)
+        actions.extend(inferred)
+        self.warnings.extend(warnings)
+        unresolved[:] = [f for f in unresolved if f"{f.frame}:{f.id}" not in resolved]
+
+    async def _map_unresolved(self, eligible, fields, facts, profile, actions, unresolved):
+        # Only typed declarations may expose sensitive choices; their use is checked per field.
+        declared = profile.declared_values()
+        available = {
+            k: v
+            for k, v in facts.items()
+            if not SENSITIVE.search(k) or k in declared or k == "compensation_expectations"
+        }
+        available["documents.resume"] = str(profile.resume)
+        if profile.cover_letter:
+            available["documents.cover_letter"] = str(profile.cover_letter)
+        allowed = list(available)
+        mappings = await self.fallback.map(eligible, allowed)
+        by_id = {f"{f.frame}:{f.id}": f for f in eligible}
+        accepted = set()
+        for mapping in mappings:
+            keys = mapping.fact_keys or ([mapping.fact_key] if mapping.fact_key else [])
+            if (
+                mapping.field_id not in by_id
+                or not keys
+                or any(key not in allowed for key in keys)
+                or (mapping.fact_key and mapping.fact_keys)
+                or len(keys) != len(set(keys))
+                or mapping.field_id in accepted
+            ):
+                raise ApplicationError(
+                    Code.AGENT_FAILED, "Agent proposed an invalid or duplicate mapping."
                 )
-                # Named declarations use the same option/radio semantics in both routes.
-                if len(keys) == 1 and (
-                    restricted_key(keys[0]) or keys[0] == key_for(field, profile)
-                ):
-                    handled, action = action_for_key(field, fields, profile, keys[0])
-                    if not handled or action is None:
-                        continue
-                    if action:
-                        action.source = "agent:" + keys[0]
-                        actions.append(action)
-                    if field.kind == "radio":
-                        unresolved[:] = [
-                            f
-                            for f in unresolved
-                            if not (
-                                f.kind == "radio"
-                                and f.frame == field.frame
-                                and f.name == field.name
-                                and f.group == field.group
-                            )
-                        ]
-                    else:
-                        unresolved.remove(field)
-                    accepted.add(mapping.field_id)
-                    continue
-                if field.kind == "radio":
-                    choice = "yes" if value is True else "no" if value is False else question(value)
-                    if choice != question(field.label):
-                        continue
-                    value = True
-                if field.kind == "checkbox" and not isinstance(value, bool):
-                    continue
-                actions.append(
-                    Action(
-                        field=field,
-                        value=value,
-                        source="agent:" + "+".join(keys),
-                    )
+            if mapping.confidence < 0.95:
+                continue
+            field = by_id[mapping.field_id]
+            if not allowed_named_mapping(
+                field,
+                keys,
+                profile,
+                bool(SENSITIVE.search(f"{field.label} {field.group} {field.context}")),
+            ):
+                raise ApplicationError(
+                    Code.AGENT_FAILED,
+                    "Agent selected a declaration with incompatible meaning, jurisdiction or currency.",
                 )
+            if mapping.evidence and normalize(mapping.evidence) not in normalize(
+                f"{field.label} {field.group} {field.context}"
+            ):
+                raise ApplicationError(Code.AGENT_FAILED, "Mapping agent cited absent evidence.")
+            document_keys = [key for key in keys if key.startswith("documents.")]
+            if (field.kind == "file" and (len(keys) != 1 or not document_keys)) or (
+                field.kind != "file" and document_keys
+            ):
+                raise ApplicationError(
+                    Code.AGENT_FAILED, "Document mappings must target upload fields only."
+                )
+            if len(keys) > 1 and (
+                field.kind not in ("text", "textarea")
+                or not all(isinstance(available[key], str) for key in keys)
+            ):
+                raise ApplicationError(
+                    Code.AGENT_FAILED, "Only text fields support combined profile values."
+                )
+            value = (
+                available[keys[0]]
+                if len(keys) == 1
+                else mapping.separator.join(available[key] for key in keys)
+            )
+            # Named declarations use the same option/radio semantics in both routes.
+            if len(keys) == 1 and (restricted_key(keys[0]) or keys[0] == key_for(field, profile)):
+                handled, action = action_for_key(field, fields, profile, keys[0])
+                if not handled or action is None:
+                    continue
+                if action:
+                    action.source = "agent:" + keys[0]
+                    actions.append(action)
                 if field.kind == "radio":
-                    peers = [
+                    unresolved[:] = [
                         f
                         for f in unresolved
-                        if f.kind == "radio"
-                        and f.frame == field.frame
-                        and f.name == field.name
-                        and f.group == field.group
+                        if not (
+                            f.kind == "radio"
+                            and f.frame == field.frame
+                            and f.name == field.name
+                            and f.group == field.group
+                        )
                     ]
-                    if (
-                        not field.name
-                        or not field.group
-                        or any(
-                            (a.field.frame, a.field.name, a.field.group)
-                            == (field.frame, field.name, field.group)
-                            for a in actions[:-1]
-                            if a.field.kind == "radio"
-                        )
-                    ):
-                        raise ApplicationError(
-                            Code.AGENT_FAILED,
-                            "Radio mapping must identify one unambiguous question and choice.",
-                        )
-                    for peer in peers:
-                        unresolved.remove(peer)
                 else:
                     unresolved.remove(field)
                 accepted.add(mapping.field_id)
-        if agent_fill:
-            await self._draft_unmapped(unresolved, actions, facts)
-        return actions, unresolved
+                continue
+            if field.kind == "radio":
+                choice = "yes" if value is True else "no" if value is False else question(value)
+                if choice != question(field.label):
+                    continue
+                value = True
+            if field.kind == "checkbox" and not isinstance(value, bool):
+                continue
+            actions.append(
+                Action(
+                    field=field,
+                    value=value,
+                    source="agent:" + "+".join(keys),
+                )
+            )
+            if field.kind == "radio":
+                peers = [
+                    f
+                    for f in unresolved
+                    if f.kind == "radio"
+                    and f.frame == field.frame
+                    and f.name == field.name
+                    and f.group == field.group
+                ]
+                if (
+                    not field.name
+                    or not field.group
+                    or any(
+                        (a.field.frame, a.field.name, a.field.group)
+                        == (field.frame, field.name, field.group)
+                        for a in actions[:-1]
+                        if a.field.kind == "radio"
+                    )
+                ):
+                    raise ApplicationError(
+                        Code.AGENT_FAILED,
+                        "Radio mapping must identify one unambiguous question and choice.",
+                    )
+                for peer in peers:
+                    unresolved.remove(peer)
+            else:
+                unresolved.remove(field)
+            accepted.add(mapping.field_id)
 
     async def _draft_unmapped(self, unresolved, actions, facts):
         draft = getattr(self.fallback, "draft", None)
@@ -674,6 +761,9 @@ class WorkflowAgent:
                     field=field,
                     value=result.text,
                     source="agent_fill:" + "+".join(result.fact_keys),
+                    answer_basis="inferred",
+                    source_keys=result.fact_keys,
+                    inference_reason="Drafted from the cited career facts.",
                 )
             )
             unresolved.remove(field)
@@ -711,6 +801,10 @@ class WorkflowAgent:
                     "required_evidence": field.required_evidence,
                     "route": route,
                     "source": action.source if action else None,
+                    "answer_basis": action.answer_basis if action else None,
+                    "made_up": action.made_up if action else False,
+                    "source_keys": action.source_keys if action else [],
+                    "inference_reason": action.inference_reason if action else "",
                 }
             )
         return rows

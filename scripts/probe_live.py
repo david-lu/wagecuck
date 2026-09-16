@@ -43,6 +43,10 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
             "code": "FILLED",
             "required": action.field.required,
             "source": action.source,
+            "answer_basis": action.answer_basis,
+            "made_up": action.made_up,
+            "source_keys": action.source_keys,
+            "inference_reason": action.inference_reason,
         }
         try:
             await fill(page, action)
@@ -74,6 +78,7 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
         ],
         "fields": outcomes,
         "field_analysis": planner.describe(snap.fields, actions, unresolved),
+        "agent_warnings": planner.warnings,
     }
 
 

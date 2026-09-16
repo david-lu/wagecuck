@@ -140,7 +140,7 @@ def add_agent_arguments(parser):
     parser.add_argument(
         "--agent-fill",
         action="store_true",
-        help="Draft unresolved prose using supplied career facts; requires a model",
+        help="Infer all unmapped answers from the profile; mark unsupported invented answers made_up",
     )
 
 

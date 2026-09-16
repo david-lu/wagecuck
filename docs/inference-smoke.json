@@ -1,0 +1,211 @@
+{
+  "checked_at": "2026-09-16T07:56:09.601943+00:00",
+  "mode": "local_offline_inference_smoke",
+  "agent": {
+    "provider": "openai",
+    "model": "gpt-5.6-terra",
+    "agent_fill": true,
+    "calls_attempted": 3
+  },
+  "applications_submitted": 0,
+  "result": {
+    "field_count": 6,
+    "mapped_count": 6,
+    "filled_count": 6,
+    "completed_values_retained": true,
+    "captcha": null,
+    "required_answers_missing": [],
+    "unmapped_fields": [],
+    "fields": [
+      {
+        "label": "First name",
+        "kind": "text",
+        "code": "FILLED",
+        "required": true,
+        "source": "facts:first_name",
+        "answer_basis": "profile",
+        "made_up": false,
+        "source_keys": [],
+        "inference_reason": ""
+      },
+      {
+        "label": "Number of employers since university graduation",
+        "kind": "number",
+        "code": "FILLED",
+        "required": true,
+        "source": "agent_fill:education.0.end_date+employment.0.company+employment.0.start_date",
+        "answer_basis": "inferred",
+        "made_up": false,
+        "source_keys": [
+          "education.0.end_date",
+          "employment.0.company",
+          "employment.0.start_date"
+        ],
+        "inference_reason": "One employer is listed beginning immediately after university graduation."
+      },
+      {
+        "label": "Location of Residence and Language:",
+        "kind": "select",
+        "code": "FILLED",
+        "required": true,
+        "source": "agent_fill:address.country+location+application.personal_summary",
+        "answer_basis": "inferred",
+        "made_up": false,
+        "source_keys": [
+          "address.country",
+          "location",
+          "application.personal_summary"
+        ],
+        "inference_reason": "The residence is in Canada, and the supplied profile is written in English."
+      },
+      {
+        "label": "(Required) Allow us to process your personal information.",
+        "kind": "checkbox",
+        "code": "FILLED",
+        "required": true,
+        "source": "agent_fill:consents.application_processing",
+        "answer_basis": "profile",
+        "made_up": false,
+        "source_keys": [
+          "consents.application_processing"
+        ],
+        "inference_reason": "Application-processing consent is explicitly provided."
+      },
+      {
+        "label": "Name of your favourite fictional mentor",
+        "kind": "text",
+        "code": "FILLED",
+        "required": true,
+        "source": "agent_fill:made_up",
+        "answer_basis": "made_up",
+        "made_up": true,
+        "source_keys": [],
+        "inference_reason": "Favourite fictional mentor was not supplied; this is an invented preference."
+      },
+      {
+        "label": "Preferred interview date",
+        "kind": "date",
+        "code": "FILLED",
+        "required": true,
+        "source": "agent_fill:application.notice_period_days",
+        "answer_basis": "made_up",
+        "made_up": true,
+        "source_keys": [
+          "application.notice_period_days"
+        ],
+        "inference_reason": "Preferred interview date was not supplied; this is an invented future date that allows for the stated notice period."
+      }
+    ],
+    "field_analysis": [
+      {
+        "field_id": "0:wc1",
+        "label": "First name",
+        "group": "",
+        "kind": "text",
+        "required": true,
+        "requirement_status": "required",
+        "required_evidence": "DOM required marker or constraint",
+        "route": "deterministic",
+        "source": "facts:first_name",
+        "answer_basis": "profile",
+        "made_up": false,
+        "source_keys": [],
+        "inference_reason": ""
+      },
+      {
+        "field_id": "0:wc2",
+        "label": "Number of employers since university graduation",
+        "group": "",
+        "kind": "number",
+        "required": true,
+        "requirement_status": "required",
+        "required_evidence": "DOM required marker or constraint",
+        "route": "agent_fill",
+        "source": "agent_fill:education.0.end_date+employment.0.company+employment.0.start_date",
+        "answer_basis": "inferred",
+        "made_up": false,
+        "source_keys": [
+          "education.0.end_date",
+          "employment.0.company",
+          "employment.0.start_date"
+        ],
+        "inference_reason": "One employer is listed beginning immediately after university graduation."
+      },
+      {
+        "field_id": "0:wc3",
+        "label": "Location of Residence and Language:",
+        "group": "",
+        "kind": "select",
+        "required": true,
+        "requirement_status": "required",
+        "required_evidence": "DOM required marker or constraint",
+        "route": "agent_fill",
+        "source": "agent_fill:address.country+location+application.personal_summary",
+        "answer_basis": "inferred",
+        "made_up": false,
+        "source_keys": [
+          "address.country",
+          "location",
+          "application.personal_summary"
+        ],
+        "inference_reason": "The residence is in Canada, and the supplied profile is written in English."
+      },
+      {
+        "field_id": "0:wc4",
+        "label": "(Required) Allow us to process your personal information.",
+        "group": "",
+        "kind": "checkbox",
+        "required": true,
+        "requirement_status": "required",
+        "required_evidence": "agent: (Required) Allow us to process your personal information.",
+        "route": "agent_fill",
+        "source": "agent_fill:consents.application_processing",
+        "answer_basis": "profile",
+        "made_up": false,
+        "source_keys": [
+          "consents.application_processing"
+        ],
+        "inference_reason": "Application-processing consent is explicitly provided."
+      },
+      {
+        "field_id": "0:wc5",
+        "label": "Name of your favourite fictional mentor",
+        "group": "",
+        "kind": "text",
+        "required": true,
+        "requirement_status": "required",
+        "required_evidence": "DOM required marker or constraint",
+        "route": "agent_fill",
+        "source": "agent_fill:made_up",
+        "answer_basis": "made_up",
+        "made_up": true,
+        "source_keys": [],
+        "inference_reason": "Favourite fictional mentor was not supplied; this is an invented preference."
+      },
+      {
+        "field_id": "0:wc6",
+        "label": "Preferred interview date",
+        "group": "",
+        "kind": "date",
+        "required": true,
+        "requirement_status": "required",
+        "required_evidence": "DOM required marker or constraint",
+        "route": "agent_fill",
+        "source": "agent_fill:application.notice_period_days",
+        "answer_basis": "made_up",
+        "made_up": true,
+        "source_keys": [
+          "application.notice_period_days"
+        ],
+        "inference_reason": "Preferred interview date was not supplied; this is an invented future date that allows for the stated notice period."
+      }
+    ],
+    "agent_warnings": [
+      {
+        "stage": "mapping",
+        "message": "Agent selected a declaration with incompatible meaning, jurisdiction or currency.",
+        "code": "AGENT_FAILED"
+      }
+    ]
+  }
+}
