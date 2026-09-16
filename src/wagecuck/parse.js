@@ -30,7 +30,7 @@
   };
   const questionHeading = (parent, el) => {
     if (!parent) return null;
-    return [...parent.querySelectorAll('legend, label, .application-label, .question-label, .ashby-application-form-question-title')]
+    return [...parent.querySelectorAll('legend, label, .application-label, .question-label, .ashby-application-form-question-title, h3, h4')]
       .find(node => {
         const target = node.htmlFor && el.getRootNode().getElementById?.(node.htmlFor);
         return !node.querySelector('input, select, textarea') && !(target && target.matches('input, select, textarea'));
@@ -68,7 +68,7 @@
     }
     const hasRequired = (node) => !!node && (node.getAttribute('aria-required') === 'true' || (!/\boptional\b|\bnot required\b/i.test(labelText(node)) && (/\*|✱|\brequired\b/i.test(labelText(node)) || /(?:^|[ _-])required(?:[ _-]|$)/i.test(node.className || ''))));
     const required = el.required || el.getAttribute('aria-required') === 'true' || /\*|✱/.test(lab) || !!el.closest('[data-required="true"]') ||
-      [...(el.labels || [])].some(hasRequired) || (kind === 'radio' && (hasRequired(groupEl) || hasRequired(groupHeading))) ||
+      [...(el.labels || [])].some(hasRequired) || (['radio', 'checkbox'].includes(kind) && (hasRequired(groupEl) || hasRequired(groupHeading))) ||
       (kind === 'file' && hasRequired(contextHeading(el)));
     // Only nearby labels/help text, never control values or the whole page.
     const described = (el.getAttribute('aria-describedby') || '').split(/\s+/)

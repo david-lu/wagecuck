@@ -18,7 +18,12 @@ def logical_groups(fields: list[FormField]) -> list[list[FormField]]:
 
 def logical_key(field: FormField) -> tuple:
     if field.kind in ("radio", "checkbox") and (field.name or field.group):
-        return (field.frame, field.kind, field.name or field.group)
+        group = field.group.strip()
+        if group and not re.fullmatch(
+            r"\d+[.\s-]*(?:questions?|section)", group, re.IGNORECASE
+        ):
+            return (field.frame, field.kind, group)
+        return (field.frame, field.kind, field.name or group)
     return (field.frame, field.kind, field.id)
 
 

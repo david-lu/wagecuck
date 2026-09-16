@@ -2,6 +2,8 @@
 
 The application engine is evaluated with two disjoint URL corpora.
 
+The report in `docs/dry-run-validation.json` is historical for runtime fingerprint `1f437a6ddb1a24d8ddc48f0d893ff715d4d4498242a8ae516b0d9f84ca527ad9`. Demographic grouping and filling behavior changed after a validation failure was inspected, so that score must not be presented as validation of the current runtime. A new unseen corpus is required before making another held-out generalization claim.
+
 `examples/training-jobs.json` is the development corpus. It currently expands to 39 postings across Lever, Greenhouse, Ashby, Workday, Workable, SmartRecruiters, Jobvite, Recruitee, BambooHR, Teamtailor, Pinpoint, Breezy and iCIMS. Developers may inspect its DOM metadata, add regressions from its labels and use its failures to improve parsing, mapping and Playwright execution.
 
 `examples/validation-jobs.json` contains eight held-out postings selected before validation. Their application forms must not be inspected while implementing field behavior. Their labels, options, mappings, source keys and failure details must not be copied into production rules, prompts, profiles or regression tests.

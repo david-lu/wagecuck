@@ -26,6 +26,7 @@ from .browser import (
     verify_actions,
 )
 from .captcha import CapSolver, deliver_token, detect_challenge
+from .logical_fields import logical_groups
 from .models import ApplicationError, ApplicationResult, Code, Profile, RunOptions
 from .store import Store, application_key
 
@@ -405,6 +406,16 @@ class ApplicationRunner:
                 raise ApplicationError(
                     Code.VALIDATION_FAILED, "The page reported form validation errors.", invalid
                 )
+            satisfied_checkbox_group_members = {
+                (field.frame, field.id)
+                for group in logical_groups(after.fields)
+                if len(group) > 1
+                and group[0].kind == "checkbox"
+                and any(
+                    field.filled or (field.frame, field.id) in touched for field in group
+                )
+                for field in group
+            }
             native_invalid = []
             for f in after.fields:
                 if (
@@ -412,6 +423,7 @@ class ApplicationRunner:
                     and f.kind != "radio"
                     and not f.filled
                     and not (f.kind == "checkbox" and (f.frame, f.id) in touched)
+                    and (f.frame, f.id) not in satisfied_checkbox_group_members
                 ):
                     native_invalid.append(f.label)
             if native_invalid:

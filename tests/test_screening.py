@@ -23,6 +23,11 @@ from wagecuck.screening import answer_for
         ("Disability status", False),
         ("Veteran status", False),
         ("Are you a protected veteran?", False),
+        ("Which gender do you identify as?", "Non-binary"),
+        ("What is your sexual orientation?", "Bisexual"),
+        ("Do you identify as transgender?", False),
+        ("Please indicate your race or ethnicity", "White"),
+        ("Are you Hispanic or Latino?", False),
     ],
 )
 def test_explicit_profile_declarations(question, expected, profile):
@@ -76,6 +81,88 @@ async def test_exact_answer_overrides_semantic_declaration(profile):
     assert actions[0].value == "I do not wish to answer"
 
 
+async def test_demographic_declarations_fill_choice_controls(profile):
+    fields = [
+        *[
+            FormField(
+                id=f"gender-{value}",
+                frame=0,
+                kind="radio",
+                name="gender",
+                group="Gender identity",
+                label=label,
+                required=True,
+            )
+            for value, label in (("man", "Man"), ("nonbinary", "Non-binary"), ("decline", "Prefer not to say"))
+        ],
+        FormField(
+            id="orientation",
+            frame=0,
+            kind="select",
+            name="orientation",
+            label="Sexual orientation",
+            required=True,
+            options=[
+                Option(label="Straight", value="straight-value"),
+                Option(label="Bisexual", value="bisexual-value"),
+            ],
+        ),
+        *[
+            FormField(
+                id=f"race-{value}",
+                frame=0,
+                kind="checkbox",
+                name=f"race_{value}",
+                group="Race or ethnicity",
+                label=label,
+                required=True,
+            )
+            for value, label in (("asian", "Asian"), ("white", "White"))
+        ],
+        *[
+            FormField(
+                id=f"pronouns-{value}",
+                frame=0,
+                kind="radio",
+                name="pronouns",
+                group="Preferred pronouns",
+                label=label,
+                required=True,
+            )
+            for value, label in (("she", "She/Her"), ("they", "They/Them"))
+        ],
+    ]
+    actions, unresolved = await WorkflowAgent().plan(fields, profile)
+    assert not unresolved
+    assert {(action.field.id, action.value) for action in actions} == {
+        ("gender-nonbinary", True),
+        ("orientation", "bisexual-value"),
+        ("race-white", True),
+        ("pronouns-they", True),
+    }
+    assert all(action.source.startswith(("screening:", "facts:")) for action in actions)
+
+
+async def test_demographic_radio_can_use_shared_local_context_without_a_group(profile):
+    context = "Gender identity: Man, Non-binary, or Prefer not to say"
+    fields = [
+        FormField(
+            id=value,
+            frame=0,
+            kind="radio",
+            name="",
+            group="",
+            context=context,
+            label=label,
+            required=True,
+        )
+        for value, label in (("man", "Man"), ("nonbinary", "Non-binary"), ("decline", "Prefer not to say"))
+    ]
+    actions, unresolved = await WorkflowAgent().plan(fields, profile)
+    assert not unresolved
+    assert [(action.field.id, action.value) for action in actions] == [("nonbinary", True)]
+
+
 def test_tn_does_not_infer_sponsorship(profile):
     profile.screening.work_authorization["US"].requires_sponsorship = None
     assert answer_for("Do you require visa sponsorship?", profile.screening) is None
@@ -92,6 +179,12 @@ async def test_screening_complete_browser_submission(portal, profile, options):
         b"tn",
         b"not-protected",
         b"No, I do not have a disability and have not had one in the past",
+        b'name="pronouns"\r\n\r\nthey',
+        b'name="gender"\r\n\r\nnonbinary',
+        b'name="orientation"\r\n\r\nbisexual',
+        b'name="transgender"\r\n\r\nno',
+        b'name="race_white"\r\n\r\nwhite',
+        b'name="hispanic"\r\n\r\nno',
     ):
         assert value in body
     sources = [
@@ -112,3 +205,9 @@ def test_demo_has_requested_declarations(tmp_path):
     assert profile.screening.work_authorization["US"].visa_type == "TN"
     assert profile.screening.veteran_status == "not_a_veteran"
     assert profile.screening.disability_status == "no_disability"
+    assert profile.application.pronouns == "they/them"
+    assert profile.screening.demographics.gender_identity == "non_binary"
+    assert profile.screening.demographics.sexual_orientation == "bisexual"
+    assert profile.screening.demographics.transgender_status is False
+    assert profile.screening.demographics.race_ethnicity == ["white"]
+    assert profile.screening.demographics.hispanic_latino is False

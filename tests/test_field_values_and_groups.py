@@ -122,6 +122,34 @@ def test_radio_and_checkbox_controls_report_as_logical_questions():
     assert rows[1]["route"] == "agent_fill"
 
 
+async def test_parser_groups_checkbox_options_by_shared_question_heading():
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch()
+        page = await browser.new_page()
+        await page.set_content(
+            """<form><div class="application-question">
+            <h3>Race or ethnicity *</h3>
+            <label>Asian<input type="checkbox" name="race_asian"></label>
+            <label>White<input type="checkbox" name="race_white"></label>
+            </div></form>"""
+        )
+        fields = (await snapshot(page)).fields
+        await browser.close()
+    assert [field.group for field in fields] == ["Race or ethnicity *"] * 2
+    assert all(field.required for field in fields)
+    rows = logical_field_results(
+        fields,
+        [],
+        [
+            {"field_id": f"0:{field.id}", "route": "unresolved", "source": None}
+            for field in fields
+        ],
+    )
+    assert len(rows) == 1
+    assert rows[0]["question"] == "Race or ethnicity *"
+    assert [option["label"] for option in rows[0]["options"]] == ["Asian", "White"]
+
+
 def test_prefilled_control_is_reported_as_satisfied_without_an_action():
     fields = [field("period", "Pay period", "select", required=True, filled=True)]
     analysis = [

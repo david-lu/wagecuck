@@ -1,5 +1,7 @@
 # Application dry-run coverage
 
+> **Historical result:** this report does not validate the current runtime. Demographic grouping and filling behavior changed after a failure from this corpus was inspected. Its recorded implementation fingerprint remains useful for the older evaluated version; use a new unseen corpus for the next held-out score.
+
 Checked: 2026-09-16T18:38:22.106634+00:00. Dataset: validation. URLs: 8. Employer submissions: 0.
 Model provider: openai. Model: gpt-5.6-terra. Model calls attempted: 10. Profile inference and invented-answer fallback: True.
 

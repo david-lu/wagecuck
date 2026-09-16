@@ -64,7 +64,7 @@ def generate_profile(directory: Path) -> Path:
         "application": {
             "randomize_source": True,
             "preferred_name": "Alex",
-            "pronouns": None,
+            "pronouns": "they/them",
             "headline": "Software engineer focused on Python services and browser automation",
             "personal_summary": "Fictional software engineer with experience building Python services, TypeScript interfaces, and browser testing workflows.",
             "available_start_date": "2026-10-01",
@@ -112,6 +112,13 @@ def generate_profile(directory: Path) -> Path:
             "veteran_status": "not_a_veteran",
             "disability_status": "no_disability",
             "disability_history": False,
+            "demographics": {
+                "gender_identity": "non_binary",
+                "sexual_orientation": "bisexual",
+                "transgender_status": False,
+                "race_ethnicity": ["white"],
+                "hispanic_latino": False,
+            },
         },
     }
     applicant = Profile.model_validate(profile)

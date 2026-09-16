@@ -143,6 +143,9 @@ The demo no longer has an `answers` dictionary keyed by employer questions. Norm
 | `application.compensation.annual_target`, `compensation_expectations` | Annual numeric target or formatted pay expectations with currency |
 | `application.personal_summary`, `application.headline`, `work_history` | Summary, headline and combined employment history |
 | `application.preferred_name`, `application.pronouns` | Explicit name/pronoun preferences |
+| `screening.demographics.gender_identity`, `screening.demographics.transgender_status` | Explicit gender identity and transgender declaration |
+| `screening.demographics.sexual_orientation` | Explicit sexual-orientation declaration |
+| `screening.demographics.race_ethnicity`, `screening.demographics.hispanic_latino` | Explicit race/ethnicity declarations, including multiple race choices |
 | `application.ai_usage`, `application.role_interest`, `application.cover_letter_text` | Supplied narratives; company-specific interest is not inferred from generic role interest |
 | `experience.python.years`, `experience.golang.years` | Explicit skill-specific years; never calculated from job tenure |
 | `education.0.result`, `education.0.expected_graduation_date` | Declared grade/result and anticipated graduation |
@@ -202,7 +205,7 @@ Mapping and requirement assessment send field metadata (including nearby page te
 
 ### Explicit screening declarations
 
-The demo profile now declares U.S. work authorization, TN visa, no veteran status and no disability/history. These are separate, configurable facts:
+The demo profile declares U.S. work authorization, TN visa, no veteran status, no disability/history, they/them pronouns and fictional demographic values. These are separate, configurable facts:
 
 ```json
 "screening": {
@@ -212,11 +215,20 @@ The demo profile now declares U.S. work authorization, TN visa, no veteran statu
   },
   "veteran_status": "not_a_veteran",
   "disability_status": "no_disability",
-  "disability_history": false
+  "disability_history": false,
+  "demographics": {
+    "gender_identity": "non_binary",
+    "sexual_orientation": "bisexual",
+    "transgender_status": false,
+    "race_ethnicity": ["white"],
+    "hispanic_latino": false
+  }
 }
 ```
 
-Sponsorship remains `null` until explicitly set to `true` or `false`; the app does not derive it from TN status. Country-specific declarations do not answer questions about other jurisdictions. The screening mapper handles native dropdowns, radio groups, common comboboxes and text questions with known equivalent wording. Disability history is separate so a declaration about current disability alone does not answer combined current/past questions.
+`application.pronouns` stores the explicit pronoun value, such as `they/them`. Demographic values support common radio, checkbox, select, combobox and text representations. Multiple race choices are allowed; `decline` cannot be combined with another race choice. These sensitive values are never derived from names or other profile facts.
+
+Sponsorship remains `null` until explicitly set to `true` or `false`; the app does not derive it from TN status. Country-specific declarations do not answer questions about other jurisdictions. Disability history is separate so a declaration about current disability alone does not answer combined current/past questions.
 
 ## Python API
 

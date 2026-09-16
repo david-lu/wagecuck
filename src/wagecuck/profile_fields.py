@@ -6,12 +6,18 @@ import re
 from .browser import normalize
 from .field_values import value_contract
 from .models import Action
-from .screening import Answer, answer_for, plan_answer
+from .screening import Answer, answer_for, answer_for_field, plan_answer
 
 
 def text(field):
     return re.sub(
-        r"\brequired\b$", "", normalize(field.group if field.kind == "radio" else field.label)
+        r"\brequired\b$",
+        "",
+        normalize(
+            field.group
+            if field.kind in ("radio", "checkbox") and field.group
+            else field.label
+        ),
     ).strip()
 
 
@@ -129,8 +135,8 @@ def key_for(field, profile):
 
 def screening_options(field, profile):
     """Allow semantic selection of an existing declaration with the same meaning/jurisdiction."""
-    label = field.group if field.kind == "radio" else field.label
-    answer = answer_for(label, profile.screening)
+    label = field.group if field.kind in ("radio", "checkbox") and field.group else field.label
+    answer = answer_for_field(field, profile.screening)
     if answer is None:
         # Synonyms may still require model classification; preserve country and negation.
         q = normalize(label)
@@ -179,6 +185,13 @@ def action_for_key(field, fields, profile, key):
         labels = ["Yes"] if value else ["No"]
     else:
         labels = [value]
+    if key == "application.pronouns":
+        pronouns = normalize(str(value))
+        labels += {
+            "they them": ["They/Them", "They / Them", "They/Them/Theirs", "They / Them / Theirs"],
+            "she her": ["She/Her", "She / Her", "She/Her/Hers", "She / Her / Hers"],
+            "he him": ["He/Him", "He / Him", "He/Him/His", "He / Him / His"],
+        }.get(pronouns, [])
     if field.kind in ("radio", "checkbox", "select", "combobox"):
         handled, action = plan_answer(field, fields, Answer(value, key, labels))
         if action:

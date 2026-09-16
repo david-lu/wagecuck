@@ -97,7 +97,7 @@ PROFILE_FIELD_DESCRIPTIONS = {
 }
 
 SENSITIVE = re.compile(
-    r"consent|agree|certif|privacy|terms|sponsor|authoriz|eligib|right to work|legally allowed|permission|permitted|entitled|visa|immigration|work permit|citizen|gender|pronoun|race|ethnic|veteran|disab|medical|health|salary|compensation|desired pay|criminal|felony|background|relocat|password|secret|token|passport|social security",
+    r"consent|agree|certif|privacy|terms|sponsor|authoriz|eligib|right to work|legally allowed|permission|permitted|entitled|visa|immigration|work permit|citizen|gender|pronoun|race|racial|ethnic|hispanic|latin(?:o|a|x|e)|sexual orientation|sexuality|transgender|veteran|disab|medical|health|salary|compensation|desired pay|criminal|felony|background|relocat|password|secret|token|passport|social security",
     re.IGNORECASE,
 )
 

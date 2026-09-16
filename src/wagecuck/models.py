@@ -53,10 +53,51 @@ class WorkAuthorization(BaseModel):
     description: str | None = None
 
 
+class DemographicsProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    gender_identity: Literal["man", "woman", "non_binary", "decline"] | None = None
+    sexual_orientation: (
+        Literal[
+            "heterosexual",
+            "gay",
+            "lesbian",
+            "bisexual",
+            "pansexual",
+            "asexual",
+            "queer",
+            "decline",
+        ]
+        | None
+    ) = None
+    transgender_status: bool | Literal["decline"] | None = None
+    race_ethnicity: list[
+        Literal[
+            "american_indian_alaska_native",
+            "asian",
+            "black_african_american",
+            "middle_eastern_north_african",
+            "native_hawaiian_pacific_islander",
+            "white",
+            "multiracial",
+            "decline",
+        ]
+    ] = Field(default_factory=list)
+    hispanic_latino: bool | Literal["decline"] | None = None
+
+    @model_validator(mode="after")
+    def check_race_choices(self):
+        if len(self.race_ethnicity) != len(set(self.race_ethnicity)):
+            raise ValueError("race_ethnicity cannot contain duplicate choices")
+        if "decline" in self.race_ethnicity and len(self.race_ethnicity) > 1:
+            raise ValueError("race_ethnicity decline cannot be combined with another choice")
+        return self
+
+
 class ScreeningProfile(BaseModel):
     model_config = ConfigDict(extra="forbid")
     default_work_country: str | None = None
     work_authorization: dict[str, WorkAuthorization] = Field(default_factory=dict)
+    demographics: DemographicsProfile = Field(default_factory=DemographicsProfile)
     veteran_status: (
         Literal["not_a_veteran", "not_protected_veteran", "protected_veteran", "decline"] | None
     ) = None
@@ -253,6 +294,9 @@ class Profile(BaseModel):
             if isinstance(value, dict):
                 for key, child in value.items():
                     flatten(f"{prefix}.{key}" if prefix else key, child)
+            elif isinstance(value, list):
+                if value:
+                    result[prefix] = "; ".join(str(item) for item in value)
             elif value is not None:
                 result[prefix] = value if isinstance(value, (str, bool)) else f"{value:g}"
 
