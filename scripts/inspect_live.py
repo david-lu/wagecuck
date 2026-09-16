@@ -111,7 +111,7 @@ async def inspect_case(
 
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", type=Path, default=Path("examples/training-jobs.json"))
+    parser.add_argument("--manifest", type=Path, default=Path("examples/jobs.json"))
     parser.add_argument("--expected-split", choices=("training", "validation"), default="training")
     parser.add_argument("--aggregate-only", action="store_true")
     parser.add_argument("--ephemeral-artifacts", action="store_true")

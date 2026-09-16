@@ -1,0 +1,420 @@
+{
+  "schema_version": 1,
+  "split": "training",
+  "researched_at": "2026-09-16",
+  "purpose": "Development corpus. These cases and their field metadata may be used to improve parsing, mapping and filling behavior.",
+  "cases": [
+    {
+      "id": "greenhouse-doordash-backend",
+      "ats": "greenhouse",
+      "company": "DoorDash",
+      "title": "Software Engineer, Backend (All Teams)",
+      "url": "https://job-boards.greenhouse.io/doordashusa/jobs/5630445",
+      "coverage": "Multi-select locations and levels, work authorization, sponsorship and compensation"
+    },
+    {
+      "id": "greenhouse-applied-intuition-full-stack",
+      "ats": "greenhouse",
+      "company": "Applied Intuition",
+      "title": "Software Engineer - Full Stack",
+      "url": "https://job-boards.greenhouse.io/appliedintuition/jobs/4510436005",
+      "coverage": "Education comboboxes, sponsorship, source, programming-language and location choices"
+    },
+    {
+      "id": "greenhouse-accenture-federal-software",
+      "ats": "greenhouse",
+      "company": "Accenture Federal Services",
+      "title": "Software Engineer",
+      "url": "https://job-boards.greenhouse.io/accenturefederalservices/jobs/4700296006",
+      "coverage": "Required education, state, clearance, employment-history and privacy controls"
+    },
+    {
+      "id": "workable-total-life-full-stack",
+      "ats": "workable",
+      "company": "Total Life",
+      "title": "Full-Stack Developer (Go, Javascript)",
+      "url": "https://apply.workable.com/total-life/j/84F61216A8/apply/",
+      "coverage": "Address, structured history, required resume, cover letter and Canadian authorization"
+    },
+    {
+      "id": "workable-devsinc-python",
+      "ats": "workable",
+      "company": "Devsinc",
+      "title": "Software Engineer - Python",
+      "url": "https://apply.workable.com/devsinc-17/j/95442E6391/apply/",
+      "coverage": "International phone selector, required address and document upload"
+    },
+    {
+      "id": "breezy-centrl-software-engineer",
+      "ats": "breezy",
+      "company": "CENTRL",
+      "title": "Software Engineer",
+      "url": "https://centrl.breezy.hr/p/5f71fbede25a-software-engineer/apply",
+      "coverage": "Required repeated employment and education controls plus SMS consent"
+    },
+    {
+      "id": "breezy-utilityapi-ai-platform",
+      "ats": "breezy",
+      "company": "UtilityAPI",
+      "title": "Senior / Staff Software Engineer, AI Systems & Platform",
+      "url": "https://utilityapi.breezy.hr/p/7c161dbb2af0-senior-staff-software-engineer-ai-systems-platform",
+      "coverage": "Breezy application entry on a current posting with U.S. authorization constraints"
+    },
+    {
+      "id": "teamtailor-clearroute-agentic-ai",
+      "ats": "teamtailor",
+      "company": "ClearRoute",
+      "title": "Agentic AI Developer (Python)",
+      "url": "https://clearroute.teamtailor.com/jobs/8261776-agentic-ai-developer-python",
+      "coverage": "Modal application loading and Teamtailor custom question controls"
+    },
+    {
+      "id": "lever-altaml-intermediate",
+      "ats": "lever",
+      "company": "AltaML",
+      "title": "Intermediate Software Engineer",
+      "url": "https://jobs.lever.co/altaml/74efba24-9733-4308-903a-9757a80684ba",
+      "coverage": "Separate Apply page, resume, screening questions"
+    },
+    {
+      "id": "lever-altaml-intern",
+      "ats": "lever",
+      "company": "AltaML",
+      "title": "Associate Software Engineer (Winter 2027)",
+      "url": "https://jobs.lever.co/altaml/bd8167f5-e84c-48b1-9cad-2831bf71dea1",
+      "coverage": "Student eligibility and employer-specific questions"
+    },
+    {
+      "id": "lever-pockethealth",
+      "ats": "lever",
+      "company": "PocketHealth",
+      "title": "Software Engineer",
+      "url": "https://jobs.lever.co/PocketHealth/72a1603f-2fa5-4242-9250-9573f7e1070c",
+      "coverage": "Application navigation and contact/upload fields"
+    },
+    {
+      "id": "greenhouse-capco",
+      "ats": "greenhouse",
+      "company": "Capco",
+      "title": "Software Engineer",
+      "url": "https://job-boards.greenhouse.io/capco/jobs/8160588",
+      "coverage": "React comboboxes, required privacy acknowledgement and conditional details"
+    },
+    {
+      "id": "greenhouse-dialpad",
+      "ats": "greenhouse",
+      "company": "Dialpad",
+      "title": "Software Engineer",
+      "url": "https://job-boards.greenhouse.io/dialpad/jobs/8701282002",
+      "coverage": "Location autocomplete and optional document upload"
+    },
+    {
+      "id": "greenhouse-canonical",
+      "ats": "greenhouse",
+      "company": "Canonical",
+      "title": "Distributed Systems Software Engineer, Python / Go",
+      "url": "https://job-boards.greenhouse.io/canonicaljobs/jobs/6768836",
+      "coverage": "Long screening form and application-specific essays"
+    },
+    {
+      "id": "ashby-maxima",
+      "ats": "ashby",
+      "company": "Maxima",
+      "title": "Software Engineer - Toronto",
+      "url": "https://jobs.ashbyhq.com/Maxima/c513fc8d-9f63-4e5d-a011-45238bf7d903",
+      "coverage": "SPA hydration and Application tab"
+    },
+    {
+      "id": "ashby-cerebras",
+      "ats": "ashby",
+      "company": "Cerebras Systems",
+      "title": "Software Engineer - New Grad 2026",
+      "url": "https://jobs.ashbyhq.com/cerebras/99c289fa-8fc6-49f7-b7e8-78ac4e9d99ac/",
+      "coverage": "SPA application with graduate questions"
+    },
+    {
+      "id": "ashby-relay",
+      "ats": "ashby",
+      "company": "Relay",
+      "title": "Software Engineer",
+      "url": "https://jobs.ashbyhq.com/relayfi/c412e8d5-d7fc-4dde-b905-e3e4ceb03c08/",
+      "coverage": "SPA custom inputs and resume control"
+    },
+    {
+      "id": "workday-autodesk",
+      "ats": "workday",
+      "company": "Autodesk",
+      "title": "Software Engineer",
+      "url": "https://autodesk.wd1.myworkdayjobs.com/en-US/Ext/job/Toronto-ON-CAN/Software-Engineer_26WD100762-1",
+      "coverage": "Apply entry, consent overlay, account gate"
+    },
+    {
+      "id": "workday-oclc",
+      "ats": "workday",
+      "company": "OCLC",
+      "title": "Software Engineer - Canada",
+      "url": "https://oclc.wd1.myworkdayjobs.com/en-US/OCLC_Careers/job/Software-Engineer---Canada_R0003900",
+      "coverage": "Account-required outcome and job availability"
+    },
+    {
+      "id": "workable-thanks",
+      "ats": "workable",
+      "url": "https://apply.workable.com/thanks-co/j/5F701F4719"
+    },
+    {
+      "id": "workable-activ",
+      "ats": "workable",
+      "url": "https://apply.workable.com/activ-2/j/5304C1A39D/apply/"
+    },
+    {
+      "id": "smartrecruiters-servicenow",
+      "ats": "smartrecruiters",
+      "url": "https://jobs.smartrecruiters.com/ServiceNow/744000132922559-sr-software-engineer-veza"
+    },
+    {
+      "id": "smartrecruiters-ubisoft",
+      "ats": "smartrecruiters",
+      "url": "https://jobs.smartrecruiters.com/oneclick-ui/company/Ubisoft2/publication/715fc046-f687-4ace-80a1-3af89c18c03f?dcr_ci=Ubisoft2"
+    },
+    {
+      "id": "jobvite-progress",
+      "ats": "jobvite",
+      "url": "https://jobs.jobvite.com/progress/job/o0s9AfwV"
+    },
+    {
+      "id": "jobvite-ezra",
+      "ats": "jobvite",
+      "url": "https://jobs.jobvite.com/ezra/job/o233zfwr"
+    },
+    {
+      "id": "recruitee-bluestone",
+      "ats": "recruitee",
+      "url": "https://bluestonelogic.recruitee.com/o/software-engineer-1"
+    },
+    {
+      "id": "recruitee-trafilea",
+      "ats": "recruitee",
+      "url": "https://trafilea.recruitee.com/o/senior-software-engineer-backend"
+    },
+    {
+      "id": "bamboohr-r2",
+      "ats": "bamboohr",
+      "url": "https://r2.bamboohr.com/careers/177"
+    },
+    {
+      "id": "bamboohr-versafile",
+      "ats": "bamboohr",
+      "url": "https://versafile1.bamboohr.com/careers/149"
+    },
+    {
+      "id": "teamtailor-reel",
+      "ats": "teamtailor",
+      "url": "https://reelenergy-1727862339.teamtailor.com/jobs/7501997-senior-software-engineer"
+    },
+    {
+      "id": "teamtailor-jenni",
+      "ats": "teamtailor",
+      "url": "https://jenniai-1748504648.teamtailor.com/jobs/5989905-growth-engineer/applications/new"
+    },
+    {
+      "id": "pinpoint-carto",
+      "ats": "pinpoint",
+      "url": "https://carto.pinpointhq.com/en/postings/1c2969dc-1d97-4784-a296-df39bf2269c9"
+    },
+    {
+      "id": "breezy-codebase",
+      "ats": "breezy",
+      "url": "https://codebase.breezy.hr/p/2d1498a8dcda-full-stack-developer-react-typescript"
+    },
+    {
+      "id": "breezy-opensea",
+      "ats": "breezy",
+      "url": "https://opensea.breezy.hr/p/5d42cd50fcea-full-stack-software-engineer/apply"
+    },
+    {
+      "id": "icims-platform",
+      "ats": "icims",
+      "url": "https://careers.icims.com/technology/jobs/6460?lang=en-gb&previousLocale=en-US"
+    },
+    {
+      "id": "teamtailor-clearroute",
+      "ats": "teamtailor",
+      "url": "https://clearroute.teamtailor.com/jobs/8326970-software-engineer-platform-ai"
+    },
+    {
+      "id": "pinpoint-carto-current",
+      "ats": "pinpoint",
+      "url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2"
+    },
+    {
+      "id": "workable-chipply",
+      "ats": "workable",
+      "url": "https://apply.workable.com/chipply/j/3EBC0B6983/"
+    },
+    {
+      "id": "breezy-codebase-current",
+      "ats": "breezy",
+      "url": "https://codebase.breezy.hr/p/c1b62fc81300-senior-full-stack-developer-react-js-node-js"
+    },
+    {
+      "id": "training-reddit-consumer-engineering",
+      "ats": "greenhouse",
+      "company": "Reddit",
+      "title": "Staff Software Engineer, Consumer Engineering",
+      "url": "https://job-boards.greenhouse.io/reddit/jobs/8205702",
+      "coverage": "Greenhouse contact, location, work authorization, sponsorship and demographic controls"
+    },
+    {
+      "id": "training-reddit-ads-canada",
+      "ats": "greenhouse",
+      "company": "Reddit",
+      "title": "Senior Software Engineer, Ads",
+      "url": "https://job-boards.greenhouse.io/reddit/jobs/6909093",
+      "coverage": "Canadian location, authorization, sponsorship and voluntary demographic controls"
+    },
+    {
+      "id": "training-reddit-ads-us",
+      "ats": "greenhouse",
+      "company": "Reddit",
+      "title": "Software Engineer, Ads",
+      "url": "https://job-boards.greenhouse.io/reddit/jobs/6469397",
+      "coverage": "U.S. authorization, sponsorship, location and application-source questions"
+    },
+    {
+      "id": "training-reddit-core-platform",
+      "ats": "greenhouse",
+      "company": "Reddit",
+      "title": "Senior Software Engineer, Core Platform",
+      "url": "https://job-boards.greenhouse.io/reddit/jobs/8022441",
+      "coverage": "Long Greenhouse application with custom platform-experience questions"
+    },
+    {
+      "id": "training-reddit-full-stack-tooling",
+      "ats": "greenhouse",
+      "company": "Reddit",
+      "title": "Senior Software Engineer - Full Stack Internal Tooling",
+      "url": "https://job-boards.greenhouse.io/reddit/jobs/7976852",
+      "coverage": "Full-stack screening, links, authorization and demographic choices"
+    },
+    {
+      "id": "training-box-backend-engineer",
+      "ats": "greenhouse",
+      "company": "Box",
+      "title": "Software Backend Engineer III",
+      "url": "https://job-boards.greenhouse.io/boxinc/jobs/5644213",
+      "coverage": "Backend experience, work authorization and Greenhouse custom selects"
+    },
+    {
+      "id": "training-box-scala-core-data",
+      "ats": "greenhouse",
+      "company": "Box",
+      "title": "Scala Software Engineer, Core Data",
+      "url": "https://job-boards.greenhouse.io/boxinc/jobs/8038979",
+      "coverage": "Technology-specific screening and structured Greenhouse questions"
+    },
+    {
+      "id": "training-box-db-platform",
+      "ats": "greenhouse",
+      "company": "Box",
+      "title": "Software Engineer III, DB Platform",
+      "url": "https://job-boards.greenhouse.io/boxinc/jobs/8172408",
+      "coverage": "Database-platform experience and multi-choice eligibility questions"
+    },
+    {
+      "id": "training-box-storage-platform",
+      "ats": "greenhouse",
+      "company": "Box",
+      "title": "Senior Software Engineer, Storage Platform",
+      "url": "https://job-boards.greenhouse.io/boxinc/jobs/7569580",
+      "coverage": "Senior experience screening, profile links and eligibility controls"
+    },
+    {
+      "id": "training-box-microservice-foundation",
+      "ats": "greenhouse",
+      "company": "Box",
+      "title": "Senior Software Engineer, Microservice Foundation",
+      "url": "https://job-boards.greenhouse.io/boxinc/jobs/8133237",
+      "coverage": "Infrastructure experience and employer-specific required questions"
+    },
+    {
+      "id": "training-workable-raspberry-pi",
+      "ats": "workable",
+      "company": "Raspberry Pi Foundation",
+      "title": "Software Engineer",
+      "url": "https://apply.workable.com/raspberrypifoundation/j/9227FBCD3F/",
+      "coverage": "Workable contact, address, history, document and screening controls"
+    },
+    {
+      "id": "training-workable-commonai-intern",
+      "ats": "workable",
+      "company": "CommonAI C.I.C.",
+      "title": "Software Engineer (Summer 2026 Internship)",
+      "url": "https://apply.workable.com/commonai/j/FC29201B6E/",
+      "coverage": "Internship eligibility, dates, education and document upload"
+    },
+    {
+      "id": "training-workable-prepass-intern",
+      "ats": "workable",
+      "company": "PrePass",
+      "title": "Software Engineer Intern",
+      "url": "https://apply.workable.com/prepass/j/81C67FD275/",
+      "coverage": "Student status, availability, address and repeated history fields"
+    },
+    {
+      "id": "training-workable-winbro-taiwan",
+      "ats": "workable",
+      "company": "Winbro Group Technologies",
+      "title": "Software Engineer - Taiwan",
+      "url": "https://apply.workable.com/winbro-group-technologies/j/0147B08E92/",
+      "coverage": "International address, phone, authorization and language questions"
+    },
+    {
+      "id": "training-workable-bmll-senior",
+      "ats": "workable",
+      "company": "BMLL Technologies",
+      "title": "Senior Software Engineer (AI & SaaS Applications)",
+      "url": "https://apply.workable.com/bmlltech/j/B31C431B53/apply",
+      "coverage": "Multiple-choice technical screening, structured history and uploads"
+    },
+    {
+      "id": "training-ashby-almabase",
+      "ats": "ashby",
+      "company": "Almabase",
+      "title": "Software Engineer",
+      "url": "https://jobs.ashbyhq.com/almabase/71f033a9-4183-4df9-900f-1fb354267618/",
+      "coverage": "Ashby SPA application navigation and custom questions"
+    },
+    {
+      "id": "training-ashby-continue",
+      "ats": "ashby",
+      "company": "Continue",
+      "title": "Software Engineer (5+ years)",
+      "url": "https://jobs.ashbyhq.com/continue/3c3493c9-b66e-4add-9caa-ae424fe2a9ba",
+      "coverage": "Experience, links, long-form answers and Ashby uploads"
+    },
+    {
+      "id": "training-ashby-lassie",
+      "ats": "ashby",
+      "company": "Lassie",
+      "title": "Software Engineer, Product",
+      "url": "https://jobs.ashbyhq.com/lassie/9b8258f2-996e-414d-b7c5-01109d227fb6",
+      "coverage": "Product-engineering screening and SPA form controls"
+    },
+    {
+      "id": "training-ashby-unlimited-junior",
+      "ats": "ashby",
+      "company": "Unlimited",
+      "title": "Software Engineer - Junior",
+      "url": "https://jobs.ashbyhq.com/unlimitedindustries/5c5706fe-26ae-46d6-8423-e4721a5a98fc/",
+      "coverage": "Junior experience, education, links and eligibility questions"
+    },
+    {
+      "id": "training-ashby-pagos-data-platform",
+      "ats": "ashby",
+      "company": "Pagos",
+      "title": "Software Engineer, Data Platform",
+      "url": "https://jobs.ashbyhq.com/pagos/40fd05be-b9af-4ed5-b8df-ab9e66d4b552",
+      "coverage": "Data-platform experience, location and Ashby custom questions"
+    }
+  ]
+}

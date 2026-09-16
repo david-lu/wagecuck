@@ -138,7 +138,8 @@ def main():
         parser.error("--summarize-only requires --output pointing to an existing JSON report")
     root = Path(__file__).resolve().parents[1]
     if args.manifests is None:
-        args.manifests = [root / "examples" / f"{args.split}-jobs.json"]
+        manifest_name = "jobs.json" if args.split == "training" else "validation-jobs.json"
+        args.manifests = [root / "examples" / manifest_name]
     if args.output is None:
         args.output = default_report_path(
             f"dry-run-{args.split}", directory=root / "runs" / "reports"

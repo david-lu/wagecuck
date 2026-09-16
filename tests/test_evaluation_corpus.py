@@ -6,12 +6,12 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_training_and_validation_corpora_are_explicit_and_disjoint():
-    training = load_corpus(ROOT / "examples" / "training-jobs.json", expected_split="training")
+    training = load_corpus(ROOT / "examples" / "jobs.json", expected_split="training")
     validation = load_corpus(
         ROOT / "examples" / "validation-jobs.json", expected_split="validation"
     )
-    assert len(training.cases) == 39
-    assert len(validation.cases) == 8
+    assert len(training.cases) == 59
+    assert len(validation.cases) == 28
     assert {case["id"] for case in training.cases}.isdisjoint(
         case["id"] for case in validation.cases
     )

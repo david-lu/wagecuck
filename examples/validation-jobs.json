@@ -67,6 +67,166 @@
       "title": "Software Engineer, Backend",
       "url": "https://jobs.lever.co/gluegroups/357a840b-e0eb-47ff-97f9-1d7161bbb399",
       "holdout_tokens": ["gluegroups", "357a840b-e0eb-47ff-97f9-1d7161bbb399"]
+    },
+    {
+      "id": "validation-ashby-doe-systems",
+      "ats": "ashby",
+      "company": "Doe",
+      "title": "Software Engineer - Systems",
+      "url": "https://jobs.ashbyhq.com/doe/11e8bca9-1df2-46fc-8a88-a9492302db5a",
+      "holdout_tokens": ["11e8bca9-1df2-46fc-8a88-a9492302db5a"]
+    },
+    {
+      "id": "validation-ashby-central-automation",
+      "ats": "ashby",
+      "company": "Central",
+      "title": "Software Engineer, Support Automation",
+      "url": "https://jobs.ashbyhq.com/centralhq/1afff980-1941-4ef0-8220-2e698805e871",
+      "holdout_tokens": ["1afff980-1941-4ef0-8220-2e698805e871"]
+    },
+    {
+      "id": "validation-ashby-unlimited-all-levels",
+      "ats": "ashby",
+      "company": "Unlimited",
+      "title": "Software Engineer - All Levels",
+      "url": "https://jobs.ashbyhq.com/unlimitedindustries/801f00d5-5ad5-4128-8eed-ced62acb0e60",
+      "holdout_tokens": ["801f00d5-5ad5-4128-8eed-ced62acb0e60"]
+    },
+    {
+      "id": "validation-ashby-fluency-ai-platform",
+      "ats": "ashby",
+      "company": "Fluency",
+      "title": "Software Engineer, AI Platform",
+      "url": "https://jobs.ashbyhq.com/fluency/c6aceb26-9658-48c2-ac07-6cdf8bbb38df",
+      "holdout_tokens": ["c6aceb26-9658-48c2-ac07-6cdf8bbb38df"]
+    },
+    {
+      "id": "validation-ashby-voxel-applications",
+      "ats": "ashby",
+      "company": "Voxel",
+      "title": "Software Engineer, Applications",
+      "url": "https://jobs.ashbyhq.com/voxel/faaa0072-b620-4146-a258-1a7c5fabe206/",
+      "holdout_tokens": ["faaa0072-b620-4146-a258-1a7c5fabe206"]
+    },
+    {
+      "id": "validation-ashby-ema-ai-applications",
+      "ats": "ashby",
+      "company": "Ema",
+      "title": "Software Engineer, AI Applications",
+      "url": "https://jobs.ashbyhq.com/ema/d2f5e7c4-04cd-496a-9b06-8f1ee08da954",
+      "holdout_tokens": ["d2f5e7c4-04cd-496a-9b06-8f1ee08da954"]
+    },
+    {
+      "id": "validation-ashby-chai-products",
+      "ats": "ashby",
+      "company": "Chai Discovery",
+      "title": "Software Engineer, Products",
+      "url": "https://jobs.ashbyhq.com/chaidiscovery/16c7c2b9-1bb4-4bea-84be-2eadf913843f/",
+      "holdout_tokens": ["16c7c2b9-1bb4-4bea-84be-2eadf913843f"]
+    },
+    {
+      "id": "validation-ashby-tar",
+      "ats": "ashby",
+      "company": "TAR",
+      "title": "Software Engineer",
+      "url": "https://jobs.ashbyhq.com/tar/5850f401-339c-47ff-84dd-593344ebcae8",
+      "holdout_tokens": ["5850f401-339c-47ff-84dd-593344ebcae8"]
+    },
+    {
+      "id": "validation-greenhouse-sourcegraph-security",
+      "ats": "greenhouse",
+      "company": "Sourcegraph",
+      "title": "Security Engineer [IC3]",
+      "url": "https://job-boards.greenhouse.io/sourcegraph91/jobs/6007621004",
+      "holdout_tokens": ["6007621004"]
+    },
+    {
+      "id": "validation-greenhouse-sourcegraph-platform",
+      "ats": "greenhouse",
+      "company": "Sourcegraph",
+      "title": "Software Engineer - Platform IC3",
+      "url": "https://job-boards.greenhouse.io/sourcegraph91/jobs/6103628004",
+      "holdout_tokens": ["6103628004"]
+    },
+    {
+      "id": "validation-greenhouse-sourcegraph-code-plane",
+      "ats": "greenhouse",
+      "company": "Sourcegraph",
+      "title": "Software Engineer / Tech Lead, Code Plane IC5",
+      "url": "https://job-boards.greenhouse.io/sourcegraph91/jobs/6103568004",
+      "holdout_tokens": ["6103568004"]
+    },
+    {
+      "id": "validation-greenhouse-speechify-albuquerque",
+      "ats": "greenhouse",
+      "company": "Speechify",
+      "title": "Senior Software Engineer, Core Experiences - Albuquerque",
+      "url": "https://job-boards.greenhouse.io/speechify/jobs/5974636004",
+      "holdout_tokens": ["5974636004"]
+    },
+    {
+      "id": "validation-greenhouse-speechify-anaheim",
+      "ats": "greenhouse",
+      "company": "Speechify",
+      "title": "Senior Software Engineer, Core Experiences - Anaheim",
+      "url": "https://job-boards.greenhouse.io/speechify/jobs/5974483004",
+      "holdout_tokens": ["5974483004"]
+    },
+    {
+      "id": "validation-ashby-reaktor",
+      "ats": "ashby",
+      "company": "Reaktor",
+      "title": "Software Engineer",
+      "url": "https://jobs.ashbyhq.com/Reaktor/1b89ab8a-3cfe-4c24-82c0-4ba109381a39/?embed=js",
+      "holdout_tokens": ["1b89ab8a-3cfe-4c24-82c0-4ba109381a39"]
+    },
+    {
+      "id": "validation-greenhouse-simplisafe-user-systems",
+      "ats": "greenhouse",
+      "company": "SimpliSafe",
+      "title": "Software Engineer I - User Systems",
+      "url": "https://job-boards.greenhouse.io/simplisafe/jobs/8095181",
+      "holdout_tokens": ["8095181"]
+    },
+    {
+      "id": "validation-greenhouse-axon-unity",
+      "ats": "greenhouse",
+      "company": "Axon",
+      "title": "Software Engineer I - Unity Developer",
+      "url": "https://job-boards.greenhouse.io/axon/jobs/7576971003",
+      "holdout_tokens": ["7576971003"]
+    },
+    {
+      "id": "validation-greenhouse-everlaw",
+      "ats": "greenhouse",
+      "company": "Everlaw",
+      "title": "Software Engineer I",
+      "url": "https://job-boards.greenhouse.io/everlaw/jobs/4705236006",
+      "holdout_tokens": ["4705236006"]
+    },
+    {
+      "id": "validation-greenhouse-insurity-india",
+      "ats": "greenhouse",
+      "company": "Insurity India",
+      "title": "Software Engineer I",
+      "url": "https://job-boards.greenhouse.io/insurityindia/jobs/4354932009",
+      "holdout_tokens": ["4354932009"]
+    },
+    {
+      "id": "validation-greenhouse-katalyst-graduate",
+      "ats": "greenhouse",
+      "company": "Katalyst Space Technologies",
+      "title": "Recent Graduate - Software Engineer I",
+      "url": "https://job-boards.greenhouse.io/katalyst/jobs/6176710004",
+      "holdout_tokens": ["6176710004"]
+    },
+    {
+      "id": "validation-greenhouse-publicinput",
+      "ats": "greenhouse",
+      "company": "PublicInput",
+      "title": "Software Engineer I",
+      "url": "https://job-boards.greenhouse.io/publicinput/jobs/4363686009",
+      "holdout_tokens": ["4363686009"]
     }
   ]
 }
