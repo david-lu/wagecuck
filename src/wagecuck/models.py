@@ -285,113 +285,14 @@ class Profile(BaseModel):
         return "\n\n".join(entries)
 
     def declared_values(self) -> dict[str, str | bool]:
-        """Named declarations shared by deterministic matching and agent field selection."""
-        result = {}
+        from .profile_catalog import declared_profile_values
 
-        def flatten(prefix, value):
-            if prefix == "application.randomize_source":
-                return  # This is behavior configuration, not an applicant answer.
-            if isinstance(value, dict):
-                for key, child in value.items():
-                    flatten(f"{prefix}.{key}" if prefix else key, child)
-            elif isinstance(value, list):
-                if value:
-                    result[prefix] = "; ".join(str(item) for item in value)
-            elif value is not None:
-                result[prefix] = value if isinstance(value, (str, bool)) else f"{value:g}"
-
-        for section in ("application", "experience", "consents", "screening"):
-            data = getattr(self, section)
-            if section == "experience":
-                data = {key: entry.model_dump(mode="json") for key, entry in data.items()}
-            else:
-                data = data.model_dump(mode="json")
-            flatten(section, data)
-        result.pop("screening.default_work_country", None)
-        countries = {"US": "us", "CA": "canada", "GB": "uk"}
-        for country, suffix in countries.items():
-            auth = self.screening.work_authorization.get(country)
-            if auth:
-                for field, alias in (
-                    ("authorized", "authorized"),
-                    ("requires_sponsorship", "requires_sponsorship"),
-                ):
-                    value = getattr(auth, field)
-                    if value is not None:
-                        result[f"{alias}_{suffix}"] = value
-        return {
-            key: value for key, value in result.items() if isinstance(value, bool) or value.strip()
-        }
+        return declared_profile_values(self)
 
     def values(self) -> dict[str, str | bool]:
-        """Resolve atomic and composite field options without exposing model objects/nulls."""
-        values = dict(self.facts)
-        values["full_name"] = self.get_full_name()
-        address = self.get_address_parts()
-        aliases = {
-            "line1": "address_line1",
-            "line2": "address_line2",
-            "city": "city",
-            "state": "state",
-            "postal_code": "postal_code",
-            "country": "country",
-        }
-        for key, value in address.model_dump().items():
-            values[f"address.{key}"] = value
-            values[aliases[key]] = value
-        values.update(
-            address=address.line1,  # Legacy street-line alias; never includes city/postal code.
-            street_address=self.get_street_address(),
-            full_address=self.get_address(),
-            full_address_multiline=self.get_address(multiline=True),
-            location=", ".join(p for p in (address.city, address.state, address.country) if p),
-        )
-        for section in ("employment", "education"):
-            entries = getattr(self, section)
-            if entries:
-                values = {
-                    key: value for key, value in values.items() if not key.startswith(section + ".")
-                }
-            for index, entry in enumerate(entries):
-                for key, value in entry.model_dump(mode="json").items():
-                    if value is not None:
-                        values[f"{section}.{index}.{key}"] = value
-        if self.employment:
-            values.pop("current_company", None)
-            values.pop("current_title", None)
-            current = self.get_current_employment()
-            if current:
-                values.update(current_company=current.company, current_title=current.title)
-        values["work_history"] = self.get_work_history()
-        values.update(self.declared_values())
-        if self.application.notice_period_days is not None:
-            values["notice_period"] = f"{self.application.notice_period_days} days"
-        availability = self.application.availability_summary
-        if not availability:
-            availability = "; ".join(
-                value
-                for value in (
-                    f"Available from {self.application.available_start_date}"
-                    if self.application.available_start_date
-                    else "",
-                    f"Notice period: {self.application.notice_period_days} days"
-                    if self.application.notice_period_days is not None
-                    else "",
-                )
-                if value
-            )
-        values["availability"] = availability
-        pay = self.application.compensation
-        values["compensation_expectations"] = pay.expectations or (
-            f"{pay.currency} {pay.annual_target} per year"
-            if pay.currency and pay.annual_target is not None
-            else ""
-        )
-        return {
-            key: value
-            for key, value in values.items()
-            if isinstance(value, bool) or (isinstance(value, str) and value.strip())
-        }
+        from .profile_catalog import resolve_profile_values
+
+        return resolve_profile_values(self)
 
 
 class RunOptions(BaseModel):
@@ -445,6 +346,7 @@ class FormField(BaseModel):
     min_length: int | None = None
     max_length: int | None = None
     group: str = ""
+    group_id: str = ""
     fact_key: str = ""
     context: str = ""
     required_evidence: str = ""

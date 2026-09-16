@@ -81,7 +81,7 @@ async def test_date_available_uses_typed_profile_date_or_inference(profile):
     )
     profile.application.available_start_date = date(2026, 10, 1)
     actions, unresolved = await WorkflowAgent().plan([field], profile)
-    assert not unresolved and actions[0].value == "10/01/2026"
+    assert not unresolved and actions[0].value == "2026-10-01"
     assert actions[0].source == "facts:application.available_start_date"
 
     profile.application.available_start_date = None
@@ -103,7 +103,7 @@ async def test_date_available_uses_typed_profile_date_or_inference(profile):
             ]
 
     actions, unresolved = await WorkflowAgent(Agent()).plan([field], profile, agent_fill=True)
-    assert not unresolved and actions[0].value == "10/01/2026"
+    assert not unresolved and actions[0].value == "2026-10-01"
     assert actions[0].source == "agent_fill:application.notice_period_days"
 
 

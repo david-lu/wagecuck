@@ -20,14 +20,13 @@ from .browser import (
     detect_ats,
     dismiss_optional_cookies,
     entry_controls,
-    fill,
     locator,
     snapshot,
-    verify_actions,
 )
 from .captcha import CapSolver, deliver_token, detect_challenge
-from .logical_fields import logical_groups
+from .execution import execute_actions, field_id, form_changed, form_signature
 from .models import ApplicationError, ApplicationResult, Code, Profile, RunOptions
+from .reporting import execution_report
 from .store import Store, application_key
 
 
@@ -219,9 +218,9 @@ class ApplicationRunner:
     async def _workflow(
         self, page, profile, options, result, directory, event, store, key, workflow_budget
     ):
-        seen = set()
+        seen = {}
         entry_attempts = {}
-        touched = set()
+        previous_actions = {}
         identity_sources = set()
         captcha_attempts = 0
         for step in range(options.max_steps):
@@ -312,21 +311,17 @@ class ApplicationRunner:
                 entry_attempts[signature] = entry_attempts.get(signature, 0) + 1
                 page = await click_and_settle(page, entry[0])
                 continue
-            signature = (page.url, tuple((f.frame, f.name, f.label, f.kind) for f in snap.fields))
-            if signature in seen:
+            signature = form_signature(snap)
+            seen[signature] = seen.get(signature, 0) + 1
+            if seen[signature] > 2:
                 raise ApplicationError(
-                    Code.NO_PROGRESS, "The form did not advance to another step."
+                    Code.NO_PROGRESS, "The form repeated the same state after bounded replanning."
                 )
-            seen.add(signature)
             actions, unresolved = await self.agent.plan(
                 snap.fields, profile, agent_fill=options.agent_fill
             )
             for warning in self.agent.warnings:
                 event("agent_warning", **warning)
-            (directory / f"analysis-{step + 1:02d}.json").write_text(
-                json.dumps(self.agent.describe(snap.fields, actions, unresolved), indent=2),
-                encoding="utf-8",
-            )
             for field in snap.fields:
                 if field.required_evidence.startswith("agent:"):
                     event("agent_required_field", field=field.id, evidence=field.required_evidence)
@@ -337,7 +332,20 @@ class ApplicationRunner:
                 ),
                 encoding="utf-8",
             )
+            execution = await execute_actions(
+                page, actions, previous_actions=list(previous_actions.values()),
+                assessed_fields=snap.fields,
+            )
+            previous_actions = {
+                field_id(outcome.action.field): outcome.action for outcome in execution.fields
+            }
+            (directory / f"analysis-{step + 1:02d}.json").write_text(
+                json.dumps(self.agent.describe(snap.fields, actions, unresolved), indent=2),
+                encoding="utf-8",
+            )
+            current_outcomes = {field_id(item.action.field): item for item in execution.fields}
             for action in actions:
+                outcome = current_outcomes[field_id(action.field)]
                 record = {
                     "step": step + 1,
                     "field_id": f"{action.field.frame}:{action.field.id}",
@@ -347,16 +355,12 @@ class ApplicationRunner:
                     "made_up": action.made_up,
                     "source_keys": action.source_keys,
                     "inference_reason": action.inference_reason,
-                    "status": "planned",
+                    "status": "filled" if outcome.verified else "failed",
+                    "code": outcome.code,
                 }
                 result.answer_log.append(record)
-                try:
-                    await fill(page, action)
-                except ApplicationError:
-                    record["status"] = "failed"
-                    raise
-                record["status"] = "filled"
-                touched.add((action.field.frame, action.field.id))
+                if not outcome.verified:
+                    continue
                 identity_sources.add(action.source)
                 # Validated semantic mappings count toward the same identity check
                 # as deterministic aliases; drafting never contributes identity.
@@ -375,26 +379,31 @@ class ApplicationRunner:
                     source_keys=action.source_keys,
                     inference_reason=action.inference_reason,
                 )
-            after = await snapshot(page)
+            after = execution.snapshot
             code = blocker(after)
             if code and not (code == Code.CAPTCHA_REQUIRED and challenge):
                 raise ApplicationError(code, f"Application stopped: {code.value}.")
-            missing = list(
-                dict.fromkeys(
-                    (f.group or f.label) if f.kind == "radio" else f.label
-                    for f in unresolved
-                    if f.required
-                )
-            )
-            # Conditional fields may appear on change. Plan them in a new pass before advancing.
-            new_fields = [
-                f
-                for f in after.fields
-                if (f.frame, f.id) not in {(g.frame, g.id) for g in snap.fields}
-            ]
-            if new_fields:
+            # Replaced nodes and changed options/requirements need a fresh plan;
+            # normal successful filling does not count as a structural change.
+            if form_changed(snap, after):
                 continue
-            await verify_actions(page, actions)
+            report = execution_report(
+                execution, self.agent.describe(snap.fields, actions, unresolved)
+            )
+            (directory / f"execution-{step + 1:02d}.json").write_text(
+                json.dumps(report, indent=2), encoding="utf-8"
+            )
+            active_ids = {field_id(field) for field in after.fields}
+            failed = [
+                outcome for outcome in execution.fields
+                if field_id(outcome.action.field) in active_ids and not outcome.verified
+            ]
+            if failed:
+                raise ApplicationError(
+                    Code(failed[0].code), failed[0].message,
+                    [outcome.action.field.label for outcome in failed],
+                )
+            missing = report["required_answers_missing"]
             if missing:
                 raise ApplicationError(
                     Code.REQUIRED_ANSWER_MISSING,
@@ -406,29 +415,10 @@ class ApplicationRunner:
                 raise ApplicationError(
                     Code.VALIDATION_FAILED, "The page reported form validation errors.", invalid
                 )
-            satisfied_checkbox_group_members = {
-                (field.frame, field.id)
-                for group in logical_groups(after.fields)
-                if len(group) > 1
-                and group[0].kind == "checkbox"
-                and any(
-                    field.filled or (field.frame, field.id) in touched for field in group
-                )
-                for field in group
-            }
-            native_invalid = []
-            for f in after.fields:
-                if (
-                    f.required
-                    and f.kind != "radio"
-                    and not f.filled
-                    and not (f.kind == "checkbox" and (f.frame, f.id) in touched)
-                    and (f.frame, f.id) not in satisfied_checkbox_group_members
-                ):
-                    native_invalid.append(f.label)
-            if native_invalid:
+            if not report["required_fill_pass"]:
                 raise ApplicationError(
-                    Code.VALIDATION_FAILED, "Required values were not retained.", native_invalid
+                    Code.VALIDATION_FAILED, "Required values were not retained.",
+                    report["required_fill_failures"],
                 )
             next_controls = [
                 c

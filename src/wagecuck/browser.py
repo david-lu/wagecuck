@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -10,7 +11,7 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Page
 
 from .ats import annotate, detect
-from .field_values import FieldValueError, normalize_field_value
+from .field_values import FieldValueError, normalize_field_value, render_field_value
 from .models import Action, ApplicationError, Code, Control, FormField, Snapshot
 
 PARSE = Path(__file__).with_name("parse.js").read_text(encoding="utf-8")
@@ -143,8 +144,22 @@ def option_name(value, action):
     )
 
 
+async def combobox_options(page: Page, target, action: Action):
+    """Use the widget's owned popup for every selection and verification path."""
+    frame = page.frames[action.field.frame]
+    owned = await target.evaluate(
+        """e => [...new Set(['aria-controls', 'aria-owns'].flatMap(attribute =>
+          (e.getAttribute(attribute) || '').split(/\\s+/).filter(Boolean)))]
+          .map(id => '#' + CSS.escape(id)).join(',')"""
+    )
+    scope = frame.locator(owned) if owned else frame
+    return scope.get_by_role("option", disabled=False).filter(visible=True)
+
+
 async def combobox_matches(page, target, action, expected):
     actual = await combobox_value(target)
+    if not actual.strip():
+        return False
     if action.choice_labels and normalize(actual) in {
         normalize(label) for label in action.choice_labels
     }:
@@ -153,16 +168,16 @@ async def combobox_matches(page, target, action, expected):
         return True
     if action.source != "facts:country":
         return False
-    # Telephone country selectors may render only a flag and +1 after selecting
-    # Canada. Verify the selected option itself; +1 alone is ambiguous.
+    # A dial code by itself is ambiguous: inspect the widget's selected option.
     await target.click()
     try:
-        selected = (
-            page.frames[action.field.frame]
-            .get_by_role("option", name=option_name(expected, action), selected=True, exact=True)
-            .filter(visible=True)
+        options = await combobox_options(page, target, action)
+        selected = options.and_(
+            page.frames[action.field.frame].get_by_role(
+                "option", name=option_name(expected, action), selected=True, exact=True
+            )
         )
-        await selected.first.wait_for(state="visible")
+        await options.first.wait_for(state="visible")
         return await selected.count() == 1
     finally:
         await target.press("Escape")
@@ -188,94 +203,131 @@ async def native_value_is_valid(target) -> bool:
     return await target.evaluate("e => !e.willValidate || e.validity.valid")
 
 
-async def fill(page: Page, action: Action):
-    field, value = action.field, action.value
-    target = locator(page, field)
-    try:
-        if not (field.kind == "combobox" and action.random_choice):
-            value = normalize_field_value(field, value)
-            action.value = value
-        string = "Yes" if value is True else "No" if value is False else value
-        if field.kind == "file":
-            await target.set_input_files(string)
-            if await target.evaluate("e => e.files.length") < 1 or not await native_value_is_valid(
-                target
-            ):
-                raise ValueError("Upload not retained")
-        elif field.kind == "select":
-            option = match_option(value, field.options)
-            if option is None:
-                raise ApplicationError(
-                    Code.UNSUPPORTED_CONTROL, f"No unambiguous option for {field.label}"
-                )
-            await target.select_option(value=option.value)
-            if await target.input_value() != option.value or not await native_value_is_valid(
-                target
-            ):
-                raise ValueError("Selection not retained")
-        elif field.kind in ("checkbox", "radio"):
-            if not isinstance(value, bool):
-                raise ApplicationError(
-                    Code.UNSUPPORTED_CONTROL, f"Boolean answer required for {field.label}"
-                )
-            if field.kind != "radio" or value:
-                await set_choice(target, value)
-            if not await native_value_is_valid(target):
-                raise ValueError("Choice violates native constraints")
-        elif field.kind == "combobox":
-            if action.random_choice:
-                frame = page.frames[field.frame]
-                await target.click()
-                if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
-                    await target.fill("")
-                owned = await target.evaluate(
-                    "e => (e.getAttribute('aria-controls') || e.getAttribute('aria-owns') || '').split(/\\s+/).filter(Boolean).map(id => '#' + CSS.escape(id)).join(',')"
-                )
-                scope = frame.locator(owned) if owned else frame
-                options = scope.get_by_role("option", disabled=False).filter(visible=True)
-                await options.first.wait_for(state="visible")
-                candidates = [
-                    (i, label.strip())
-                    for i, label in enumerate(await options.all_text_contents())
-                    if label.strip()
-                    and not re.fullmatch(
-                        r"(?:please )?(?:select|choose)(?: an? option)?", normalize(label)
-                    )
-                ]
-                if not candidates:
-                    raise ApplicationError(
-                        Code.UNSUPPORTED_CONTROL, f"No source choices for {field.label}"
-                    )
-                index, label = random.choice(candidates)
-                await options.nth(index).click()
-                action.value = label
-                action.choice_labels = [label]
-                if not await combobox_matches(page, target, action, label):
-                    raise ValueError("Source selection not retained")
-                return
-            await target.click()
-            if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
-                await target.fill(string)
-            frame = page.frames[field.frame]
-            options = frame.get_by_role(
-                "option", name=option_name(string, action), exact=True
-            ).filter(visible=True)
-            await options.first.wait_for(state="visible")
-            if await options.count() != 1:
-                raise ApplicationError(
-                    Code.UNSUPPORTED_CONTROL, f"Ambiguous choices for {field.label}"
-                )
-            await options.click()
-            # Input-like widgets must retain a selected label; arbitrary widgets are unsupported.
-            if not await combobox_matches(page, target, action, string):
-                raise ValueError("Combobox selection not retained")
-        elif field.kind in (
+async def _write_file(page, target, action, value):
+    await target.set_input_files(value)
+
+
+async def _matches_file(page, target, action, value):
+    return await target.evaluate("e => [...e.files].map(file => file.name)") == [Path(value).name]
+
+
+async def _write_select(page, target, action, value):
+    option = match_option(value, action.field.options)
+    if option is None:
+        raise ApplicationError(
+            Code.UNSUPPORTED_CONTROL, f"No unambiguous option for {action.field.label}"
+        )
+    await target.select_option(value=option.value)
+
+
+async def _matches_select(page, target, action, value):
+    option = match_option(value, action.field.options)
+    return option is not None and await target.input_value() == option.value
+
+
+async def _write_choice(page, target, action, value):
+    if not isinstance(value, bool):
+        raise ApplicationError(
+            Code.UNSUPPORTED_CONTROL, f"Boolean answer required for {action.field.label}"
+        )
+    if action.field.kind != "radio" or value:
+        await set_choice(target, value)
+
+
+async def _matches_choice(page, target, action, value):
+    return await target.is_checked() == value
+
+
+async def _write_combobox(page, target, action, value):
+    await target.click()
+    if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
+        await target.fill("" if action.random_choice else value)
+    options = await combobox_options(page, target, action)
+    if action.random_choice:
+        await options.first.wait_for(state="visible")
+        candidates = [
+            (index, label.strip())
+            for index, label in enumerate(await options.all_text_contents())
+            if label.strip()
+            and not re.fullmatch(r"(?:please )?(?:select|choose)(?: an? option)?", normalize(label))
+        ]
+        if not candidates:
+            raise ApplicationError(
+                Code.UNSUPPORTED_CONTROL, f"No source choices for {action.field.label}"
+            )
+        index, label = random.choice(candidates)
+        await options.nth(index).click()
+        action.value = label
+        action.choice_labels = [label]
+        return
+    matching = options.and_(
+        page.frames[action.field.frame].get_by_role(
+            "option", name=option_name(value, action), exact=True
+        )
+    )
+    await matching.first.wait_for(state="visible")
+    if await matching.count() != 1:
+        raise ApplicationError(
+            Code.UNSUPPORTED_CONTROL, f"Ambiguous choices for {action.field.label}"
+        )
+    await matching.click()
+
+
+async def _write_text(page, target, action, value):
+    await target.fill(value)
+    await target.blur()
+    if action.field.kind == "tel" and not await _matches_text(page, target, action, value):
+        # Some phone masks mishandle a bulk input event. Retry with keystrokes.
+        await target.press("ControlOrMeta+A")
+        await target.press("Backspace")
+        await target.press("ControlOrMeta+A")
+        await target.press_sequentially(value, delay=20)
+        await target.blur()
+
+
+async def _matches_text(page, target, action, value):
+    return await target.input_value() == value or (
+        action.field.kind == "tel" and await phone_matches(target, value)
+    )
+
+
+async def _write_range(page, target, action, value):
+    # Playwright fill() does not accept range inputs. Use the native setter and
+    # standard events, then read back the value to catch clamping or step rounding.
+    await target.evaluate(
+        """(element, value) => {
+        const setter = Object.getOwnPropertyDescriptor(
+            element.ownerDocument.defaultView.HTMLInputElement.prototype, 'value'
+        ).set;
+        setter.call(element, value);
+        element.dispatchEvent(new Event('input', {bubbles: true}));
+        element.dispatchEvent(new Event('change', {bubbles: true}));
+    }""",
+        value,
+    )
+    await target.blur()
+
+
+async def _matches_number(page, target, action, value):
+    actual = await target.input_value()
+    return normalize_field_value(action.field, actual) == normalize_field_value(action.field, value)
+
+
+# Small function pairs keep writing and readback consistent without widget classes.
+_CONTROL_HANDLERS = {
+    "file": (_write_file, _matches_file),
+    "select": (_write_select, _matches_select),
+    "checkbox": (_write_choice, _matches_choice),
+    "radio": (_write_choice, _matches_choice),
+    "combobox": (_write_combobox, combobox_matches),
+    "number": (_write_text, _matches_number),
+    "range": (_write_range, _matches_number),
+    **dict.fromkeys(
+        (
             "text",
             "email",
             "tel",
             "url",
-            "number",
-            "range",
             "date",
             "datetime-local",
             "month",
@@ -283,32 +335,44 @@ async def fill(page: Page, action: Action):
             "time",
             "textarea",
             "search",
-        ):
-            await target.fill(string)
-            await target.blur()
-            actual = await target.input_value()
-            valid = actual == string or (
-                field.kind == "tel" and await phone_matches(target, string)
-            )
-            if not valid and field.kind == "tel":
-                # Some telephone masks mishandle one bulk input event. Retry this
-                # field once using normal keystrokes, then verify the whole number.
-                await target.press("ControlOrMeta+A")
-                await target.press("Backspace")
-                await target.press("ControlOrMeta+A")
-                await target.press_sequentially(string, delay=20)
-                await target.blur()
-                valid = await phone_matches(target, string)
-            if not valid or not await native_value_is_valid(target):
-                raise ValueError("Value not retained")
+        ),
+        (_write_text, _matches_text),
+    ),
+}
+
+
+def _control_handler(action: Action):
+    handler = _CONTROL_HANDLERS.get(action.field.kind)
+    if handler is None:
+        raise ApplicationError(
+            Code.UNSUPPORTED_CONTROL, f"Unsupported {action.field.kind}: {action.field.label}"
+        )
+    return handler
+
+
+async def _matches_control(page, target, action, value):
+    _, matches = _control_handler(action)
+    return await matches(page, target, action, value) and await native_value_is_valid(target)
+
+
+async def fill(page: Page, action: Action):
+    field = action.field
+    target = locator(page, field)
+    try:
+        write, _ = _control_handler(action)
+        if field.kind == "combobox" and action.random_choice:
+            value = ""  # The concrete canonical answer is assigned after selecting an option.
         else:
-            raise ApplicationError(
-                Code.UNSUPPORTED_CONTROL, f"Unsupported {field.kind}: {field.label}"
-            )
+            action.value = normalize_field_value(field, action.value)
+            value = render_field_value(field, action.value)
+        await write(page, target, action, value)
+        expected = render_field_value(field, action.value) if action.random_choice else value
+        if not await _matches_control(page, target, action, expected):
+            raise ValueError("Value not retained")
     except ApplicationError:
         raise
     except (FieldValueError, PlaywrightError, ValueError) as exc:
-        # Do not serialize Playwright exception bodies: they can contain applicant values.
+        # Playwright exception bodies can contain applicant values.
         raise ApplicationError(
             Code.FIELD_FILL_FAILED, f"Could not verify field: {field.label}"
         ) from exc
@@ -328,35 +392,68 @@ async def click_and_settle(page: Page, control: Control):
     return page
 
 
-async def verify_actions(page: Page, actions: list[Action]):
-    """Verify the complete plan after all change handlers have run."""
+@dataclass(frozen=True)
+class FieldVerification:
+    action: Action
+    present: bool
+    valid: bool
+    code: Code | None = None
+    message: str = ""
+
+
+async def verify_action_results(page: Page, actions: list[Action]) -> list[FieldVerification]:
+    """Read every action with the same control handlers used during filling."""
+    results = []
     for action in actions:
-        field, value = action.field, action.value
-        target = locator(page, field)
-        if not await target.count():
-            continue  # Conditional rerenders are replanned from a fresh snapshot.
-        string = "Yes" if value is True else "No" if value is False else value
-        if field.kind == "file":
-            valid = await target.evaluate("e => e.files.length > 0")
-        elif field.kind in ("checkbox", "radio"):
-            valid = await target.is_checked() == value
-        elif field.kind == "select":
-            option = match_option(value, field.options)
-            valid = option is not None and await target.input_value() == option.value
-        elif field.kind == "combobox":
-            valid = await combobox_matches(page, target, action, string)
-        else:
-            actual = await target.input_value()
-            valid = actual == string or (
-                field.kind == "tel" and await phone_matches(target, string)
+        try:
+            target = locator(page, action.field)
+            if not await target.count():
+                results.append(
+                    FieldVerification(
+                        action,
+                        False,
+                        False,
+                        Code.NO_PROGRESS,
+                        f"Field changed or disappeared: {action.field.label}",
+                    )
+                )
+                continue
+            value = render_field_value(action.field, action.value)
+            valid = await _matches_control(page, target, action, value)
+            results.append(
+                FieldVerification(
+                    action,
+                    True,
+                    valid,
+                    None if valid else Code.VALIDATION_FAILED,
+                    ""
+                    if valid
+                    else f"A later form update changed the value of: {action.field.label}",
+                )
             )
-        if field.kind != "combobox":
-            valid = valid and await native_value_is_valid(target)
-        if not valid:
+        except ApplicationError as exc:
+            results.append(
+                FieldVerification(action, exc.code != Code.NO_PROGRESS, False, exc.code, str(exc))
+            )
+        except (FieldValueError, PlaywrightError, ValueError):
+            results.append(
+                FieldVerification(
+                    action,
+                    True,
+                    False,
+                    Code.VALIDATION_FAILED,
+                    f"Could not verify field: {action.field.label}",
+                )
+            )
+    return results
+
+
+async def verify_actions(page: Page, actions: list[Action]):
+    """Compatibility wrapper; disappearing conditional fields are replanned."""
+    for result in await verify_action_results(page, actions):
+        if result.present and not result.valid:
             raise ApplicationError(
-                Code.VALIDATION_FAILED,
-                f"A later form update changed the value of: {field.label}",
-                [field.label],
+                result.code or Code.VALIDATION_FAILED, result.message, [result.action.field.label]
             )
 
 

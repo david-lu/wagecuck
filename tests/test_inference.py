@@ -175,16 +175,16 @@ def test_partially_supported_answer_with_admitted_assumption_is_made_up():
 async def test_runner_logs_made_up_answers_after_browser_failure(
     portal, profile, options, monkeypatch
 ):
-    from wagecuck import ApplicationRunner, runner
+    from wagecuck import ApplicationRunner, execution
 
-    original_fill = runner.fill
+    original_fill = execution.fill
 
     async def fail_generated_control(page, action):
         if action.made_up:
             raise ApplicationError(Code.FIELD_FILL_FAILED, "Simulated control failure")
         await original_fill(page, action)
 
-    monkeypatch.setattr(runner, "fill", fail_generated_control)
+    monkeypatch.setattr(execution, "fill", fail_generated_control)
 
     class Agent:
         async def map(self, fields, keys):

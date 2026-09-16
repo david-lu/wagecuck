@@ -18,13 +18,12 @@ from wagecuck.browser import (
     click_and_settle,
     dismiss_optional_cookies,
     entry_controls,
-    fill,
     snapshot,
-    verify_actions,
 )
 from wagecuck.captcha import detect_challenge
-from wagecuck.logical_fields import logical_field_results
+from wagecuck.execution import execute_actions, field_id, form_changed, form_signature
 from wagecuck.models import ApplicationError, Profile
+from wagecuck.reporting import execution_report
 
 
 async def probe_fields(page, profile, agent=None, *, agent_fill=False):
@@ -35,90 +34,43 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
     snap = await snapshot(page)
     challenge = await detect_challenge(page)
     planner = WorkflowAgent(agent)
-    actions, unresolved = await planner.plan(snap.fields, profile, agent_fill=agent_fill)
-    outcomes, completed = [], []
-    for action in actions:
-        outcome = {
-            "field_id": f"{action.field.frame}:{action.field.id}",
-            "label": action.field.label,
-            "group": action.field.group,
-            "kind": action.field.kind,
-            "code": "FILLED",
-            "required": action.field.required,
-            "source": action.source,
-            "answer_basis": action.answer_basis,
-            "made_up": action.made_up,
-            "source_keys": action.source_keys,
-            "inference_reason": action.inference_reason,
-            "selected": action.value is True
-            if action.field.kind in ("radio", "checkbox")
-            else None,
-        }
-        try:
-            await fill(page, action)
-            completed.append(action)
-        except ApplicationError as exc:
-            outcome["code"] = exc.code
-        outcomes.append(outcome)
-    try:
-        await verify_actions(page, completed)
-        retained = True
-    except ApplicationError:
-        retained = False
-    analysis = planner.describe(snap.fields, actions, unresolved)
-    logical_fields = logical_field_results(snap.fields, outcomes, analysis)
-    unresolved_questions = [field for field in logical_fields if field["code"] == "UNRESOLVED"]
-    satisfied_codes = {"FILLED", "ALREADY_FILLED"}
-    required_questions = [field for field in logical_fields if field["required"]]
-    required_failures = [
-        field for field in required_questions if field["code"] not in satisfied_codes
-    ]
-    return {
-        "field_count": len(snap.fields),
-        "question_count": len(logical_fields),
-        "mapped_count": len(actions),
-        "filled_count": len(completed),
-        "mapped_question_count": sum(
-            field["code"] not in ("UNRESOLVED", "ALREADY_FILLED", "NOT_SELECTED_GROUP_OPTION")
-            for field in logical_fields
-        ),
-        "filled_question_count": sum(field["code"] == "FILLED" for field in logical_fields),
-        "satisfied_question_count": sum(
-            field["code"] in satisfied_codes for field in logical_fields
-        ),
-        "required_question_count": len(required_questions),
-        "required_question_satisfied_count": len(required_questions) - len(required_failures),
-        "required_fill_pass": not required_failures,
-        "required_fill_failure_count": len(required_failures),
-        "required_fill_failures": [field["question"] for field in required_failures],
-        "made_up_answer_count": sum(
-            field.get("made_up", False) and field["code"] == "FILLED" for field in logical_fields
-        ),
-        "completed_values_retained": retained,
-        "captcha": challenge.kind if challenge else None,
-        "required_answers_missing": [
-            field["question"] for field in unresolved_questions if field["required"]
-        ],
-        "unmapped_fields": [
-            {
-                "label": field["question"],
-                "group": field["question"],
-                "kind": field["kind"],
-                "required": field["required"],
-                "options": field.get("options", []),
-            }
-            for field in unresolved_questions
-        ],
-        "unmapped_controls": [
-            {"label": f.label, "group": f.group, "kind": f.kind, "required": f.required}
-            for f in unresolved
-        ],
-        "fields": logical_fields,
-        "control_outcomes": outcomes,
-        "field_analysis": logical_fields,
-        "control_analysis": analysis,
-        "agent_warnings": planner.warnings,
-    }
+    previous_actions, analysis, warnings = {}, {}, []
+    seen = {}
+    for _ in range(4):
+        signature = form_signature(snap)
+        seen[signature] = seen.get(signature, 0) + 1
+        actions, unresolved = await planner.plan(snap.fields, profile, agent_fill=agent_fill)
+        warnings.extend(planner.warnings)
+        execution = await execute_actions(
+            page, actions, previous_actions=list(previous_actions.values()),
+            assessed_fields=snap.fields,
+        )
+        analysis.update({row["field_id"]: row for row in planner.describe(snap.fields, actions, unresolved)})
+        previous_actions = {field_id(outcome.action.field): outcome.action for outcome in execution.fields}
+        after = execution.snapshot
+        if not form_changed(snap, after) or seen[signature] >= 2:
+            break
+        snap = after
+    report = execution_report(execution, list(analysis.values()))
+    if not report["field_count"]:
+        report["required_fill_pass"] = False
+    report.update(captcha=challenge.kind if challenge else None, agent_warnings=warnings)
+    return report
+
+
+def probe_code(report):
+    """Classify the recorded verification result without promoting a failed pass."""
+    if not report["field_count"]:
+        return "FORM_NOT_RELOADED"
+    if report["filled_count"] < report["mapped_count"] or not report["completed_values_retained"]:
+        return "FIELD_FILL_FAILED"
+    if report["required_answers_missing"]:
+        return "REQUIRED_ANSWER_MISSING"
+    if report["page_validation_error_count"] or not report["required_fill_pass"]:
+        return "VALIDATION_FAILED"
+    if not report["mapped_count"]:
+        return "NO_MAPPED_FIELDS"
+    return "MAPPED_FIELDS_VERIFIED"
 
 
 async def main():
@@ -237,18 +189,7 @@ async def main():
                         row.update(
                             await probe_fields(page, profile, agent, agent_fill=args.agent_fill)
                         )
-                        row["code"] = (
-                            "FORM_NOT_RELOADED"
-                            if not row["field_count"]
-                            else "FIELD_FILL_FAILED"
-                            if row["filled_count"] < row["mapped_count"]
-                            or not row["completed_values_retained"]
-                            else "REQUIRED_ANSWER_MISSING"
-                            if row["required_answers_missing"]
-                            else "NO_MAPPED_FIELDS"
-                            if not row["mapped_count"]
-                            else "MAPPED_FIELDS_VERIFIED"
-                        )
+                        row["code"] = probe_code(row)
                 except ApplicationError as exc:
                     row["code"] = exc.code
                     row["message"] = str(exc)

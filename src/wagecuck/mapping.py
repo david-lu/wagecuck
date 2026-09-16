@@ -8,6 +8,7 @@ from dataclasses import field as dataclass_field
 from .agent_types import Mapping
 from .browser import normalize
 from .field_semantics import SENSITIVE, question
+from .logical_fields import logical_key
 from .models import Action, Code, FormField, Profile
 from .profile_fields import action_for_key, allowed_named_mapping, key_for, restricted_key
 
@@ -19,9 +20,9 @@ class MappingResult:
     warnings: list[dict] = dataclass_field(default_factory=list)
 
 
-def available_mapping_values(profile: Profile, facts: dict) -> dict:
+def available_mapping_values(profile: Profile, facts: dict, *, declared=None) -> dict:
     """Expose declared sensitive values and ordinary profile facts to classification."""
-    declared = profile.declared_values()
+    declared = profile.declared_values() if declared is None else declared
     available = {
         key: value
         for key, value in facts.items()
@@ -40,15 +41,15 @@ def apply_mappings(
     available: dict,
     profile: Profile,
     existing_actions: list[Action],
+    *,
+    values: dict | None = None,
 ) -> MappingResult:
     """Keep valid proposals even when other model proposals are malformed or unsafe."""
     result = MappingResult()
     by_id = {f"{field.frame}:{field.id}": field for field in eligible}
     accepted_fields: set[str] = set()
     accepted_radio_groups = {
-        (action.field.frame, action.field.name, action.field.group)
-        for action in existing_actions
-        if action.field.kind == "radio"
+        logical_key(action.field) for action in existing_actions if action.field.kind == "radio"
     }
 
     def reject(field_id: str, message: str) -> None:
@@ -117,7 +118,7 @@ def apply_mappings(
             else proposal.separator.join(available[key] for key in keys)
         )
         if len(keys) == 1 and (restricted_key(keys[0]) or keys[0] == key_for(field, profile)):
-            handled, action = action_for_key(field, all_fields, profile, keys[0])
+            handled, action = action_for_key(field, all_fields, profile, keys[0], values=values)
             if not handled or action is None:
                 reject(field_id, "Profile value does not select or fill this control.")
                 continue
@@ -125,12 +126,12 @@ def apply_mappings(
             result.actions.append(action)
             accepted_fields.add(field_id)
             if field.kind == "radio":
-                group = (field.frame, field.name, field.group)
+                group = logical_key(field)
                 accepted_radio_groups.add(group)
                 result.resolved.update(
                     f"{peer.frame}:{peer.id}"
                     for peer in all_fields
-                    if peer.kind == "radio" and (peer.frame, peer.name, peer.group) == group
+                    if peer.kind == "radio" and logical_key(peer) == group
                 )
             else:
                 result.resolved.add(field_id)
@@ -141,8 +142,8 @@ def apply_mappings(
             if choice != question(field.label):
                 reject(field_id, "Mapped value does not select this radio option.")
                 continue
-            group = (field.frame, field.name, field.group)
-            if not field.name or not field.group or group in accepted_radio_groups:
+            group = logical_key(field)
+            if group in accepted_radio_groups:
                 reject(field_id, "Radio mapping does not identify one unambiguous choice.")
                 continue
             value = True
@@ -153,12 +154,12 @@ def apply_mappings(
         result.actions.append(Action(field=field, value=value, source="agent:" + "+".join(keys)))
         accepted_fields.add(field_id)
         if field.kind == "radio":
-            group = (field.frame, field.name, field.group)
+            group = logical_key(field)
             accepted_radio_groups.add(group)
             result.resolved.update(
                 f"{peer.frame}:{peer.id}"
                 for peer in all_fields
-                if peer.kind == "radio" and (peer.frame, peer.name, peer.group) == group
+                if peer.kind == "radio" and logical_key(peer) == group
             )
         else:
             result.resolved.add(field_id)

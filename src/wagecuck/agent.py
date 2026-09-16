@@ -32,8 +32,10 @@ from .field_semantics import (
 )
 from .field_values import FieldValueError, normalize_field_value
 from .inference import apply_inferred_answers
+from .logical_fields import group_members, logical_groups
 from .mapping import apply_mappings, available_mapping_values
 from .models import Action, ApplicationError, Code, FormField, Profile
+from .profile_catalog import declared_profile_values, resolve_profile_values
 from .profile_fields import key_for, plan_named, screening_options
 from .requirements import apply_requirement_assessments
 from .screening import plan_screening
@@ -61,7 +63,8 @@ class WorkflowAgent:
     async def plan(
         self, fields: list[FormField], profile: Profile, *, agent_fill: bool = False
     ) -> tuple[list[Action], list[FormField]]:
-        facts = profile.values()
+        declared = declared_profile_values(profile)
+        facts = resolve_profile_values(profile, declared)
         self.warnings = []
         answers = {question(key): value for key, value in profile.answers.items()}
         actions: list[Action] = []
@@ -78,7 +81,7 @@ class WorkflowAgent:
                     if action:
                         actions.append(action)
                     continue
-                handled, action = plan_named(field, fields, profile, source_choices)
+                handled, action = plan_named(field, fields, profile, source_choices, values=facts)
                 if handled:
                     if action:
                         actions.append(action)
@@ -86,13 +89,7 @@ class WorkflowAgent:
             if field.kind == "radio" and group in answers:
                 answer = answers[group]
                 chosen = "yes" if answer is True else "no" if answer is False else question(answer)
-                if not any(
-                    peer.kind == "radio"
-                    and peer.frame == field.frame
-                    and question(peer.group) == group
-                    and question(peer.label) == chosen
-                    for peer in fields
-                ):
+                if not any(question(peer.label) == chosen for peer in group_members(field, fields)):
                     unresolved.append(field)
                     continue
                 if chosen == label:
@@ -116,6 +113,16 @@ class WorkflowAgent:
                 actions.append(Action(field=field, value=value, source=source))
             elif not field.filled:
                 unresolved.append(field)
+
+        # A fallback must see the complete desired selection, including checked peers
+        # it may need to clear. Preserve explicit per-option deterministic answers.
+        for group_fields in logical_groups(fields):
+            if group_fields[0].kind not in ("radio", "checkbox"):
+                continue
+            if any(field in unresolved for field in group_fields) and not any(
+                action.field in group_fields for action in actions
+            ):
+                unresolved.extend(field for field in group_fields if field not in unresolved)
 
         try:
             await self.assess_required(fields)
@@ -160,7 +167,9 @@ class WorkflowAgent:
         ]
         if self.fallback and eligible:
             try:
-                await self._map_unresolved(eligible, fields, facts, profile, actions, unresolved)
+                await self._map_unresolved(
+                    eligible, fields, facts, profile, actions, unresolved, declared
+                )
             except ApplicationError as exc:
                 if not (agent_fill and getattr(self.fallback, "infer", None)):
                     raise
@@ -202,17 +211,7 @@ class WorkflowAgent:
         for action in rejected:
             actions.remove(action)
             field = action.field
-            candidates = (
-                [
-                    peer
-                    for peer in fields
-                    if peer.kind == "radio"
-                    and (peer.frame, peer.name, peer.group)
-                    == (field.frame, field.name, field.group)
-                ]
-                if field.kind == "radio"
-                else [field]
-            )
+            candidates = group_members(field, fields) if field.kind == "radio" else [field]
             for candidate in candidates:
                 if not candidate.filled and candidate not in unresolved:
                     unresolved.append(candidate)
@@ -256,13 +255,17 @@ class WorkflowAgent:
             field for field in unresolved if f"{field.frame}:{field.id}" not in resolved
         ]
 
-    async def _map_unresolved(self, eligible, fields, facts, profile, actions, unresolved) -> None:
-        available = available_mapping_values(profile, facts)
+    async def _map_unresolved(
+        self, eligible, fields, facts, profile, actions, unresolved, declared
+    ) -> None:
+        available = available_mapping_values(profile, facts, declared=declared)
         proposals = await self.fallback.map(eligible, list(available))
         take_warnings = getattr(self.fallback, "take_mapping_warnings", None)
         if take_warnings:
             self.warnings.extend(take_warnings())
-        result = apply_mappings(proposals, eligible, fields, available, profile, actions)
+        result = apply_mappings(
+            proposals, eligible, fields, available, profile, actions, values=facts
+        )
         actions.extend(result.actions)
         self.warnings.extend(result.warnings)
         unresolved[:] = [

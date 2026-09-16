@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 
 from .browser import normalize
 from .field_values import FieldValueError, normalize_field_value
+from .logical_fields import group_members, logical_groups, logical_key
 from .models import Action
 
 
@@ -35,7 +36,7 @@ def apply_inferred_answers(fields, answers, facts):
     for answer in answers:
         field = by_id.get(answer.field_id)
         if field and field.kind == "radio" and answer.value is True:
-            group = (field.frame, field.name, field.group)
+            group = logical_key(field)
             radio_selections.setdefault(group, []).append(answer.field_id)
     for answer in answers:
         field = by_id.get(answer.field_id)
@@ -49,12 +50,15 @@ def apply_inferred_answers(fields, answers, facts):
             if not isinstance(value, bool):
                 error = "Checkbox/radio answers must be boolean."
             elif field.kind == "radio":
-                group = (field.frame, field.name, field.group)
-                if not field.name or not field.group or len(radio_selections.get(group, [])) != 1:
+                group = logical_key(field)
+                if (
+                    len(group_members(field, fields)) < 2
+                    or len(radio_selections.get(group, [])) != 1
+                ):
                     error = "Radio group needs one unambiguous selection."
                 elif not value:
                     continue  # Checking the selected peer clears the other options.
-            elif field.required and not field.group and not value:
+            elif field.required and len(group_members(field, fields)) == 1 and not value:
                 error = "An unchecked required standalone checkbox remains unresolved."
         elif not isinstance(value, str) or not value.strip():
             error = "This field needs a nonempty text answer."
@@ -117,7 +121,35 @@ def apply_inferred_answers(fields, answers, facts):
             resolved.update(
                 key
                 for key, peer in by_id.items()
-                if peer.kind == "radio"
-                and (peer.frame, peer.name, peer.group) == (field.frame, field.name, field.group)
+                if peer.kind == "radio" and logical_key(peer) == logical_key(field)
+            )
+    # Checkbox groups require a complete desired set: missing answers must not
+    # leave preselected values in place or report a partially answered question.
+    for peers in logical_groups(fields):
+        if peers[0].kind != "checkbox" or len(peers) < 2:
+            continue
+        ids = {f"{peer.frame}:{peer.id}" for peer in peers}
+        accepted = [
+            action for action in actions if f"{action.field.frame}:{action.field.id}" in ids
+        ]
+        if not accepted:
+            continue
+        error = None
+        if not ids.issubset(resolved):
+            error = "Checkbox group needs an answer for every option."
+        elif any(peer.required for peer in peers) and not any(
+            action.value is True for action in accepted
+        ):
+            error = "A required checkbox group needs at least one selected option."
+        if error:
+            actions = [action for action in actions if action not in accepted]
+            resolved.difference_update(ids)
+            warnings.extend(
+                {
+                    "field_id": f"{action.field.frame}:{action.field.id}",
+                    "stage": "inference",
+                    "message": error,
+                }
+                for action in accepted
             )
     return actions, resolved, warnings

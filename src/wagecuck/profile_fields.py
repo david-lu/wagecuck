@@ -5,7 +5,9 @@ import re
 
 from .browser import normalize
 from .field_values import value_contract
+from .logical_fields import group_members, logical_key
 from .models import Action
+from .profile_catalog import WORK_COUNTRY_ALIASES
 from .screening import Answer, answer_for, answer_for_field, plan_answer
 
 
@@ -14,9 +16,7 @@ def text(field):
         r"\brequired\b$",
         "",
         normalize(
-            field.group
-            if field.kind in ("radio", "checkbox") and field.group
-            else field.label
+            field.group if field.kind in ("radio", "checkbox") and field.group else field.label
         ),
     ).strip()
 
@@ -148,28 +148,28 @@ def screening_options(field, profile):
         return {}
     primary = f"screening.{answer.source}"
     result = {primary: answer}
-    aliases = {"CA": "canada", "US": "us", "GB": "uk"}
     match = re.fullmatch(
         r"work_authorization\.(CA|US|GB)\.(authorized|requires_sponsorship)", answer.source
     )
     if match:
-        result[f"{match[2]}_{aliases[match[1]]}"] = answer
+        result[f"{match[2]}_{WORK_COUNTRY_ALIASES[match[1]]}"] = answer
     return result
 
 
-def plan_named(field, fields, profile, source_choices=None):
+def plan_named(field, fields, profile, source_choices=None, *, values=None):
     key = key_for(field, profile)
     if key is None:
         return False, None
     if key == "source":
         return plan_source(field, fields, profile, source_choices)
-    value = profile.values().get(key)
+    values = profile.values() if values is None else values
+    value = values.get(key)
     if value is None:
         return False, None
-    return action_for_key(field, fields, profile, key)
+    return action_for_key(field, fields, profile, key, values=values)
 
 
-def action_for_key(field, fields, profile, key):
+def action_for_key(field, fields, profile, key, *, values=None):
     if key == "source" and key_for(field, profile) == "source":
         return plan_source(field, fields, profile)
     screening = screening_options(field, profile)
@@ -178,7 +178,8 @@ def action_for_key(field, fields, profile, key):
         if action:
             action.source = f"facts:{key}"
         return handled, action
-    value = profile.values().get(key)
+    values = profile.values() if values is None else values
+    value = values.get(key)
     if value is None:
         return False, None
     if isinstance(value, bool):
@@ -236,14 +237,9 @@ def plan_source(field, fields, profile, source_choices=None):
                 return False, None
             return True, Action(field=field, value=random.choice(options).value, source=source)
         if field.kind == "radio" and field.group:
-            peers = [
-                f
-                for f in fields
-                if f.kind == "radio"
-                and (f.frame, f.name, f.group) == (field.frame, field.name, field.group)
-            ]
+            peers = group_members(field, fields)
             choices = source_choices if source_choices is not None else {}
-            key = (field.frame, field.name, field.group)
+            key = logical_key(field)
             if key not in choices:
                 choices[key] = random.choice(peers).id
             return True, (

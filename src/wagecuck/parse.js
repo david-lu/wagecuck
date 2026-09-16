@@ -10,6 +10,27 @@
     if (!el.dataset.wagecuckId) el.dataset.wagecuckId = 'wc' + (window.__wcCounter = (window.__wcCounter || 0) + 1);
     return el.dataset.wagecuckId;
   };
+  // Structural paths survive DOM replacement without relying on transient control IDs.
+  const domPath = (el) => {
+    if (!el) return 'document';
+    const parts = [];
+    for (let node = el; node?.nodeType === Node.ELEMENT_NODE; node = node.parentElement) {
+      const siblings = node.parentElement ? [...node.parentElement.children].filter(peer => peer.tagName === node.tagName) : [node];
+      parts.unshift(node.tagName.toLowerCase() + ':' + siblings.indexOf(node));
+    }
+    const root = el.getRootNode();
+    return (root.host ? domPath(root.host) + '/shadow/' : '') + parts.join('/');
+  };
+  const groupIdentity = (el, kind, questionContainer) => {
+    if (!['radio', 'checkbox'].includes(kind)) return '';
+    const root = el.getRootNode();
+    const owner = domPath(root.host) + '|form:' + domPath(el.form);
+    // HTML radio groups share a name, form owner, and tree root, even across fieldsets.
+    if (kind === 'radio') return el.name ? owner + '|radio:' + el.name : 'control:' + domPath(el);
+    if (questionContainer) return owner + '|question:' + domPath(questionContainer);
+    if (el.name) return owner + '|checkbox:' + el.name;
+    return 'control:' + domPath(el);
+  };
   const referenced = (el) => (el.getAttribute('aria-labelledby') || '').split(/\s+/)
     .map(id => text(el.getRootNode().getElementById?.(id) || document.getElementById(id))).join(' ').trim();
   const container = (el) => el.closest('[data-field], [data-field-path], .application-question, .field, .form-field, .ashby-application-form-field-entry, .MuiFormControl-root');
@@ -52,7 +73,7 @@
     return visible(el);
   }).map(el => {
     const kind = el.type === 'file' ? 'file' : el.getAttribute('role') === 'combobox' ? 'combobox' : el.tagName === 'SELECT' ? 'select' : el.type || 'text';
-    const groupEl = el.closest('fieldset, [role="radiogroup"]');
+    const groupEl = el.closest('fieldset, [role="radiogroup"], [role="group"]');
     const localHeading = questionHeading(container(el), el);
     const groupHeading = localHeading || questionHeading(groupEl, el);
     const group = ['radio', 'checkbox'].includes(kind) ? text(localHeading) || (groupEl ? referenced(groupEl) : '') || groupEl?.getAttribute('aria-label') || text(groupHeading) : '';
@@ -82,7 +103,7 @@
       input_mode: el.inputMode || '', pattern: el.pattern || '', minimum: el.min || '', maximum: el.max || '', step: el.step || '',
       min_length: el.hasAttribute('minlength') && el.minLength >= 0 ? el.minLength : null,
       max_length: el.hasAttribute('maxlength') && el.maxLength >= 0 ? el.maxLength : null,
-      group, fact_key: el.getAttribute('data-wagecuck-fact') || '',
+      group, group_id: groupIdentity(el, kind, localHeading ? container(el) : groupEl), fact_key: el.getAttribute('data-wagecuck-fact') || '',
       context, required_evidence: required ? 'DOM required marker or constraint' : /optional|not required/i.test(lab + ' ' + described) ? 'DOM optional marker' : '',
       requirement_status: required ? 'required' : /optional|not required/i.test(lab + ' ' + described) ? 'optional' : 'unknown',
       options: el.tagName === 'SELECT' ? [...el.options].filter(o => !o.disabled && o.value !== '').map(o => ({label: text(o), value: o.value})) : [],

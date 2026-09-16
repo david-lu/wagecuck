@@ -1,4 +1,4 @@
-"""Render and validate values against the actual HTML control contract."""
+"""Keep planned values canonical and render them at the browser boundary."""
 
 from __future__ import annotations
 
@@ -60,7 +60,11 @@ def field_contract(field: FormField) -> dict:
 
 
 def normalize_field_value(field: FormField, value: str | bool) -> str | bool:
-    """Convert a typed profile/model value to the representation the control accepts."""
+    """Validate and return a stable control-independent value.
+
+    Dates stay ISO throughout planning and inference. Display constraints are
+    checked against rendered text, which is never stored back into the action.
+    """
     contract = value_contract(field)
     if contract in ("checkbox", "radio"):
         if not isinstance(value, bool):
@@ -74,9 +78,9 @@ def normalize_field_value(field: FormField, value: str | bool) -> str | bool:
     if contract == "number":
         string = _number_value(string, field)
     elif contract == "date":
-        parsed = _date_value(string)
+        parsed = _date_value(string, field)
         _check_date_bounds(parsed, field)
-        string = _format_date(parsed, field)
+        string = parsed.isoformat()
     elif contract == "datetime-local":
         string = _datetime_local_value(string)
     elif contract == "month":
@@ -89,17 +93,33 @@ def normalize_field_value(field: FormField, value: str | bool) -> str | bool:
         raise FieldValueError("The value is not an email address.")
     elif contract == "url" and not re.match(r"https?://[^\s]+$", string, re.IGNORECASE):
         raise FieldValueError("The value is not an HTTP(S) URL.")
-    if field.min_length is not None and len(string) < field.min_length:
+    rendered = _render_canonical(field, string)
+    if field.min_length is not None and len(rendered) < field.min_length:
         raise FieldValueError("The value is shorter than the control's minimum length.")
-    if field.max_length is not None and len(string) > field.max_length:
+    if field.max_length is not None and len(rendered) > field.max_length:
         raise FieldValueError("The value exceeds the control's maximum length.")
     if field.pattern:
         try:
-            if not re.fullmatch(field.pattern, string):
+            if not re.fullmatch(field.pattern, rendered):
                 raise FieldValueError("The value does not match the control's required pattern.")
         except re.error:
             pass  # JavaScript regex syntax is not always compatible with Python.
     return string
+
+
+def render_field_value(field: FormField, value: str | bool) -> str | bool:
+    """Render an already-normalized value at the browser boundary.
+
+    Call normalize_field_value for raw profile/model input first. Keeping this
+    operation separate prevents displayed dates from being parsed a second time.
+    """
+    return value if isinstance(value, bool) else _render_canonical(field, value)
+
+
+def _render_canonical(field: FormField, value: str) -> str:
+    if value_contract(field) == "date":
+        return _format_date(date.fromisoformat(value), field)
+    return value
 
 
 def _number_value(value: str, field: FormField) -> str:
@@ -109,9 +129,11 @@ def _number_value(value: str, field: FormField) -> str:
         raise FieldValueError("The control requires a numeric value.") from exc
     if not number.is_finite():
         raise FieldValueError("The control requires a finite numeric value.")
+    minimum = field.minimum or ("0" if field.kind == "range" else "")
+    maximum = field.maximum or ("100" if field.kind == "range" else "")
     for boundary, compare, message in (
-        (field.minimum, lambda actual, limit: actual < limit, "below the minimum"),
-        (field.maximum, lambda actual, limit: actual > limit, "above the maximum"),
+        (minimum, lambda actual, limit: actual < limit, "below the minimum"),
+        (maximum, lambda actual, limit: actual > limit, "above the maximum"),
     ):
         if boundary:
             try:
@@ -128,11 +150,20 @@ def _number_value(value: str, field: FormField) -> str:
                 raise FieldValueError("The numeric value does not satisfy the control's step.")
         except InvalidOperation:
             pass
-    return format(number, "f")
+    if not number:
+        return "0"
+    rendered = format(number, "f")
+    return rendered.rstrip("0").rstrip(".") if "." in rendered else rendered
 
 
-def _date_value(value: str) -> date:
-    formats = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%d/%m/%Y", "%Y/%m/%d")
+def _date_value(value: str, field: FormField) -> date:
+    # ISO is canonical. An explicit placeholder disambiguates non-ISO values.
+    formats = ["%Y-%m-%d"]
+    placeholder = _placeholder_date_format(field)
+    if placeholder:
+        formats.append(placeholder)
+    else:
+        formats.extend(("%m/%d/%Y", "%m/%d/%y", "%d/%m/%Y", "%Y/%m/%d"))
     for format_string in formats:
         try:
             return datetime.strptime(value, format_string).replace(tzinfo=UTC).date()
@@ -196,26 +227,30 @@ def _time_value(value: str) -> str:
 
 
 def _date_format(field: FormField) -> str | None:
-    placeholder = field.placeholder.casefold().replace(" ", "")
-    if re.search(r"m{1,2}[/.-]d{1,2}[/.-]y{2,4}", placeholder):
-        return "MDY"
-    if re.search(r"d{1,2}[/.-]m{1,2}[/.-]y{2,4}", placeholder):
-        return "DMY"
-    if re.search(r"y{2,4}[/.-]m{1,2}[/.-]d{1,2}", placeholder):
-        return "YMD"
-    return None
+    pattern = _placeholder_date_format(field)
+    return (
+        {"%m": "MDY", "%d": "DMY", "%Y": "YMD", "%y": "YMD"}.get(pattern[:2]) if pattern else None
+    )
 
 
 def _format_date(value: date, field: FormField) -> str:
-    format_name = _date_format(field)
-    separator = next((char for char in field.placeholder if char in "/.-"), "/")
-    if format_name == "MDY":
-        return value.strftime(f"%m{separator}%d{separator}%Y")
-    if format_name == "DMY":
-        return value.strftime(f"%d{separator}%m{separator}%Y")
-    if format_name == "YMD" and field.kind != "date":
-        return value.strftime(f"%Y{separator}%m{separator}%d")
-    return value.isoformat()
+    # Native date inputs accept ISO regardless of the displayed placeholder.
+    pattern = _placeholder_date_format(field) if field.kind != "date" else None
+    return value.strftime(pattern) if pattern else value.isoformat()
+
+
+def _placeholder_date_format(field: FormField) -> str | None:
+    match = re.search(
+        r"(?:m{1,2}[/.-]d{1,2}[/.-]y{2,4}|d{1,2}[/.-]m{1,2}[/.-]y{2,4}|y{2,4}[/.-]m{1,2}[/.-]d{1,2})",
+        field.placeholder.casefold().replace(" ", ""),
+    )
+    if not match:
+        return None
+    return re.sub(
+        r"y+|m+|d+",
+        lambda token: "%y" if token[0] == "yy" else {"y": "%Y", "m": "%m", "d": "%d"}[token[0][0]],
+        match[0],
+    )
 
 
 def _normalize(value: str) -> str:

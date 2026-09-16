@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 
 from .browser import normalize
-from .logical_fields import option_label
+from .logical_fields import group_members, logical_question, option_label
 from .models import Action, Option
 
 
@@ -91,7 +91,11 @@ RACE_LABELS = {
         "Native Hawaiian or Pacific Islander",
     ],
     "white": ["White", "Caucasian"],
-    "multiracial": ["Two or more races", "Multiracial", "Two or more races (not Hispanic or Latino)"],
+    "multiracial": [
+        "Two or more races",
+        "Multiracial",
+        "Two or more races (not Hispanic or Latino)",
+    ],
     "decline": DECLINE,
 }
 
@@ -325,30 +329,13 @@ def plan_screening(field, fields, profile):
 def plan_answer(field, fields, answer):
     """Render a declared value into the actual choice/control without guessing option IDs."""
     value = answer.value
+    if len(answer.selected_label_sets) > 1 and field.kind in ("radio", "select", "combobox"):
+        return False, None
     if field.kind == "radio":
-        specific_group = field.group and not re.fullmatch(
-            r"\d+[.\s-]*(?:questions?|section)", field.group, re.IGNORECASE
-        )
-
-        def same_group(candidate):
-            if specific_group:
-                return candidate.group == field.group
-            if field.name:
-                return candidate.name == field.name
-            return bool(field.context and candidate.context == field.context)
-
-        peers = [
-            candidate
-            for candidate in fields
-            if candidate.kind == "radio"
-            and candidate.frame == field.frame
-            and same_group(candidate)
-        ]
-        if not peers:
-            return False, None
-        question = field.group if specific_group else field.context
+        peers = group_members(field, fields)
+        question = logical_question(peers)
         option = pick_option(
-            [Option(label=option_label(candidate, question), value=candidate.id) for candidate in peers],
+            [Option(label=option_label(peer, question), value=peer.id) for peer in peers],
             answer.labels,
         )
         if option is None:
@@ -357,30 +344,26 @@ def plan_answer(field, fields, answer):
             return True, None
         value = True
     elif field.kind == "checkbox" and (
-        answer.selected_label_sets or not isinstance(value, bool)
+        answer.selected_label_sets
+        or not isinstance(value, bool)
+        or len(group_members(field, fields)) > 1
     ):
-        labels = (
-            [label for choices in answer.selected_label_sets for label in choices]
-            if answer.selected_label_sets
-            else answer.labels
-        )
-        allowed = {normalize(label) for label in labels}
-        question = field.group or field.context
-        peers = [
-            candidate
-            for candidate in fields
-            if candidate.kind == "checkbox"
-            and candidate.frame == field.frame
-            and (
-                (field.group and candidate.group == field.group)
-                or (not field.group and field.context and candidate.context == field.context)
-            )
+        peers = group_members(field, fields)
+        question = logical_question(peers)
+        options = [Option(label=option_label(peer, question), value=peer.id) for peer in peers]
+        # Every requested answer needs exactly one option. Never silently select a subset.
+        selected = [
+            pick_option(options, labels)
+            for labels in (answer.selected_label_sets or [answer.labels])
         ]
-        if not any(normalize(option_label(candidate, question)) in allowed for candidate in peers):
+        if any(option is None for option in selected):
             return False, None
-        if normalize(option_label(field, question)) not in allowed:
+        desired = {option.value for option in selected}
+        if len(desired) != len(selected):
+            return False, None
+        value = field.id in desired
+        if not value and not field.filled:
             return True, None
-        value = True
     elif field.kind == "select":
         option = pick_option(field.options, answer.labels)
         if option is None:

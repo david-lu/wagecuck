@@ -17,14 +17,26 @@ def logical_groups(fields: list[FormField]) -> list[list[FormField]]:
 
 
 def logical_key(field: FormField) -> tuple:
-    if field.kind in ("radio", "checkbox") and (field.name or field.group):
+    """Use DOM identity; textual fallbacks support snapshots made by older callers."""
+    if field.kind in ("radio", "checkbox"):
+        if field.group_id:
+            return (field.frame, field.kind, "dom", field.group_id)
+        # Native radio membership is determined by name, never its visible heading.
+        if field.kind == "radio" and field.name:
+            return (field.frame, field.kind, "name", field.name)
         group = field.group.strip()
-        if group and not re.fullmatch(
-            r"\d+[.\s-]*(?:questions?|section)", group, re.IGNORECASE
-        ):
-            return (field.frame, field.kind, group)
-        return (field.frame, field.kind, field.name or group)
+        if group and not re.fullmatch(r"\d+[.\s-]*(?:questions?|section)", group, re.IGNORECASE):
+            return (field.frame, field.kind, "label", group)
+        if field.name:
+            return (field.frame, field.kind, "name", field.name)
+        if field.context:
+            return (field.frame, field.kind, "context", field.context)
     return (field.frame, field.kind, field.id)
+
+
+def group_members(field: FormField, fields: list[FormField]) -> list[FormField]:
+    key = logical_key(field)
+    return [peer for peer in fields if logical_key(peer) == key]
 
 
 def logical_question(group: list[FormField]) -> str:
@@ -64,10 +76,12 @@ def logical_field_results(fields, outcomes, analysis):
         failures = [row for row in group_outcomes if row["code"] != "FILLED"]
         if failures:
             code = failures[0]["code"]
-        elif group_outcomes:
-            code = "FILLED"
         elif any(row["route"] == "unresolved" for row in group_analysis):
             code = "UNRESOLVED"
+        elif any(field.invalid for field in group):
+            code = "VALIDATION_FAILED"
+        elif group_outcomes:
+            code = "FILLED"
         elif any(field.filled for field in group):
             code = "ALREADY_FILLED"
         else:
@@ -95,6 +109,7 @@ def logical_field_results(fields, outcomes, analysis):
             "required": any(field.required for field in group),
             "code": code,
             "control_ids": ids,
+            "group_id": group[0].group_id,
             "source": sources[0] if len(sources) == 1 else None,
             "sources": sources,
             "answer_basis": bases[0] if len(bases) == 1 else None,
@@ -106,7 +121,7 @@ def logical_field_results(fields, outcomes, analysis):
                 {
                     "field_id": field_id,
                     "label": option_label(field, question),
-                    "selected": bool(outcome_by_id.get(field_id, {}).get("selected")),
+                    "selected": bool(outcome_by_id.get(field_id, {}).get("selected", field.filled)),
                     "code": outcome_by_id.get(field_id, {}).get("code", "NOT_SELECTED"),
                 }
                 for field, field_id in zip(group, ids, strict=True)

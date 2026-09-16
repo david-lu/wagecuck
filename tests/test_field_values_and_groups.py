@@ -23,7 +23,7 @@ def test_typed_values_respect_dates_numbers_ranges_and_lengths():
     salary = field("salary", "Desired Salary", minimum="50000", maximum="200000", step="1000")
     code = field("code", "Employee code", pattern=r"[A-Z]{2}\d{3}", min_length=5, max_length=5)
     assert value_contract(available) == "date"
-    assert normalize_field_value(available, "2026-10-01") == "10/01/2026"
+    assert normalize_field_value(available, "2026-10-01") == "2026-10-01"
     assert value_contract(salary) == "number"
     assert normalize_field_value(salary, "100000") == "100000"
     with pytest.raises(FieldValueError):
@@ -73,7 +73,7 @@ async def test_parser_captures_native_value_constraints_and_fill_formats_date():
         assert code.pattern == "[A-Z]{2}[0-9]{3}"
         action = Action(field=available, value="2026-10-01", source="agent_fill:made_up")
         await fill(page, action)
-        assert action.value == "10/01/2026"
+        assert action.value == "2026-10-01"
         assert await page.locator('[name="available"]').input_value() == "10/01/2026"
         await browser.close()
 

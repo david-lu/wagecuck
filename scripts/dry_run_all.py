@@ -11,54 +11,9 @@ from wagecuck.agent_config import add_agent_arguments, agent_arguments, create_a
 from wagecuck.evaluation import implementation_fingerprint, load_corpus
 
 
-def summarize(report_path):
-    report = json.loads(report_path.read_text(encoding="utf-8"))
+def render_summary(report, report_name):
+    """Render recorded verification results without recalculating or mutating them."""
     rows = report["results"]
-    for row in rows:
-        if row.get("fields"):
-            control_analysis = {
-                field["field_id"]: field for field in row.get("control_analysis", [])
-            }
-            acted_ids = {outcome["field_id"] for outcome in row.get("control_outcomes", [])}
-            for field in row["fields"]:
-                if field["code"] == "ALREADY_FILLED_OR_NOT_SELECTED" and not field["kind"].endswith(
-                    "_group"
-                ):
-                    field["code"] = "ALREADY_FILLED"
-                acted_routes = list(
-                    dict.fromkeys(
-                        control_analysis[field_id]["route"]
-                        for field_id in field["control_ids"]
-                        if field_id in acted_ids and field_id in control_analysis
-                    )
-                )
-                if acted_routes:
-                    field["route"] = acted_routes[0] if len(acted_routes) == 1 else "mixed"
-            satisfied_codes = {"FILLED", "ALREADY_FILLED"}
-            required = [field for field in row["fields"] if field["required"]]
-            failures = [field for field in required if field["code"] not in satisfied_codes]
-            row["question_count"] = len(row["fields"])
-            row["mapped_question_count"] = sum(
-                field["code"] not in ("UNRESOLVED", "ALREADY_FILLED", "NOT_SELECTED_GROUP_OPTION")
-                for field in row["fields"]
-            )
-            row["filled_question_count"] = sum(field["code"] == "FILLED" for field in row["fields"])
-            row["satisfied_question_count"] = sum(
-                field["code"] in satisfied_codes for field in row["fields"]
-            )
-            row["required_question_count"] = len(required)
-            row["required_question_satisfied_count"] = len(required) - len(failures)
-            row["required_fill_pass"] = not failures
-            row["required_fill_failures"] = [field["question"] for field in failures]
-        if "unmapped_fields" in row:
-            row["required_answers_missing"] = list(
-                dict.fromkeys(
-                    (f["group"] or f["label"]) if f["kind"] == "radio" else f["label"]
-                    for f in row["unmapped_fields"]
-                    if f["required"]
-                )
-            )
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     totals = Counter(row["code"] for row in rows)
     agent = report.get("agent", {})
     lines = [
@@ -138,15 +93,22 @@ def summarize(report_path):
         [
             "",
             (
-                f"Aggregate per-case results are in [the JSON report]({report_path.name})."
+                f"Aggregate per-case results are in [the JSON report]({report_name})."
                 if report.get("aggregate_only")
                 else "Field-level failures and exact unanswered questions are in "
-                f"[the JSON report]({report_path.name})."
+                f"[the JSON report]({report_name})."
             ),
             "",
         ]
     )
-    report_path.with_suffix(".md").write_text("\n".join(lines), encoding="utf-8")
+    return "\n".join(lines)
+
+
+def summarize(report_path):
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report_path.with_suffix(".md").write_text(
+        render_summary(report, report_path.name), encoding="utf-8"
+    )
 
 
 def main():
