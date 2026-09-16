@@ -4,13 +4,14 @@ import asyncio
 import json
 import re
 import sys
+from contextlib import AsyncExitStack
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
 from uuid import uuid4
 
+from playwright.async_api import Browser, async_playwright
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeout
-from playwright.async_api import async_playwright
 
 from .agent import MappingAgent, WorkflowAgent
 from .browser import (
@@ -42,8 +43,18 @@ class ApplicationRunner:
         self.captcha = captcha or CapSolver()
 
     async def run(
-        self, url: str, profile: Profile, options: RunOptions | None = None
+        self,
+        url: str,
+        profile: Profile,
+        options: RunOptions | None = None,
+        *,
+        browser: Browser | None = None,
     ) -> ApplicationResult:
+        """Run once in a fresh context; an optional borrowed browser stays open.
+
+        The caller controls a borrowed browser's launch settings. This invocation
+        always owns its context, including storage state, timeouts, and tracing.
+        """
         options = options or RunOptions()
         result = ApplicationResult(
             run_id=uuid4().hex,
@@ -55,7 +66,7 @@ class ApplicationRunner:
         directory = options.artifacts_dir / result.run_id
         directory.mkdir(parents=True, exist_ok=True)
         result.artifact_dir = str(directory.resolve())
-        store, key, claimed, context, browser = None, "", False, None, None
+        store, key, claimed = None, "", False
 
         def event(state, **data):
             with (directory / "events.jsonl").open("a", encoding="utf-8") as handle:
@@ -98,13 +109,17 @@ class ApplicationRunner:
                 claimed = True
             event("starting", mode=options.mode)
             async with asyncio.timeout(options.timeout_seconds) as workflow_budget:
-                async with async_playwright() as playwright:
-                    browser = await playwright.chromium.launch(
-                        headless=options.headless, slow_mo=options.slow_mo_ms
-                    )
+                async with AsyncExitStack() as resources:
+                    if browser is None:
+                        playwright = await resources.enter_async_context(async_playwright())
+                        browser = await playwright.chromium.launch(
+                            headless=options.headless, slow_mo=options.slow_mo_ms
+                        )
+                        resources.push_async_callback(browser.close)
                     context = await browser.new_context(
                         storage_state=str(options.storage_state) if options.storage_state else None
                     )
+                    resources.push_async_callback(context.close)
                     context.set_default_timeout(options.action_timeout_ms)
                     context.set_default_navigation_timeout(options.navigation_timeout_ms)
                     if options.capture_sensitive_artifacts:
@@ -123,8 +138,6 @@ class ApplicationRunner:
                                 reason=reason.group(0) if reason else type(exc).__name__,
                             )
                             if attempt == 1:
-                                await context.close()
-                                await browser.close()
                                 raise ApplicationError(
                                     Code.NAVIGATION_FAILED,
                                     "Could not load the application URL after two attempts.",
@@ -138,8 +151,6 @@ class ApplicationRunner:
                             if response.status in (401, 403, 429)
                             else Code.NAVIGATION_FAILED
                         )
-                        await context.close()
-                        await browser.close()
                         raise ApplicationError(code, f"Job page returned HTTP {response.status}.")
                     try:
                         await self._workflow(
@@ -162,8 +173,6 @@ class ApplicationRunner:
                                 await context.tracing.stop(path=str(directory / "trace.zip"))
                             except PlaywrightError:
                                 event("artifact_capture_failed")
-                        await context.close()
-                        await browser.close()
         except ApplicationError as exc:
             result.code, result.message, result.unresolved = exc.code, str(exc), exc.unresolved
         except (TimeoutError, PlaywrightTimeout):
@@ -333,7 +342,9 @@ class ApplicationRunner:
                 encoding="utf-8",
             )
             execution = await execute_actions(
-                page, actions, previous_actions=list(previous_actions.values()),
+                page,
+                actions,
+                previous_actions=list(previous_actions.values()),
                 assessed_fields=snap.fields,
             )
             previous_actions = {
@@ -395,12 +406,14 @@ class ApplicationRunner:
             )
             active_ids = {field_id(field) for field in after.fields}
             failed = [
-                outcome for outcome in execution.fields
+                outcome
+                for outcome in execution.fields
                 if field_id(outcome.action.field) in active_ids and not outcome.verified
             ]
             if failed:
                 raise ApplicationError(
-                    Code(failed[0].code), failed[0].message,
+                    Code(failed[0].code),
+                    failed[0].message,
                     [outcome.action.field.label for outcome in failed],
                 )
             missing = report["required_answers_missing"]
@@ -417,7 +430,8 @@ class ApplicationRunner:
                 )
             if not report["required_fill_pass"]:
                 raise ApplicationError(
-                    Code.VALIDATION_FAILED, "Required values were not retained.",
+                    Code.VALIDATION_FAILED,
+                    "Required values were not retained.",
                     report["required_fill_failures"],
                 )
             next_controls = [

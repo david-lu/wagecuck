@@ -6,9 +6,15 @@ import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
+from uuid import uuid4
 
 from wagecuck.agent_config import add_agent_arguments, agent_arguments, create_agent
-from wagecuck.evaluation import implementation_fingerprint, load_corpus
+from wagecuck.evaluation import (
+    add_concurrency_argument,
+    default_report_path,
+    implementation_fingerprint,
+    load_corpus,
+)
 
 
 def render_summary(report, report_name):
@@ -21,7 +27,9 @@ def render_summary(report, report_name):
         "",
         (
             f"Checked: {report['checked_at']}. Dataset: {report.get('dataset_split', 'legacy')}. "
-            f"URLs: {len(rows)}. Employer submissions: 0."
+            f"URLs: {len(rows)}. Concurrency: {report.get('concurrency', 1)}. "
+            f"Browser pool: {report.get('pool_enabled', False)}. "
+            "Employer submissions: 0."
         ),
         (
             f"Model provider: {agent.get('provider', 'not recorded')}. "
@@ -124,12 +132,17 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--summarize-only", action="store_true")
     add_agent_arguments(parser)
+    add_concurrency_argument(parser)
     args = parser.parse_args()
+    if args.summarize_only and args.output is None:
+        parser.error("--summarize-only requires --output pointing to an existing JSON report")
     root = Path(__file__).resolve().parents[1]
     if args.manifests is None:
         args.manifests = [root / "examples" / f"{args.split}-jobs.json"]
     if args.output is None:
-        args.output = root / "runs" / "reports" / f"dry-run-{args.split}.json"
+        args.output = default_report_path(
+            f"dry-run-{args.split}", directory=root / "runs" / "reports"
+        )
     corpora = [load_corpus(manifest, expected_split=args.split) for manifest in args.manifests]
     aggregate_only = args.split == "validation"
     fingerprint = implementation_fingerprint(root)
@@ -141,9 +154,12 @@ def main():
         scripts = Path(__file__).parent
         reports = []
         expected = []
+        evaluation_id = uuid4().hex[:12]
         for index, (manifest, corpus) in enumerate(zip(args.manifests, corpora, strict=True)):
             expected.extend(case["id"] for case in corpus.cases)
-            report = args.output.parent / f"navigation-{args.split}-{index + 1}.json"
+            report = args.output.parent / (
+                f"{args.output.stem}-navigation-{evaluation_id}-{index + 1}.json"
+            )
             command = [
                 sys.executable,
                 str(scripts / "inspect_live.py"),
@@ -155,7 +171,11 @@ def main():
                 str(report),
                 "--expected-split",
                 args.split,
+                "--concurrency",
+                str(args.concurrency),
             ]
+            if args.pool:
+                command.append("--pool")
             if aggregate_only:
                 command.extend(("--aggregate-only", "--ephemeral-artifacts"))
             subprocess.run(command, check=True)
@@ -173,8 +193,12 @@ def main():
             args.split,
             "--implementation-fingerprint",
             fingerprint,
+            "--concurrency",
+            str(args.concurrency),
             *agent_arguments(args),
         ]
+        if args.pool:
+            probe_command.append("--pool")
         if aggregate_only:
             probe_command.append("--aggregate-only")
         subprocess.run(probe_command, check=True)
@@ -182,6 +206,7 @@ def main():
         if Counter(expected) != Counter(actual):
             raise RuntimeError("Coverage report is incomplete: corpus/result IDs differ")
     summarize(args.output)
+    print(f"Report: {args.output}", flush=True)
 
 
 if __name__ == "__main__":

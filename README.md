@@ -1,4 +1,4 @@
-﻿# wagecuck
+# wagecuck
 
 One job URL + one profile -> a JSON result. Playwright navigates and fills the form. Optional model assistance maps unfamiliar questions to profile fields, then drafts answers for anything still unresolved.
 
@@ -112,10 +112,14 @@ Then run:
 Run the training corpus without submitting applications:
 
 ```powershell
-.venv\Scripts\python.exe scripts/dry_run_all.py --split training
+.venv\Scripts\python.exe scripts/dry_run_all.py --split training --pool --concurrency 4
 ```
 
-Add `--agent-provider openai --agent-fill` for model assistance. Reports go to `runs/reports/`. The corpus probe blocks browser networking before filling and does not click Next or Submit. A required-field pass means the discovered required questions are satisfied by verified values in the loaded form step; it does not prove server acceptance or later-step compatibility.
+Use `--pool --concurrency 4` to reuse up to four browser workers during both navigation and form probing. Extra jobs wait in the queue. **The hard limit is 8 active jobs per evaluation**, with or without pooling; larger values are rejected. Pooling is optional, and concurrency defaults to `1`.
+
+Each job gets a fresh browser context, planner, and model client; cookies and profile state are not shared. Results stay in corpus order. Browsers close when the evaluation ends. Without `--pool`, each job launches its own browser, subject to the same concurrency limit.
+
+Add `--agent-provider openai --agent-fill` for model assistance. Each evaluation writes uniquely named reports under `runs/reports/` and prints the final path. Use `--output runs/reports/my-evaluation.json` to choose a filename. Give separate invocations different output filenames. The corpus probe blocks browser networking before filling and does not click Next or Submit. A required-field pass means the discovered required questions are satisfied by verified values in the loaded form step; it does not prove server acceptance or later-step compatibility.
 
 `--split validation` evaluates the held-out corpus and saves aggregate results only. Do not use validation questions or failures to tune field behavior.
 
