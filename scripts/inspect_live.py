@@ -21,7 +21,7 @@ async def main():
     parser.add_argument("--aggregate-only", action="store_true")
     parser.add_argument("--ephemeral-artifacts", action="store_true")
     parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
-    parser.add_argument("--output", type=Path, default=Path("docs/live-report.json"))
+    parser.add_argument("--output", type=Path, default=Path("runs/reports/live-report.json"))
     parser.add_argument("--limit", type=int)
     args = parser.parse_args()
     corpus = load_corpus(args.manifest, expected_split=args.expected_split)

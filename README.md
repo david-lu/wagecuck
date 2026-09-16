@@ -166,7 +166,7 @@ The default hosted model is `gpt-5.6-terra`, configurable through `--agent-model
 `WAGECUCK_AGENT_MODEL`. Requests use the Responses API with strict JSON schemas and `store=false`.
 
 ```powershell
-.venv\Scripts\python.exe scripts/dry_run_all.py --agent-provider openai --agent-fill --output docs/dry-run-training.json
+.venv\Scripts\python.exe scripts/dry_run_all.py --agent-provider openai --agent-fill
 ```
 
 Navigation is deterministic. The subsequent offline DOM probe runs the configured model for
@@ -180,7 +180,7 @@ for the three model stages. No application is submitted.
 To re-probe already inspected URLs without repeating the navigation pass:
 
 ```powershell
-.venv\Scripts\python.exe scripts/probe_live.py --reports docs/navigation-1.json docs/navigation-2.json --agent-provider openai --agent-fill --output docs/dry-run-openai.json
+.venv\Scripts\python.exe scripts/probe_live.py --reports runs/reports/navigation-training-1.json --agent-provider openai --agent-fill --output runs/reports/dry-run-openai.json
 ```
 
 Or use an already installed local Ollama model:
@@ -201,7 +201,7 @@ Every discovered editable application field is considered, including optional fi
 
 Mapping and requirement assessment send field metadata (including nearby page text) and allowed fact **names** to the configured model endpoint. Agent-fill sends the full resolved profile fact **values**, including contact, address, employment, education, screening and consent declarations. Credential keys and document paths are excluded. It does not send résumé PDF bytes. Browser-rendered text can itself contain personal information. Answers record `answer_basis` (`profile`, `inferred`, or `made_up`), `made_up`, source keys and a reason. Unsupported numbers are allowed in explicitly invented answers. These labels rely on model classification with additional structural checks; they do not prove semantic correctness. Generated answers do not modify the profile JSON. Use the review option above to inspect answers before submitting.
 
-`result.json` includes an `answer_log` with the field, provenance and fill status, including failures. `events.jsonl` and dry-run field outcomes also include `made_up`. `analysis-NN.json` records every discovered field's label, type, `required`/`optional`/`unknown` status, requirement evidence, chosen route and source keys. Unknown means the page did not provide conclusive evidence. Hidden, disabled, read-only and search controls are excluded; conditional fields are reconsidered when revealed. `inspect` produces this report without entering values or generating prose. No model is needed for deterministic mappings. Agent transport and decisions are tested with controlled responses. Real OpenAI corpus results are recorded in [the model-backed dry-run report](docs/dry-run-openai.md); a local Ollama model has not yet been evaluated in this environment.
+`result.json` includes an `answer_log` with the field, provenance and fill status, including failures. `events.jsonl` and dry-run field outcomes also include `made_up`. `analysis-NN.json` records every discovered field's label, type, `required`/`optional`/`unknown` status, requirement evidence, chosen route and source keys. Unknown means the page did not provide conclusive evidence. Hidden, disabled, read-only and search controls are excluded; conditional fields are reconsidered when revealed. `inspect` produces this report without entering values or generating prose. No model is needed for deterministic mappings. Agent transport and decisions are tested with controlled responses. Generated corpus reports are written under `runs/reports/` and are not committed.
 
 ### Explicit screening declarations
 
@@ -245,11 +245,11 @@ result = asyncio.run(ApplicationRunner().run(
 print(result.model_dump_json(indent=2))
 ```
 
-`success` means confirmed submission only. `ready` and `inspected` have `success: false` because no application was submitted. `unknown / SUBMISSION_UNCONFIRMED` means the final action may have reached the employer; it is deliberately distinct from a retryable failure. See [result semantics and error codes](docs/architecture.md).
+`success` means confirmed submission only. `ready` and `inspected` have `success: false` because no application was submitted. `unknown / SUBMISSION_UNCONFIRMED` means the final action may have reached the employer; it is deliberately distinct from a retryable failure.
 
 Each run saves `result.json`, an event journal, normalized step snapshots and per-field analysis under `runs/<run_id>/`. Default snapshots omit entered values, adjacent context and full page text. `--sensitive-artifacts` also saves a screenshot and trace; these contain applicant data and should be kept private.
 
-## Verification and research
+## Verification
 
 ```powershell
 .venv\Scripts\python.exe -m pytest -q
@@ -271,14 +271,14 @@ The eight-posting [validation corpus](examples/validation-jobs.json) is held out
 .venv\Scripts\python.exe scripts/dry_run_all.py --split validation --agent-provider openai --agent-fill
 ```
 
-Validation artifacts contain counts and outcomes only. Field labels, choices, mappings and failure details are discarded, and the report records the exact runtime-source fingerprint. Do not change field-identification or filling behavior in response to validation results. The full protocol and contamination rules are in [the evaluation guide](docs/evaluation.md).
+Validation artifacts contain counts and outcomes only. Field labels, choices, mappings and failure details are discarded, and the report records the exact runtime-source fingerprint. Do not change field-identification or filling behavior in response to validation results. If validation output drives a runtime change, select a new unseen validation corpus before making another held-out claim.
 
-This navigates every URL, records closed/auth/access failures, then exercises the real field planner and executor on reachable forms with networking disabled before entering the fictional profile. It blocks service workers and WebSockets and never clicks Next or Submit after filling. See the [per-application report](docs/dry-run-all.md) and [field-level results](docs/dry-run-all.json). Offline checks cannot prove server validation, uploaded-document acceptance, network-backed autocomplete, later application pages, or CAPTCHA acceptance. No universal ATS support is claimed.
+This navigates every URL, records closed/auth/access failures, then exercises the real field planner and executor on reachable forms with networking disabled before entering the fictional profile. It blocks service workers and WebSockets and never clicks Next or Submit after filling. Reports are written under `runs/reports/`. Offline checks cannot prove server validation, uploaded-document acceptance, network-backed autocomplete, later application pages, or CAPTCHA acceptance. No universal ATS support is claimed.
 
-The [unmapped-field review](docs/unmapped-field-audit.md) audits all 173 previously unmapped controls (105 distinct question/type/requirement groups). With the updated profile, 54 controls have a deterministic plan; the report also lists missing declarations and unresolved choices/questions. Reproduce it with `.venv\Scripts\python.exe scripts/audit_unmapped.py`. This uses saved metadata only and does not constitute a new live browser test. The original dry-run results are preserved.
+Run `.venv\Scripts\python.exe scripts/audit_unmapped.py` after a training dry run to generate an unmapped-field review under `runs/reports/`. This uses saved metadata only and does not constitute a new live browser test.
 
 Field parsing follows ARIA references (including open shadow roots), native labels, scoped question/group headings, and input metadata. Mapping normalizes required markers and common contact-field aliases; legal and employer-specific answers must exist in the profile. Radio selection uses the parent question, React Select verification checks the rendered selected value, and telephone verification accounts for a separately displayed dial code. Rules identify a host family; an empty selector rule is not a claim of complete support for that family.
 
-Read the [source/behavior research](docs/research.md) and [architecture](docs/architecture.md). Authentication/account creation, OTP/MFA, automatic repeated history rows, closed shadow roots, and arbitrary custom controls remain explicit limitations. Workday rules currently cover entry/navigation and basic field selectors, not a complete Workday account/application lifecycle.
+Authentication/account creation, OTP/MFA, automatic repeated history rows, closed shadow roots, and arbitrary custom controls remain explicit limitations. Workday rules currently cover entry/navigation and basic field selectors, not a complete Workday account/application lifecycle.
 
 The service is shaped for a future batch queue: run-scoped browser contexts/artifacts, stable profile/job keys, durable claims, bounded workflows and machine-readable retry guidance. A production distributed queue and cross-machine deduplication are not included.

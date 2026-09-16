@@ -125,7 +125,7 @@ async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reports", type=Path, nargs="+", required=True)
     parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
-    parser.add_argument("--output", type=Path, default=Path("docs/offline-fill-report.json"))
+    parser.add_argument("--output", type=Path, default=Path("runs/reports/offline-fill-report.json"))
     parser.add_argument("--dataset-split", choices=("training", "validation"), default="training")
     parser.add_argument("--implementation-fingerprint", default="")
     parser.add_argument("--aggregate-only", action="store_true")

@@ -167,7 +167,7 @@ def main():
     if args.manifests is None:
         args.manifests = [root / "examples" / f"{args.split}-jobs.json"]
     if args.output is None:
-        args.output = root / "docs" / f"dry-run-{args.split}.json"
+        args.output = root / "runs" / "reports" / f"dry-run-{args.split}.json"
     corpora = [load_corpus(manifest, expected_split=args.split) for manifest in args.manifests]
     aggregate_only = args.split == "validation"
     fingerprint = implementation_fingerprint(root)
