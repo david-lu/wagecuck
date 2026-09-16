@@ -1,12 +1,11 @@
 import argparse
 import asyncio
 import json
-import os
 from pathlib import Path
 
 from pydantic import ValidationError
 
-from .agent import OllamaMappingAgent
+from .agent_config import add_agent_arguments, create_agent
 from .demo import generate_profile
 from .models import Profile, RunOptions
 from .runner import ApplicationRunner
@@ -59,16 +58,7 @@ def main():
         action="store_true",
         help="Save screenshot and trace, which contain applicant data",
     )
-    run.add_argument("--agent-model", default=os.environ.get("WAGECUCK_AGENT_MODEL"))
-    run.add_argument(
-        "--agent-fill",
-        action="store_true",
-        help="Draft unresolved free-text answers from supplied profile facts (requires --agent-model)",
-    )
-    run.add_argument(
-        "--agent-endpoint",
-        default=os.environ.get("WAGECUCK_AGENT_ENDPOINT", "http://localhost:11434"),
-    )
+    add_agent_arguments(run)
     args = parser.parse_args()
     if args.command == "demo-server":
         from .fixtures import serve
@@ -80,8 +70,10 @@ def main():
         return 0
     if args.wait_for_user and (args.mode != "fill" or args.headed is False):
         parser.error("--wait-for-user requires fill mode and cannot be combined with --headless")
-    if args.agent_fill and not args.agent_model:
-        parser.error("--agent-fill requires --agent-model or WAGECUCK_AGENT_MODEL")
+    try:
+        agent = create_agent(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     try:
         profile = Profile.load(args.profile)
         options = RunOptions(
@@ -108,7 +100,6 @@ def main():
             )
         )
         return 1
-    agent = OllamaMappingAgent(args.agent_model, args.agent_endpoint) if args.agent_model else None
     result = asyncio.run(ApplicationRunner(agent).run(args.url, profile, options))
     print(result.model_dump_json(indent=2))
     return (

@@ -30,6 +30,7 @@ flowchart TD
 | `ats.json`, `ats.py` | Versioned local selector/action rules, exact hostname detection |
 | `parse.js`, `browser.py` | Labels/ARIA/native controls, frame and open shadow-root traversal; Playwright actions and value verification |
 | `agent.py` | Deterministic planner; optional requirement assessment, enumerated fact mapping and grounded prose drafting |
+| `agent_config.py` | Shared CLI/environment configuration and OpenAI Responses transport with strict schemas; `.env` loading and provider selection |
 | `screening.py` | Explicit country-specific authorization, visa, sponsorship, veteran and disability declarations |
 | `profile_fields.py` | Question intent to named application fields; shared choice rendering and per-field declaration guards |
 | `captcha.py` | CapSolver transport, widget detection, explicit token delivery |

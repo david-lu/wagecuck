@@ -81,6 +81,22 @@ async def test_drafting_is_disabled_by_default(profile):
     assert not actions and unresolved == [f]
 
 
+async def test_missing_known_address_component_cannot_be_replaced_by_another_fact(profile):
+    class Agent:
+        async def map(self, fields, keys):
+            pytest.fail("A recognized missing address line is not an ambiguous field")
+
+        async def draft(self, fields, facts):
+            pytest.fail("A missing address line must not be drafted")
+
+    profile.address.line2 = ""
+    profile.facts.pop("address_line2", None)
+    f = field("line2", "Address Line 2")
+    actions, unresolved = await WorkflowAgent(Agent()).plan([f], profile, agent_fill=True)
+    assert not actions
+    assert unresolved == [f]
+
+
 @pytest.mark.parametrize(
     "keys,text",
     [(["invented_degree"], "I have a degree."), (["skills"], "I have 99 years of experience.")],

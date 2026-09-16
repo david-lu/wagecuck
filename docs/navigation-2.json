@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-16T06:41:04.451624+00:00",
+  "checked_at": "2026-09-16T07:17:14.194993+00:00",
   "mode": "inspect",
   "applicant_data_entered": false,
   "applications_submitted": 0,
@@ -17,7 +17,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "efb14722e6484f40bf1f1f93b36e4386"
+      "run_id": "dcbf1c34d36e4ad9a9e74f51bc8d6a8a"
     },
     {
       "id": "workable-activ",
@@ -32,7 +32,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "64a1b3ac8d4d4e99acadb14025f328e6"
+      "run_id": "2176577b8c15467c96cf007500d37718"
     },
     {
       "id": "smartrecruiters-servicenow",
@@ -47,7 +47,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "44910291be7247519ed535bbc7a0ddd2"
+      "run_id": "026ab042e78a452882f29396838cafc9"
     },
     {
       "id": "smartrecruiters-ubisoft",
@@ -62,7 +62,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "402c55fc3a8f4ab9b96cd236cb8b87ac"
+      "run_id": "1ea217778cda4137a880a1593fdb1bbb"
     },
     {
       "id": "jobvite-progress",
@@ -77,7 +77,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "16817ba9c11f4d9091ed0dc7c9b5f281"
+      "run_id": "d2b7daacaa254eb8819629ccd49f883b"
     },
     {
       "id": "jobvite-ezra",
@@ -100,7 +100,7 @@
           "required": true
         }
       ],
-      "run_id": "5cf327a4274b4b589e8c5b49e04ca87d"
+      "run_id": "d14fbb18a20440ff8731909f9e577d42"
     },
     {
       "id": "recruitee-bluestone",
@@ -141,7 +141,7 @@
           "required": false
         }
       ],
-      "run_id": "2007290a5d5f4ff1913f9af9eb007f39"
+      "run_id": "e56ac975096f455dbabf9af563fd6027"
     },
     {
       "id": "recruitee-trafilea",
@@ -153,11 +153,10 @@
       "final_url": "https://trafilea.recruitee.com/o/senior-software-engineer-backend/c/new",
       "field_count": 16,
       "identity_fields_detected": true,
-      "mapped_field_count": 6,
+      "mapped_field_count": 7,
       "required_answers_missing": [
         "Where are you located? *",
-        "What AWS services have you worked with directly? *",
-        "Which channel led you to apply? *"
+        "What AWS services have you worked with directly? *"
       ],
       "fields": [
         {
@@ -241,7 +240,7 @@
           "required": true
         }
       ],
-      "run_id": "2fa674f095d243b199a391f72a6ed4d5"
+      "run_id": "a4ecb03ce7ed4d84b5509cb7ecdc0afe"
     },
     {
       "id": "bamboohr-r2",
@@ -329,7 +328,7 @@
           "required": true
         }
       ],
-      "run_id": "60ff5dbda3c94af5899d5b652d55f89d"
+      "run_id": "cdf556a7ee084838b266591a96cb03d5"
     },
     {
       "id": "bamboohr-versafile",
@@ -344,7 +343,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "b54dcebc588b463ebb3b4c06c6a6af9a"
+      "run_id": "82343890079c4126ad8fcb1c1c7b2129"
     },
     {
       "id": "teamtailor-reel",
@@ -359,7 +358,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "5e4bfee8a4ed44eba3866902a700fa9f"
+      "run_id": "795f1f269cb141cda12f9e852f56074d"
     },
     {
       "id": "teamtailor-jenni",
@@ -374,7 +373,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "d7021df276b3449f932f972e5a0c8ac1"
+      "run_id": "06f74efda8564693b1d93841e03faea7"
     },
     {
       "id": "pinpoint-carto",
@@ -389,7 +388,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "30cae7c63cb14a92bc9c4507ad4f7026"
+      "run_id": "09313dcbb1334ce487f0ddfa4f22d654"
     },
     {
       "id": "breezy-codebase",
@@ -404,7 +403,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "d54dfe567f204be2a8e48b10da665c13"
+      "run_id": "302bfa3d2b1c44f2b0efcb5a364d2643"
     },
     {
       "id": "breezy-opensea",
@@ -455,7 +454,7 @@
           "required": false
         }
       ],
-      "run_id": "4c12010f4dd74e6ab6feaaa498a92846"
+      "run_id": "6d2cbc60e56e406bb0b32d870f514da8"
     },
     {
       "id": "icims-platform",
@@ -470,7 +469,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "93e6ab69d50a43c89e05eea64f162a8b"
+      "run_id": "f3a987c67312405ba549e47760523735"
     },
     {
       "id": "teamtailor-clearroute",
@@ -630,19 +629,19 @@
           "required": false
         }
       ],
-      "run_id": "6ea032cb66494825833fc0dada3d5828"
+      "run_id": "0632c56270ff42bd89a5f449b4516a63"
     },
     {
       "id": "pinpoint-carto-current",
       "url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2",
       "code": "INSPECTED_NOT_SUBMITTED",
-      "message": "Detected 23 fields; no applicant data entered.",
+      "message": "Detected 6 fields; no applicant data entered.",
       "expected_ats": "pinpoint",
       "ats": "pinpoint",
       "final_url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2/applications/new",
-      "field_count": 23,
+      "field_count": 6,
       "identity_fields_detected": true,
-      "mapped_field_count": 10,
+      "mapped_field_count": 5,
       "required_answers_missing": [
         "(Required) Allow us to process your personal information. *"
       ],
@@ -663,43 +662,8 @@
           "required": true
         },
         {
-          "label": "Phone",
-          "kind": "tel",
-          "required": false
-        },
-        {
           "label": "LinkedIn URL",
           "kind": "text",
-          "required": false
-        },
-        {
-          "label": "application_form[application][country]",
-          "kind": "combobox",
-          "required": false
-        },
-        {
-          "label": "Address Line 1",
-          "kind": "text",
-          "required": true
-        },
-        {
-          "label": "Address Line 2",
-          "kind": "text",
-          "required": false
-        },
-        {
-          "label": "Town",
-          "kind": "text",
-          "required": true
-        },
-        {
-          "label": "Postcode",
-          "kind": "text",
-          "required": true
-        },
-        {
-          "label": "Attach R\u00e9sum\u00e9 / CV",
-          "kind": "file",
           "required": false
         },
         {
@@ -708,62 +672,12 @@
           "required": false
         },
         {
-          "label": "Do you have an advanced level in English? yes",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Do you have an advanced level in English? no",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Do you have geospatial knowledge, technical background or professional experience working with SQL in data analytics? yes",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Do you have geospatial knowledge, technical background or professional experience working with SQL in data analytics? no",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Are you based in Central/ Easter time zone in USA? yes",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Are you based in Central/ Easter time zone in USA? no",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Do you have 4+ years of enterprise customer-facing technical Customer Success, Forward Deployed Engineer, Technical Account Management, or Solutions Engineering? yes",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Do you have 4+ years of enterprise customer-facing technical Customer Success, Forward Deployed Engineer, Technical Account Management, or Solutions Engineering? no",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Do you have valid work authorization to work full-time in the US? yes",
-          "kind": "radio",
-          "required": false
-        },
-        {
-          "label": "Do you have valid work authorization to work full-time in the US? no",
-          "kind": "radio",
-          "required": false
-        },
-        {
           "label": "(Required) Allow us to process your personal information. *",
           "kind": "checkbox",
           "required": true
         }
       ],
-      "run_id": "b1bb9e68752a4b918e5d1c9b412cc7be"
+      "run_id": "a833d48a299f4149ae0fd45fdfbdd0c4"
     },
     {
       "id": "workable-chipply",
@@ -834,7 +748,7 @@
           "required": true
         }
       ],
-      "run_id": "bb8b4d84686f4eb5b4c6398a89011384"
+      "run_id": "a57b1bb0116144c3bb1eb172e18f9df8"
     },
     {
       "id": "breezy-codebase-current",
@@ -905,7 +819,7 @@
           "required": true
         }
       ],
-      "run_id": "f2035683aba842b09fe69a736aa805ae"
+      "run_id": "56c487b144044265a0aae0e3ab0cb476"
     }
   ]
 }

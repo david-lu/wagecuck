@@ -146,25 +146,49 @@ For “How did you hear about …?”, `application.randomize_source: true` sele
 
 ## Optional agent
 
-Use an already installed local Ollama model:
+The CLI and dry-run scripts load `.env` from the working directory. Existing shell variables
+take precedence. Copy `.env.example` to `.env` and set `OPENAI_API_KEY` locally. A configured
+OpenAI key enables the hosted fallback by default; `--agent-provider openai` selects it explicitly.
+The default hosted model is `gpt-5.6-terra`, configurable through `--agent-model` or
+`WAGECUCK_AGENT_MODEL`. Requests use the Responses API with strict JSON schemas and `store=false`.
 
 ```powershell
-.venv\Scripts\python.exe -m wagecuck run "JOB_APPLICATION_URL" --profile profiles/private/me.json --agent-model "YOUR_INSTALLED_MODEL"
+.venv\Scripts\python.exe scripts/dry_run_all.py --agent-provider openai --agent-fill --output docs/dry-run-openai.json
+```
+
+Navigation is deterministic. The subsequent offline DOM probe runs the configured model for
+requirement assessment, unresolved profile-field mapping, and (with `--agent-fill`) grounded
+prose. Browser networking is blocked before filling; Python model requests remain available.
+The JSON report records provider, model, attempted call counts per case, field routes and
+profile source keys. Model failures produce `AGENT_FAILED`, never silently disable the fallback.
+`--agent-timeout` bounds each request (60 seconds by default); the probe allows additional time
+for the three model stages. No application is submitted.
+
+To re-probe already inspected URLs without repeating the navigation pass:
+
+```powershell
+.venv\Scripts\python.exe scripts/probe_live.py --reports docs/navigation-1.json docs/navigation-2.json --agent-provider openai --agent-fill --output docs/dry-run-openai.json
+```
+
+Or use an already installed local Ollama model:
+
+```powershell
+.venv\Scripts\python.exe -m wagecuck run "JOB_APPLICATION_URL" --profile profiles/private/me.json --agent-provider ollama --agent-model "YOUR_INSTALLED_MODEL"
 ```
 
 Every discovered editable application field is considered, including optional fields. The flow is:
 
 1. Parse native/ARIA labels, question groups, adjacent help text, input types and available options. Match named profile fields, declarations, documents and deterministic contact aliases first; legacy exact-question overrides remain supported.
-2. With `--agent-model`, assess unclear requiredness using quoted page evidence and map unresolved fields by choosing from an enumerated list of profile field names. A mapping can select one fact or combine several text facts. Unknown keys, unsupported combinations and invalid evidence are rejected; mappings below 95% confidence are skipped. The model cannot override native required constraints.
+2. With a configured model, assess unclear requiredness using quoted page evidence and map unresolved fields by choosing from an enumerated list of profile field names. A mapping can select one fact or combine several text facts. Unknown keys, unsupported combinations and invalid evidence are rejected; mappings below 95% confidence are skipped. The model cannot override native required constraints.
 3. With **`--agent-fill`**, draft supported open-ended text questions still lacking a mapping from supplied career facts. This does not fabricate missing qualifications or fill missing legal, demographic, consent or eligibility declarations. Questions without sufficient source facts remain unresolved.
 
 ```powershell
-.venv\Scripts\python.exe -m wagecuck run "JOB_APPLICATION_URL" --profile profiles/private/me.json --agent-model "YOUR_INSTALLED_MODEL" --agent-fill --wait-for-user
+.venv\Scripts\python.exe -m wagecuck run "JOB_APPLICATION_URL" --profile profiles/private/me.json --agent-provider openai --agent-fill --wait-for-user
 ```
 
 Mapping and requirement assessment send field metadata (including nearby page text) and allowed fact **names** to the configured model endpoint. Agent-fill also sends selected career fact **values**, such as skills and employment/education/project facts. It does not send résumé PDF bytes. Browser-rendered text can itself contain personal information. Drafts cite source keys; validation rejects unsupported numbers, but cannot prove every generated sentence is accurate. Use the review option above to inspect drafts before submitting.
 
-`analysis-NN.json` records every discovered field's label, type, `required`/`optional`/`unknown` status, requirement evidence, chosen route and source keys. Unknown means the page did not provide conclusive evidence. Hidden, disabled, read-only and search controls are excluded; conditional fields are reconsidered when revealed. `inspect` produces this report without entering values or generating prose. No model is needed for deterministic mappings. Agent transport and decisions are tested with controlled responses; a real Ollama model has not yet been evaluated in this environment.
+`analysis-NN.json` records every discovered field's label, type, `required`/`optional`/`unknown` status, requirement evidence, chosen route and source keys. Unknown means the page did not provide conclusive evidence. Hidden, disabled, read-only and search controls are excluded; conditional fields are reconsidered when revealed. `inspect` produces this report without entering values or generating prose. No model is needed for deterministic mappings. Agent transport and decisions are tested with controlled responses. Real OpenAI corpus results are recorded in [the model-backed dry-run report](docs/dry-run-openai.md); a local Ollama model has not yet been evaluated in this environment.
 
 ### Explicit screening declarations
 

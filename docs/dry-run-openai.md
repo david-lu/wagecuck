@@ -43,4 +43,4 @@ Outcome counts: FIELD_FILL_FAILED: 7, AGENT_FAILED: 3, JOB_CLOSED: 7, MAPPED_FIE
 | [workable-chipply](https://apply.workable.com/chipply/j/3EBC0B6983/apply/) | MAPPED_FIELDS_VERIFIED | 10 / 10 | 0 | not observed |
 | [breezy-codebase-current](https://codebase.breezy.hr/p/c1b62fc81300-senior-full-stack-developer-react-js-node-js/apply) | FIELD_FILL_FAILED | 9 / 10 | 0 | not observed |
 
-Field-level failures and exact unanswered questions are in [the JSON report](dry-run-latest.json).
+Field-level failures and exact unanswered questions are in [the JSON report](dry-run-openai.json).

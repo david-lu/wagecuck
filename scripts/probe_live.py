@@ -13,6 +13,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 
 from wagecuck.agent import WorkflowAgent
+from wagecuck.agent_config import add_agent_arguments, agent_metadata, create_agent
 from wagecuck.browser import (
     click_and_settle,
     dismiss_optional_cookies,
@@ -25,17 +26,24 @@ from wagecuck.captcha import detect_challenge
 from wagecuck.models import ApplicationError, Profile
 
 
-async def probe_fields(page, profile):
+async def probe_fields(page, profile, agent=None, *, agent_fill=False):
     # Register the block before any profile values enter page JavaScript. The
     # caller also blocks service workers and WebSockets from context creation.
     await page.context.route("**/*", lambda route: route.abort())
     await page.context.set_offline(True)
     snap = await snapshot(page)
     challenge = await detect_challenge(page)
-    actions, unresolved = await WorkflowAgent().plan(snap.fields, profile)
+    planner = WorkflowAgent(agent)
+    actions, unresolved = await planner.plan(snap.fields, profile, agent_fill=agent_fill)
     outcomes, completed = [], []
     for action in actions:
-        outcome = {"label": action.field.label, "kind": action.field.kind, "code": "FILLED"}
+        outcome = {
+            "label": action.field.label,
+            "kind": action.field.kind,
+            "code": "FILLED",
+            "required": action.field.required,
+            "source": action.source,
+        }
         try:
             await fill(page, action)
             completed.append(action)
@@ -65,6 +73,7 @@ async def probe_fields(page, profile):
             for f in unresolved
         ],
         "fields": outcomes,
+        "field_analysis": planner.describe(snap.fields, actions, unresolved),
     }
 
 
@@ -73,7 +82,12 @@ async def main():
     parser.add_argument("--reports", type=Path, nargs="+", required=True)
     parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
     parser.add_argument("--output", type=Path, default=Path("docs/offline-fill-report.json"))
+    add_agent_arguments(parser)
     args = parser.parse_args()
+    try:
+        agent = create_agent(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     profile = Profile.load(args.profile)
     if not profile.synthetic:
         parser.error("Use a synthetic profile for this diagnostic.")
@@ -82,7 +96,13 @@ async def main():
     def record(row):
         rows.append(row)
         print(
-            json.dumps({k: v for k, v in row.items() if k not in ("fields", "unmapped_fields")}),
+            json.dumps(
+                {
+                    k: v
+                    for k, v in row.items()
+                    if k not in ("fields", "unmapped_fields", "field_analysis")
+                }
+            ),
             flush=True,
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +113,7 @@ async def main():
                     "mode": "offline_dom_probe",
                     "network_disabled_before_filling": True,
                     "applications_submitted": 0,
+                    "agent": agent_metadata(agent, agent_fill=args.agent_fill),
                     "limitations": "Only the loaded step; no server validation, accepted upload, dependent remote options, next-step navigation, CAPTCHA solving or submission verified.",
                     "results": rows,
                 },
@@ -106,6 +127,8 @@ async def main():
         for report in args.reports:
             for case in json.loads(report.read_text())["results"]:
                 row = {"id": case["id"], "url": case["final_url"], "ats": case["ats"]}
+                calls_before = agent.calls if agent else 0
+                row["agent_calls_attempted"] = 0
                 if case["code"] != "INSPECTED_NOT_SUBMITTED":
                     row.update(
                         {
@@ -123,7 +146,7 @@ async def main():
                 context.set_default_navigation_timeout(30000)
                 row["stage"] = "form_reload"
                 try:
-                    async with asyncio.timeout(75):
+                    async with asyncio.timeout(75 + (3 * args.agent_timeout if agent else 0)):
                         page = await context.new_page()
                         await page.goto(case["final_url"], wait_until="domcontentloaded")
                         previous_shape, stable = None, 0
@@ -140,7 +163,9 @@ async def main():
                                 page = await click_and_settle(page, entry_controls(snap)[0])
                             await asyncio.sleep(0.25)
                         row["stage"] = "offline_fill"
-                        row.update(await probe_fields(page, profile))
+                        row.update(
+                            await probe_fields(page, profile, agent, agent_fill=args.agent_fill)
+                        )
                         row["code"] = (
                             "FORM_NOT_RELOADED"
                             if not row["field_count"]
@@ -153,11 +178,15 @@ async def main():
                             if not row["mapped_count"]
                             else "MAPPED_FIELDS_VERIFIED"
                         )
+                except ApplicationError as exc:
+                    row["code"] = exc.code
+                    row["message"] = str(exc)
                 except Exception as exc:  # noqa: BLE001 - continue independent diagnostic cases
                     row["code"] = (
                         "TIMEOUT" if type(exc).__name__ == "TimeoutError" else "BROWSER_ERROR"
                     )
                 finally:
+                    row["agent_calls_attempted"] = agent.calls - calls_before if agent else 0
                     await context.close()
                 record(row)
         await browser.close()

@@ -201,12 +201,14 @@ class MappingAgent(Protocol):
     async def map(self, fields: list[FormField], fact_keys: list[str]) -> list[Mapping]: ...
 
 
-class OllamaMappingAgent:
+class StructuredMappingAgent:
     """Mapping sends metadata/names; opt-in drafting also sends selected career facts."""
 
-    def __init__(self, model: str, endpoint: str = "http://localhost:11434", *, transport=None):
+    def __init__(self, model: str, endpoint: str, *, transport=None, timeout=60):
         self.model, self.endpoint = model, endpoint.rstrip("/")
         self.transport = transport
+        self.timeout = timeout
+        self.calls = 0
 
     async def assess(self, fields):
         payload = {
@@ -240,14 +242,7 @@ class OllamaMappingAgent:
             ],
         }
         try:
-            async with httpx.AsyncClient(
-                timeout=25, trust_env=False, transport=self.transport
-            ) as client:
-                response = await client.post(f"{self.endpoint}/api/chat", json=payload)
-                response.raise_for_status()
-                return Requirements.model_validate_json(
-                    response.json()["message"]["content"]
-                ).assessments
+            return Requirements.model_validate_json(await self._request(payload)).assessments
         except Exception as exc:
             raise ApplicationError(
                 Code.AGENT_FAILED,
@@ -287,12 +282,7 @@ class OllamaMappingAgent:
             ],
         }
         try:
-            async with httpx.AsyncClient(
-                timeout=25, trust_env=False, transport=self.transport
-            ) as client:
-                response = await client.post(f"{self.endpoint}/api/chat", json=payload)
-                response.raise_for_status()
-                return Mappings.model_validate_json(response.json()["message"]["content"]).mappings
+            return Mappings.model_validate_json(await self._request(payload)).mappings
         except Exception as exc:
             raise ApplicationError(
                 Code.AGENT_FAILED, "Mapping agent returned an invalid response or was unavailable."
@@ -322,16 +312,25 @@ class OllamaMappingAgent:
             ],
         }
         try:
-            async with httpx.AsyncClient(
-                timeout=25, trust_env=False, transport=self.transport
-            ) as client:
-                response = await client.post(f"{self.endpoint}/api/chat", json=payload)
-                response.raise_for_status()
-                return Drafts.model_validate_json(response.json()["message"]["content"]).drafts
+            return Drafts.model_validate_json(await self._request(payload)).drafts
         except Exception as exc:
             raise ApplicationError(
                 Code.AGENT_FAILED, "Agent-fill returned invalid prose or was unavailable."
             ) from exc
+
+
+class OllamaMappingAgent(StructuredMappingAgent):
+    def __init__(self, model, endpoint="http://localhost:11434", **kwargs):
+        super().__init__(model, endpoint, **kwargs)
+
+    async def _request(self, payload):
+        self.calls += 1
+        async with httpx.AsyncClient(
+            timeout=self.timeout, trust_env=False, transport=self.transport
+        ) as client:
+            response = await client.post(f"{self.endpoint}/api/chat", json=payload)
+            response.raise_for_status()
+            return response.json()["message"]["content"]
 
 
 class WorkflowAgent:
@@ -447,6 +446,14 @@ class WorkflowAgent:
         eligible = [
             f
             for f in unresolved
+            # A known field with no supplied value is missing data, not an
+            # ambiguous label. Do not let the model substitute another fact
+            # (for example street_address for an absent address_line2).
+            if not (
+                f.kind not in ("checkbox", "radio", "file")
+                and (known_key := fact_key(f))
+                and known_key not in facts
+            )
             if (
                 not SENSITIVE.search(f"{f.label} {f.group} {f.context}")
                 or key_for(f, profile)

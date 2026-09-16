@@ -7,7 +7,7 @@ name = "wagecuck"
 version = "0.1.0"
 description = "Deterministic Playwright job application workflows with bounded agent assistance"
 requires-python = ">=3.11"
-dependencies = ["playwright>=1.51,<2", "pydantic>=2.10,<3", "httpx>=0.28,<1", "reportlab>=4,<6"]
+dependencies = ["playwright>=1.51,<2", "pydantic>=2.10,<3", "httpx>=0.28,<1", "reportlab>=4,<6", "python-dotenv>=1,<2"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.11,<1"]

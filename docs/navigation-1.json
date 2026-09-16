@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-16T06:39:41.331970+00:00",
+  "checked_at": "2026-09-16T07:15:44.820462+00:00",
   "mode": "inspect",
   "applicant_data_entered": false,
   "applications_submitted": 0,
@@ -100,7 +100,7 @@
           "required": false
         }
       ],
-      "run_id": "f8005bf908f04d4884150cf53ffe9fb2"
+      "run_id": "69d6bb8148a24158bb167b46a7436e5b"
     },
     {
       "id": "lever-altaml-intern",
@@ -208,7 +208,7 @@
           "required": false
         }
       ],
-      "run_id": "60be58917d31445ea94d138f40c1bb40"
+      "run_id": "583582a238794bff899be8eebf3b08e8"
     },
     {
       "id": "lever-pockethealth",
@@ -220,11 +220,10 @@
       "final_url": "https://jobs.lever.co/PocketHealth/72a1603f-2fa5-4242-9250-9573f7e1070c/apply",
       "field_count": 33,
       "identity_fields_detected": true,
-      "mapped_field_count": 13,
+      "mapped_field_count": 14,
       "required_answers_missing": [
         "Are you legally authorized to work in Canada? \u2731",
-        "Do you, now or in the future, require sponsorship to work in Canada? \u2731",
-        "How did you hear about PocketHealth? \u2731"
+        "Do you, now or in the future, require sponsorship to work in Canada? \u2731"
       ],
       "fields": [
         {
@@ -393,7 +392,7 @@
           "required": false
         }
       ],
-      "run_id": "728f87b339c54e50816af37195625989"
+      "run_id": "ed39d00e6d0d4df383dfdee657456a33"
     },
     {
       "id": "greenhouse-capco",
@@ -497,7 +496,7 @@
           "required": true
         }
       ],
-      "run_id": "2134a9c97a264e12b60a3ce5c696f661"
+      "run_id": "7173ce39070d4f4bad7119c8b141a548"
     },
     {
       "id": "greenhouse-dialpad",
@@ -523,7 +522,7 @@
           "required": false
         }
       ],
-      "run_id": "5963fc2cde7d4877b295d2bcc403a8f8"
+      "run_id": "9f42319374be4ec3b90c70fb00e4590e"
     },
     {
       "id": "greenhouse-canonical",
@@ -707,7 +706,7 @@
           "required": true
         }
       ],
-      "run_id": "3c6d9059404e48f6a2f1de846e73b9ef"
+      "run_id": "3b67e2aaa70545ef9bc4fe3642f548ad"
     },
     {
       "id": "ashby-maxima",
@@ -763,7 +762,7 @@
           "required": false
         }
       ],
-      "run_id": "6e999d1d374b4c51841814e54611cc1b"
+      "run_id": "a499607d34ea45cf89c35be02c0b2499"
     },
     {
       "id": "ashby-cerebras",
@@ -901,7 +900,7 @@
           "required": false
         }
       ],
-      "run_id": "5636c15cc5464352b0c0efd38e68168a"
+      "run_id": "8deadac1bd0f4c2994f1debb93f8e91c"
     },
     {
       "id": "ashby-relay",
@@ -984,7 +983,7 @@
           "required": false
         }
       ],
-      "run_id": "1251f05a97464281a3b9dd52fb55fef3"
+      "run_id": "75d361363ca14ab6964f1a713e5964dd"
     },
     {
       "id": "workday-autodesk",
@@ -1028,7 +1027,7 @@
           "required": false
         }
       ],
-      "run_id": "1fd9bbc9afd0466a9b87d00460e51f1a"
+      "run_id": "bb0c3e4f215b42d0b59bb8adad9dd672"
     },
     {
       "id": "workday-oclc",
@@ -1043,7 +1042,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "3732941c64c74b6fbb4c7988569c2351"
+      "run_id": "397c8ff765e244869b8c240bb18c5b11"
     }
   ]
 }

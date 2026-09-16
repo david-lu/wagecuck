@@ -7,6 +7,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from wagecuck.agent_config import add_agent_arguments, agent_arguments, create_agent
+
 
 def summarize(report_path):
     report = json.loads(report_path.read_text(encoding="utf-8"))
@@ -22,10 +24,17 @@ def summarize(report_path):
             )
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     totals = Counter(row["code"] for row in rows)
+    agent = report.get("agent", {})
     lines = [
         "# Application dry-run coverage",
         "",
         f"Checked: {report['checked_at']}. URLs: {len(rows)}. Employer submissions: 0.",
+        (
+            f"Model provider: {agent.get('provider', 'not recorded')}. "
+            f"Model: {agent.get('model') or 'none'}. "
+            f"Model calls attempted: {agent.get('calls_attempted', 'not recorded')}. "
+            f"Grounded drafting: {agent.get('agent_fill', False)}."
+        ),
         "",
         (
             "Every URL was attempted in a fresh browser context. For reachable forms, the real "
@@ -73,8 +82,13 @@ def main():
     parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
     parser.add_argument("--output", type=Path, default=Path("docs/dry-run-all.json"))
     parser.add_argument("--summarize-only", action="store_true")
+    add_agent_arguments(parser)
     args = parser.parse_args()
     if not args.summarize_only:
+        try:
+            create_agent(args)  # Fail before navigation if the model configuration is incomplete.
+        except ValueError as exc:
+            parser.error(str(exc))
         scripts = Path(__file__).parent
         reports = []
         expected = []
@@ -105,6 +119,7 @@ def main():
                 str(args.profile),
                 "--output",
                 str(args.output),
+                *agent_arguments(args),
             ],
             check=True,
         )
