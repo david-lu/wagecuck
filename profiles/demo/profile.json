@@ -64,7 +64,8 @@
       "currency": "CAD",
       "annual_target": 100000,
       "expectations": null
-    }
+    },
+    "randomize_source": true
   },
   "experience": {
     "python": {

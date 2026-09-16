@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import re
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -197,6 +198,36 @@ async def fill(page: Page, action: Action):
             if await target.is_checked() != value:
                 raise ValueError("Check state not retained")
         elif field.kind == "combobox":
+            if action.random_choice:
+                frame = page.frames[field.frame]
+                await target.click()
+                if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
+                    await target.fill("")
+                owned = await target.evaluate(
+                    "e => (e.getAttribute('aria-controls') || e.getAttribute('aria-owns') || '').split(/\\s+/).filter(Boolean).map(id => '#' + CSS.escape(id)).join(',')"
+                )
+                scope = frame.locator(owned) if owned else frame
+                options = scope.get_by_role("option", disabled=False).filter(visible=True)
+                await options.first.wait_for(state="visible")
+                candidates = [
+                    (i, label.strip())
+                    for i, label in enumerate(await options.all_text_contents())
+                    if label.strip()
+                    and not re.fullmatch(
+                        r"(?:please )?(?:select|choose)(?: an? option)?", normalize(label)
+                    )
+                ]
+                if not candidates:
+                    raise ApplicationError(
+                        Code.UNSUPPORTED_CONTROL, f"No source choices for {field.label}"
+                    )
+                index, label = random.choice(candidates)
+                await options.nth(index).click()
+                action.value = label
+                action.choice_labels = [label]
+                if not await combobox_matches(page, target, action, label):
+                    raise ValueError("Source selection not retained")
+                return
             await target.click()
             if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
                 await target.fill(string)

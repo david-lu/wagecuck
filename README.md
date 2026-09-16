@@ -142,6 +142,8 @@ The demo no longer has an `answers` dictionary keyed by employer questions. Norm
 
 Legacy `answers` question-to-value overrides are still accepted for old profiles and exceptional exact questions. They are no longer the default profile format, and the demo does not use them. Wording rules in code identify meanings; applicant answers live in profile data.
 
+For “How did you hear about …?”, `application.randomize_source: true` selects a random available option from dropdowns, radio groups and common comboboxes. No source is preferred. Disabled options and placeholders are excluded. Free-text source fields receive a random common channel. The demo enables this at the user's request; set it to `false` to use `facts.source` instead. Actions are logged as `random:source` and shown as `random_choice` in field analysis. Follow-up questions, such as a referrer's name, still need their own answer.
+
 ## Optional agent
 
 Use an already installed local Ollama model:

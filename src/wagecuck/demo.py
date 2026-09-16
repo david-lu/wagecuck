@@ -62,6 +62,7 @@ def generate_profile(directory: Path) -> Path:
             }
         ],
         "application": {
+            "randomize_source": True,
             "preferred_name": "Alex",
             "pronouns": None,
             "headline": "Software engineer focused on Python services and browser automation",

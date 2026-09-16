@@ -1,5 +1,6 @@
 """Question intent -> stable profile keys. These rules contain no applicant answers."""
 
+import random
 import re
 
 from .browser import normalize
@@ -41,7 +42,10 @@ def key_for(field, profile):
         return "location" if field.kind in ("text", "textarea") else "country"
     if q.startswith("current location no location found"):
         return "city"
-    if re.search(r"how did you hear about|which channel led you to apply", q):
+    if re.search(
+        r"how did you (?:hear about|find)|where did you (?:hear|find)|how (?:have you|did you first) hear|which channel led you to apply",
+        q,
+    ) and not re.search(r"referr(?:er|al).*name|name.*referr|who referred", q):
         return "source"
     if re.search(
         r"when.*(?:available|looking).*start|date available|availability.*start|available to start|immediate joiners",
@@ -139,10 +143,12 @@ def screening_options(field, profile):
     return result
 
 
-def plan_named(field, fields, profile):
+def plan_named(field, fields, profile, source_choices=None):
     key = key_for(field, profile)
     if key is None:
         return False, None
+    if key == "source":
+        return plan_source(field, fields, profile, source_choices)
     value = profile.values().get(key)
     if value is None:
         return False, None
@@ -150,6 +156,8 @@ def plan_named(field, fields, profile):
 
 
 def action_for_key(field, fields, profile, key):
+    if key == "source" and key_for(field, profile) == "source":
+        return plan_source(field, fields, profile)
     screening = screening_options(field, profile)
     if key in screening:
         handled, action = plan_answer(field, fields, screening[key])
@@ -175,6 +183,54 @@ def action_for_key(field, fields, profile, key):
             return False, None
         return True, Action(field=field, value=value, source=f"facts:{key}")
     return False, None
+
+
+def plan_source(field, fields, profile, source_choices=None):
+    """Random source selection is explicitly enabled in the profile."""
+    if profile.application.randomize_source:
+        source = "random:source"
+        if field.kind == "select":
+            options = [
+                o
+                for o in field.options
+                if o.value
+                and not re.fullmatch(
+                    r"(?:please )?(?:select|choose)(?: an? option)?", normalize(o.label)
+                )
+            ]
+            if not options:
+                return False, None
+            return True, Action(field=field, value=random.choice(options).value, source=source)
+        if field.kind == "radio" and field.group:
+            peers = [
+                f
+                for f in fields
+                if f.kind == "radio"
+                and (f.frame, f.name, f.group) == (field.frame, field.name, field.group)
+            ]
+            choices = source_choices if source_choices is not None else {}
+            key = (field.frame, field.name, field.group)
+            if key not in choices:
+                choices[key] = random.choice(peers).id
+            return True, (
+                Action(field=field, value=True, source=source) if choices[key] == field.id else None
+            )
+        if field.kind == "combobox":
+            return True, Action(field=field, value="", source=source, random_choice=True)
+        if field.kind in ("text", "textarea"):
+            return True, Action(
+                field=field,
+                value=random.choice(["LinkedIn", "Indeed", "Google", "Company website"]),
+                source=source,
+            )
+        return False, None
+    primary = profile.facts.get("source")
+    if not isinstance(primary, str) or not primary.strip():
+        return False, None
+    handled, action = plan_answer(field, fields, Answer(primary, "source", [primary]))
+    if action:
+        action.source = "facts:source"
+    return handled, action
 
 
 def restricted_key(key):

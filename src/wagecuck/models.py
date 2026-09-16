@@ -124,6 +124,7 @@ class Compensation(BaseModel):
 
 class ApplicationProfile(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    randomize_source: bool = False
     preferred_name: str | None = None
     pronouns: str | None = None
     headline: str | None = None
@@ -247,6 +248,8 @@ class Profile(BaseModel):
         result = {}
 
         def flatten(prefix, value):
+            if prefix == "application.randomize_source":
+                return  # This is behavior configuration, not an applicant answer.
             if isinstance(value, dict):
                 for key, child in value.items():
                     flatten(f"{prefix}.{key}" if prefix else key, child)
@@ -418,6 +421,7 @@ class Action(BaseModel):
     value: str | bool
     source: str
     choice_labels: list[str] = Field(default_factory=list)
+    random_choice: bool = False
 
 
 class ApplicationResult(BaseModel):

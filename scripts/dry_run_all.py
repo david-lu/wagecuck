@@ -56,7 +56,7 @@ def summarize(report_path):
         )
     lines += [
         "",
-        "Field-level failures and exact unanswered questions are in [the JSON report](dry-run-all.json).",
+        f"Field-level failures and exact unanswered questions are in [the JSON report]({report_path.name}).",
         "",
     ]
     report_path.with_suffix(".md").write_text("\n".join(lines), encoding="utf-8")

@@ -391,6 +391,7 @@ class WorkflowAgent:
         facts = profile.values()
         answers = {question(k): v for k, v in profile.answers.items()}
         actions, unresolved = [], []
+        source_choices = {}
         for field in fields:
             label = question(field.label)
             group = question(field.group)
@@ -401,7 +402,7 @@ class WorkflowAgent:
                     if action:
                         actions.append(action)
                     continue
-                handled, action = plan_named(field, fields, profile)
+                handled, action = plan_named(field, fields, profile, source_choices)
                 if handled:
                     if action:
                         actions.append(action)
@@ -435,7 +436,7 @@ class WorkflowAgent:
             ):
                 # Label has priority over misleading autocomplete/name attributes.
                 key = fact_key(field)
-                if key in facts:
+                if key in facts and key != "source":
                     value, source = facts[key], f"facts:{key}"
             if value is not None:
                 actions.append(Action(field=field, value=value, source=source))
@@ -679,7 +680,9 @@ class WorkflowAgent:
             action = by_id.get((field.frame, field.id))
             route = (
                 (
-                    "agent_fill"
+                    "random_choice"
+                    if action.source.startswith("random:")
+                    else "agent_fill"
                     if action.source.startswith("agent_fill:")
                     else "agent_mapping"
                     if action.source.startswith("agent:")

@@ -40,6 +40,11 @@
     "ApplicationProfile": {
       "additionalProperties": false,
       "properties": {
+        "randomize_source": {
+          "default": false,
+          "title": "Randomize Source",
+          "type": "boolean"
+        },
         "preferred_name": {
           "anyOf": [
             {

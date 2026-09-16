@@ -198,6 +198,7 @@ async def test_named_profile_fields_submit_through_browser(portal, profile, opti
 
 
 async def test_radio_option_label_is_not_a_request_for_linkedin_url(profile):
+    profile.application.randomize_source = False
     fields = [
         FormField(
             id=label,
