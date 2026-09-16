@@ -1,5 +1,6 @@
-"""Shared model configuration for application runs and corpus probes."""
+"""Model provider configuration for application runs and corpus probes."""
 
+import asyncio
 import copy
 import json
 import os
@@ -8,7 +9,9 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
-from .agent import OllamaMappingAgent, StructuredMappingAgent
+from .agent_client import OllamaMappingAgent, StructuredMappingAgent
+from .agent_prompts import OPENAI_MAPPING_PROMPT
+from .agent_types import AgentOperation, AgentRequest
 
 DEFAULT_OPENAI_MODEL = "gpt-5.6-terra"
 
@@ -39,68 +42,59 @@ class OpenAIMappingAgent(StructuredMappingAgent):
         endpoint="https://api.openai.com/v1",
         *,
         api_key=None,
+        max_attempts=3,
+        retry_backoff=0.25,
         **kwargs,
     ):
         super().__init__(model, endpoint, **kwargs)
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI requires OPENAI_API_KEY in your environment.")
+        if max_attempts < 1:
+            raise ValueError("OpenAI max_attempts must be positive.")
+        self.max_attempts = max_attempts
+        self.retry_backoff = retry_backoff
 
-    async def _request(self, payload):
-        self.calls += 1
-        schema = strict_schema(payload["format"])
-        messages = copy.deepcopy(payload["messages"])
-        if schema["title"] == "Mappings":
-            # Use one representation on the wire so a model cannot select both
-            # mutually exclusive fact_key and fact_keys. The planner still
-            # receives its existing internal Mapping contract.
+    @staticmethod
+    def _contract(request: AgentRequest):
+        """Adapt a known operation to OpenAI's strict structured-output contract."""
+        schema = strict_schema(request.schema)
+        messages = copy.deepcopy(request.messages)
+        if request.operation == AgentOperation.MAPPING:
             mapping_schema = schema["$defs"]["Mapping"]
             del mapping_schema["properties"]["fact_key"]
             mapping_schema["required"].remove("fact_key")
             mapping_schema["properties"]["fact_keys"]["minItems"] = 1
-            messages[0]["content"] = messages[0]["content"].replace(
-                "Use fact_key for one direct value OR fact_keys and separator for a simple "
-                "ordered combination of text values. Never use both.",
-                "Use fact_keys with one key for a direct value, or multiple keys and separator "
-                "for a simple ordered combination of text values. Omit unmappable fields "
-                "entirely; never return an empty list of keys.",
-            )
-            # OpenAI's strict schema rejects control characters in enum literals.
-            schema["$defs"]["Mapping"]["properties"]["separator"]["enum"] = [
+            mapping_schema["properties"]["separator"]["enum"] = [
                 "space",
                 "comma",
                 "newline",
             ]
-            messages[0]["content"] += (
-                " Use separator names: space for a single space, comma for comma-space, "
-                "or newline for a line break. For single-key mappings use space."
-            )
+            messages[0]["content"] = OPENAI_MAPPING_PROMPT
+        return schema, messages
+
+    async def _request(self, request: AgentRequest):
+        self._start_operation(request.operation)
+        schema, messages = self._contract(request)
         body = {
             "model": self.model,
             "input": messages,
             "store": False,
-            "max_output_tokens": 12000,
+            "max_output_tokens": request.max_output_tokens,
             "text": {
                 "format": {
                     "type": "json_schema",
-                    "name": payload["format"]["title"],
+                    "name": request.schema["title"],
                     "strict": True,
                     "schema": schema,
                 }
             },
         }
-        async with httpx.AsyncClient(
-            timeout=self.timeout, trust_env=False, transport=self.transport
-        ) as client:
-            response = await client.post(
-                f"{self.endpoint}/responses",
-                json=body,
-                headers={"Authorization": f"Bearer {self.api_key}"},
-            )
-            response.raise_for_status()
-        data = response.json()
+        data, request_id = await self._post_with_retries(request.operation, body)
+        request_id = request_id or (str(data["id"]) if data.get("id") else None)
         if data.get("status") != "completed":
-            raise ValueError("Model response did not complete.")
+            self.record_error(request.operation, "incomplete", request_id=request_id)
+            raise ProviderResponseError("incomplete")
         content = [
             part
             for item in data.get("output", [])
@@ -108,21 +102,90 @@ class OpenAIMappingAgent(StructuredMappingAgent):
             for part in item.get("content", [])
         ]
         if any(part.get("type") == "refusal" for part in content):
-            raise ValueError("Model declined the request.")
+            self.record_error(request.operation, "refusal", request_id=request_id)
+            raise ProviderResponseError("refusal")
         texts = [part["text"] for part in content if part.get("type") == "output_text"]
         if len(texts) != 1:
-            raise ValueError("Expected one structured model response.")
-        if schema["title"] == "Mappings":
-            data = json.loads(texts[0])
+            self.record_error(request.operation, "invalid_response", request_id=request_id)
+            raise ProviderResponseError("invalid_response")
+        self.record_usage(data, request_id)
+        if request.operation == AgentOperation.MAPPING:
+            parsed = json.loads(texts[0])
             separators = {"space": " ", "comma": ", ", "newline": "\n"}
-            for mapping in data["mappings"]:
+            for mapping in parsed["mappings"]:
                 if "fact_key" in mapping:
-                    raise ValueError("Unexpected direct-key property in model response.")
+                    raise ProviderResponseError("invalid_response")
                 mapping["separator"] = separators[mapping["separator"]]
                 if len(mapping["fact_keys"]) == 1:
                     mapping["fact_key"] = mapping["fact_keys"].pop()
-            return json.dumps(data)
+            return json.dumps(parsed)
         return texts[0]
+
+    async def _post_with_retries(self, operation: AgentOperation, body):
+        for attempt in range(self.max_attempts):
+            self._start_attempt(operation)
+            try:
+                async with httpx.AsyncClient(
+                    timeout=self.timeout, trust_env=False, transport=self.transport
+                ) as client:
+                    response = await client.post(
+                        f"{self.endpoint}/responses",
+                        json=body,
+                        headers={"Authorization": f"Bearer {self.api_key}"},
+                    )
+            except httpx.TransportError as exc:
+                if attempt + 1 < self.max_attempts:
+                    self.retries += 1
+                    self.failures["network_error"] += 1
+                    await asyncio.sleep(self.retry_backoff * 2**attempt)
+                    continue
+                self.record_error(operation, "network_error")
+                raise ProviderResponseError("network_error") from exc
+
+            request_id = response.headers.get("x-request-id")
+            if request_id:
+                self._record_request_id(request_id)
+            if response.status_code >= 400:
+                category = self._http_error_category(response.status_code)
+                retryable = response.status_code == 429 or response.status_code >= 500
+                if retryable and attempt + 1 < self.max_attempts:
+                    self.retries += 1
+                    self.failures[category] += 1
+                    await asyncio.sleep(self.retry_backoff * 2**attempt)
+                    continue
+                self.record_error(
+                    operation,
+                    category,
+                    status_code=response.status_code,
+                    request_id=request_id,
+                )
+                raise ProviderResponseError(category)
+            try:
+                return response.json(), request_id
+            except (ValueError, TypeError) as exc:
+                self.record_error(operation, "invalid_response", request_id=request_id)
+                raise ProviderResponseError("invalid_response") from exc
+        raise AssertionError("retry loop did not return or raise")
+
+    @staticmethod
+    def _http_error_category(status_code):
+        if status_code == 429:
+            return "rate_limited"
+        if status_code >= 500:
+            return "server_error"
+        if status_code in (401, 403):
+            return "authentication"
+        if status_code == 400:
+            return "bad_request"
+        return "http_error"
+
+
+class ProviderResponseError(Exception):
+    """Sanitized provider failure; response bodies never enter exception text."""
+
+    def __init__(self, category):
+        self.category = category
+        super().__init__(f"Model provider failed: {category}.")
 
 
 def add_agent_arguments(parser):
@@ -187,7 +250,7 @@ def agent_arguments(args):
 
 
 def agent_metadata(agent, *, agent_fill=False):
-    return {
+    metadata = {
         "provider": "openai"
         if isinstance(agent, OpenAIMappingAgent)
         else "ollama"
@@ -197,3 +260,6 @@ def agent_metadata(agent, *, agent_fill=False):
         "agent_fill": agent_fill,
         "calls_attempted": agent.calls if agent else 0,
     }
+    if agent and hasattr(agent, "metrics"):
+        metadata["metrics"] = agent.metrics()
+    return metadata

@@ -23,6 +23,7 @@ from wagecuck.browser import (
     verify_actions,
 )
 from wagecuck.captcha import detect_challenge
+from wagecuck.logical_fields import logical_field_results
 from wagecuck.models import ApplicationError, Profile
 
 
@@ -38,7 +39,9 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
     outcomes, completed = [], []
     for action in actions:
         outcome = {
+            "field_id": f"{action.field.frame}:{action.field.id}",
             "label": action.field.label,
+            "group": action.field.group,
             "kind": action.field.kind,
             "code": "FILLED",
             "required": action.field.required,
@@ -47,6 +50,9 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
             "made_up": action.made_up,
             "source_keys": action.source_keys,
             "inference_reason": action.inference_reason,
+            "selected": action.value is True
+            if action.field.kind in ("radio", "checkbox")
+            else None,
         }
         try:
             await fill(page, action)
@@ -59,25 +65,58 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
         retained = True
     except ApplicationError:
         retained = False
+    analysis = planner.describe(snap.fields, actions, unresolved)
+    logical_fields = logical_field_results(snap.fields, outcomes, analysis)
+    unresolved_questions = [field for field in logical_fields if field["code"] == "UNRESOLVED"]
+    satisfied_codes = {"FILLED", "ALREADY_FILLED"}
+    required_questions = [field for field in logical_fields if field["required"]]
+    required_failures = [
+        field for field in required_questions if field["code"] not in satisfied_codes
+    ]
     return {
         "field_count": len(snap.fields),
+        "question_count": len(logical_fields),
         "mapped_count": len(actions),
         "filled_count": len(completed),
+        "mapped_question_count": sum(
+            field["code"] not in ("UNRESOLVED", "ALREADY_FILLED", "NOT_SELECTED_GROUP_OPTION")
+            for field in logical_fields
+        ),
+        "filled_question_count": sum(field["code"] == "FILLED" for field in logical_fields),
+        "satisfied_question_count": sum(
+            field["code"] in satisfied_codes for field in logical_fields
+        ),
+        "required_question_count": len(required_questions),
+        "required_question_satisfied_count": len(required_questions) - len(required_failures),
+        "required_fill_pass": not required_failures,
+        "required_fill_failure_count": len(required_failures),
+        "required_fill_failures": [field["question"] for field in required_failures],
+        "made_up_answer_count": sum(
+            field.get("made_up", False) and field["code"] == "FILLED" for field in logical_fields
+        ),
         "completed_values_retained": retained,
         "captcha": challenge.kind if challenge else None,
-        "required_answers_missing": list(
-            dict.fromkeys(
-                (f.group or f.label) if f.kind == "radio" else f.label
-                for f in unresolved
-                if f.required
-            )
-        ),
+        "required_answers_missing": [
+            field["question"] for field in unresolved_questions if field["required"]
+        ],
         "unmapped_fields": [
+            {
+                "label": field["question"],
+                "group": field["question"],
+                "kind": field["kind"],
+                "required": field["required"],
+                "options": field.get("options", []),
+            }
+            for field in unresolved_questions
+        ],
+        "unmapped_controls": [
             {"label": f.label, "group": f.group, "kind": f.kind, "required": f.required}
             for f in unresolved
         ],
-        "fields": outcomes,
-        "field_analysis": planner.describe(snap.fields, actions, unresolved),
+        "fields": logical_fields,
+        "control_outcomes": outcomes,
+        "field_analysis": logical_fields,
+        "control_analysis": analysis,
         "agent_warnings": planner.warnings,
     }
 
@@ -87,6 +126,9 @@ async def main():
     parser.add_argument("--reports", type=Path, nargs="+", required=True)
     parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
     parser.add_argument("--output", type=Path, default=Path("docs/offline-fill-report.json"))
+    parser.add_argument("--dataset-split", choices=("training", "validation"), default="training")
+    parser.add_argument("--implementation-fingerprint", default="")
+    parser.add_argument("--aggregate-only", action="store_true")
     add_agent_arguments(parser)
     args = parser.parse_args()
     try:
@@ -99,22 +141,46 @@ async def main():
     rows = []
 
     def record(row):
-        rows.append(row)
-        print(
-            json.dumps(
-                {
-                    k: v
-                    for k, v in row.items()
-                    if k not in ("fields", "unmapped_fields", "field_analysis")
-                }
-            ),
-            flush=True,
+        hidden = {
+            "fields",
+            "control_outcomes",
+            "unmapped_fields",
+            "unmapped_controls",
+            "field_analysis",
+            "control_analysis",
+            "required_fill_failures",
+            "required_answers_missing",
+            "agent_warnings",
+        }
+        stored_row = (
+            {key: value for key, value in row.items() if key not in hidden}
+            if args.aggregate_only
+            else row
         )
+        rows.append(stored_row)
+        printable_row = stored_row if args.aggregate_only else {
+            k: v
+            for k, v in row.items()
+            if k
+            not in (
+                "fields",
+                "control_outcomes",
+                "unmapped_fields",
+                "unmapped_controls",
+                "field_analysis",
+                "control_analysis",
+                "required_fill_failures",
+            )
+        }
+        print(json.dumps(printable_row), flush=True)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(
             json.dumps(
                 {
                     "checked_at": datetime.now(UTC).isoformat(),
+                    "dataset_split": args.dataset_split,
+                    "aggregate_only": args.aggregate_only,
+                    "implementation_fingerprint": args.implementation_fingerprint,
                     "mode": "offline_dom_probe",
                     "network_disabled_before_filling": True,
                     "applications_submitted": 0,

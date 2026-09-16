@@ -1,0 +1,2623 @@
+{
+  "checked_at": "2026-09-16T18:22:15.350731+00:00",
+  "dataset_split": "training",
+  "aggregate_only": false,
+  "mode": "inspect",
+  "applicant_data_entered": false,
+  "applications_submitted": 0,
+  "results": [
+    {
+      "id": "lever-altaml-intermediate",
+      "url": "https://jobs.lever.co/altaml/74efba24-9733-4308-903a-9757a80684ba",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 16 fields; no applicant data entered.",
+      "expected_ats": "lever",
+      "ats": "lever",
+      "final_url": "https://jobs.lever.co/altaml/74efba24-9733-4308-903a-9757a80684ba/apply",
+      "field_count": 16,
+      "identity_fields_detected": true,
+      "mapped_field_count": 15,
+      "required_answers_missing": [
+        "Do you have a valid work permit/citizenship that allows you to legally work full-time (40 hours per week) in Canada? List it below. \u2731"
+      ],
+      "fields": [
+        {
+          "label": "Which location are you applying for?",
+          "kind": "select",
+          "required": false
+        },
+        {
+          "label": "Resume/CV \u2731ATTACH RESUME/CVCouldn't auto-read resume.Analyzing resume...Success!",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Full name\u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email\u2731",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone \u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Current location No location found. Try entering a different locationLoading",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Current company",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "LinkedIn URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Twitter URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "GitHub URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Portfolio URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Other website",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Which city are you currently located in? \u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "When would you be available to start? \u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Do you have a valid work permit/citizenship that allows you to legally work full-time (40 hours per week) in Canada? List it below. \u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "What is your location?",
+          "kind": "select",
+          "required": false
+        }
+      ],
+      "run_id": "45894c8bf31e47aa960d8d401fd65cb6"
+    },
+    {
+      "id": "lever-altaml-intern",
+      "url": "https://jobs.lever.co/altaml/bd8167f5-e84c-48b1-9cad-2831bf71dea1",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 18 fields; no applicant data entered.",
+      "expected_ats": "lever",
+      "ats": "lever",
+      "final_url": "https://jobs.lever.co/altaml/bd8167f5-e84c-48b1-9cad-2831bf71dea1/apply",
+      "field_count": 18,
+      "identity_fields_detected": true,
+      "mapped_field_count": 16,
+      "required_answers_missing": [
+        "Please indicate your anticipated Graduation Date (if still a student). \u2731"
+      ],
+      "fields": [
+        {
+          "label": "Which location are you applying for?",
+          "kind": "select",
+          "required": false
+        },
+        {
+          "label": "Resume/CV \u2731ATTACH RESUME/CVCouldn't auto-read resume.Analyzing resume...Success!",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Full name\u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email\u2731",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone \u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Current location No location found. Try entering a different locationLoading",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Current company",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "LinkedIn URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Twitter URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "GitHub URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Portfolio URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Other website",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Select a university or college",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "If your post-secondary is not listed above, please note it down below.",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Please indicate your anticipated Graduation Date (if still a student). \u2731",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "Are you able to commit to the full 8-month term? If not, please specify the maximum term length you would be able to commit to.",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "GitHub URL (if any)",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "What is your location?",
+          "kind": "select",
+          "required": false
+        }
+      ],
+      "run_id": "2961a02f0a8f4c599819d82cb2a947e4"
+    },
+    {
+      "id": "lever-pockethealth",
+      "url": "https://jobs.lever.co/PocketHealth/72a1603f-2fa5-4242-9250-9573f7e1070c",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 33 fields; no applicant data entered.",
+      "expected_ats": "lever",
+      "ats": "lever",
+      "final_url": "https://jobs.lever.co/PocketHealth/72a1603f-2fa5-4242-9250-9573f7e1070c/apply",
+      "field_count": 33,
+      "identity_fields_detected": true,
+      "mapped_field_count": 14,
+      "required_answers_missing": [
+        "Are you legally authorized to work in Canada? \u2731",
+        "Do you, now or in the future, require sponsorship to work in Canada? \u2731"
+      ],
+      "fields": [
+        {
+          "label": "Resume/CV \u2731ATTACH RESUME/CVCouldn't auto-read resume.Analyzing resume...Success!",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Full name\u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "He/him",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "She/her",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "They/them",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Xe/xem",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Ze/hir",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Ey/em",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Hir/hir",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Fae/faer",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Hu/hu",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Use name only",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Custom",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Email\u2731",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone \u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Current location No location found. Try entering a different locationLoading",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Current company",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "LinkedIn URL\u2731",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "GitHub URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Portfolio URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Website URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Are you legally authorized to work in Canada? \u2731",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "label": "Do you, now or in the future, require sponsorship to work in Canada? \u2731",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "label": "Doctor's office, medical clinic, or hospital",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "LinkedIn Job Posting",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Social media",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Friends/family",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "A PocketHealth employee (if so, list who below!)",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Other Job Posting",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "If you were referred by an Employee of PocketHealth, please provide the name of the person who referred you.",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "When are you looking to start? \u2731",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "What salary range are you targeting? \u2731",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "What is your location?",
+          "kind": "select",
+          "required": false
+        }
+      ],
+      "run_id": "88bdd865cd7244d8b6b68a0219b6304e"
+    },
+    {
+      "id": "greenhouse-capco",
+      "url": "https://job-boards.greenhouse.io/capco/jobs/8160588",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 16 fields; no applicant data entered.",
+      "expected_ats": "greenhouse",
+      "ats": "greenhouse",
+      "final_url": "https://job-boards.greenhouse.io/capco/jobs/8160588",
+      "field_count": 16,
+      "identity_fields_detected": true,
+      "mapped_field_count": 7,
+      "required_answers_missing": [
+        "Are you authorized to work in the country in which you\u2019re applying?*",
+        "Do you know anyone or are you related to anyone who works at Capco?",
+        "Capco employee email address",
+        "Request for Accommodation*",
+        "Request for Accommodation details.",
+        "Capco Job Candidate Privacy Notice Acknowledgement*",
+        "Can you work 4 days a week in the office?*"
+      ],
+      "fields": [
+        {
+          "label": "First Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Country*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Phone",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "Location (City)*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "resume",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "cover_letter",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "Do you have a preferred pronoun?",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Are you authorized to work in the country in which you\u2019re applying?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Do you know anyone or are you related to anyone who works at Capco?",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Capco employee email address",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Request for Accommodation*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Request for Accommodation details.",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Capco Job Candidate Privacy Notice Acknowledgement*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Can you work 4 days a week in the office?*",
+          "kind": "combobox",
+          "required": true
+        }
+      ],
+      "run_id": "86d223ad0f1e487884db9a853c4de66b"
+    },
+    {
+      "id": "greenhouse-dialpad",
+      "url": "https://job-boards.greenhouse.io/dialpad/jobs/8701282002",
+      "code": "JOB_CLOSED",
+      "message": "Application stopped: JOB_CLOSED.",
+      "expected_ats": "greenhouse",
+      "ats": "greenhouse",
+      "final_url": "https://job-boards.greenhouse.io/dialpad?error=true",
+      "field_count": 2,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [
+        {
+          "label": "Department",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Office",
+          "kind": "combobox",
+          "required": false
+        }
+      ],
+      "run_id": "d5382be5d53e4ed49b427115a8e55dd8"
+    },
+    {
+      "id": "greenhouse-canonical",
+      "url": "https://job-boards.greenhouse.io/canonicaljobs/jobs/6768836",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 30 fields; no applicant data entered.",
+      "expected_ats": "greenhouse",
+      "ats": "greenhouse",
+      "final_url": "https://job-boards.greenhouse.io/canonicaljobs/jobs/6768836",
+      "field_count": 30,
+      "identity_fields_detected": true,
+      "mapped_field_count": 13,
+      "required_answers_missing": [
+        "Are you comfortable using your own device?",
+        "Linux",
+        "Python",
+        "Kubernetes",
+        "OpenStack",
+        "Jenkins",
+        "What was your bachelor's university degree result, or expected result if you have not yet graduated? Please include the grading system to help us understand your result e.g. \u201885 out of 100\u2019, \u20182:1 (Grading system: first class, 2:1, 2:2, third class)\u2019 or \u2018GPA score of 3.8/4.0 (predicted)\u2019. We have hired outstanding individuals who did not attend or complete university. If this describes you, please continue with your application and enter \u2018no degree\u2019.",
+        "How did you perform in mathematics at high school?*",
+        "How did you perform in your native language at high school?*",
+        "We require all colleagues to meet in person 2-4 times a year, at internal company events lasting between 1-2 weeks. We try to pick new and interesting locations that will likely require international travel and entry requirement visas and vaccinations. Are you willing and able to commit to this?*",
+        "Please confirm that you have read and agree to Canonical's Recruitment Privacy Notice and Privacy Policy.*",
+        "Please share your rationale or evidence for the high school performance selections above. Make reference to  provincial, state or nation-wide scoring systems, rankings, or recognition awards, or to competitive or selective college entrance results such as SAT or ACT scores, JAMB, matriculation results, IB results etc. We recognise every system is different but we will ask you to justify your selections above.",
+        "During this application process I agree to use only my own words. I understand that plagiarism, the use of AI or other generated content will disqualify my application.*",
+        "In the past ten years, looking only at the time since you graduated your first undergraduate degree, how many companies have you worked for?*",
+        "Which gender do you identify as?*",
+        "Please indicate your nationality:*",
+        "Please indicate your race or ethnicity:*"
+      ],
+      "fields": [
+        {
+          "label": "First Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Country",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Phone",
+          "kind": "tel",
+          "required": false
+        },
+        {
+          "label": "resume",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "School",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Degree",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Discipline",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Where are you presently located?",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Are you comfortable using your own device?",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Linux",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Python",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Kubernetes",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "OpenStack",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Jenkins",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "What was your bachelor's university degree result, or expected result if you have not yet graduated? Please include the grading system to help us understand your result e.g. \u201885 out of 100\u2019, \u20182:1 (Grading system: first class, 2:1, 2:2, third class)\u2019 or \u2018GPA score of 3.8/4.0 (predicted)\u2019. We have hired outstanding individuals who did not attend or complete university. If this describes you, please continue with your application and enter \u2018no degree\u2019.",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "How did you perform in mathematics at high school?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "How did you perform in your native language at high school?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "We require all colleagues to meet in person 2-4 times a year, at internal company events lasting between 1-2 weeks. We try to pick new and interesting locations that will likely require international travel and entry requirement visas and vaccinations. Are you willing and able to commit to this?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Website",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "LinkedIn Profile ",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Please confirm that you have read and agree to Canonical's Recruitment Privacy Notice and Privacy Policy.*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "In which country do you currently work?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Please share your rationale or evidence for the high school performance selections above. Make reference to  provincial, state or nation-wide scoring systems, rankings, or recognition awards, or to competitive or selective college entrance results such as SAT or ACT scores, JAMB, matriculation results, IB results etc. We recognise every system is different but we will ask you to justify your selections above.",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "During this application process I agree to use only my own words. I understand that plagiarism, the use of AI or other generated content will disqualify my application.*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "In the past ten years, looking only at the time since you graduated your first undergraduate degree, how many companies have you worked for?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Which gender do you identify as?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Please indicate your nationality:*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Please indicate your race or ethnicity:*",
+          "kind": "combobox",
+          "required": true
+        }
+      ],
+      "run_id": "52ed1fcfc1734ab585bae737ce28f4fd"
+    },
+    {
+      "id": "ashby-maxima",
+      "url": "https://jobs.ashbyhq.com/Maxima/c513fc8d-9f63-4e5d-a011-45238bf7d903",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 8 fields; no applicant data entered.",
+      "expected_ats": "ashby",
+      "ats": "ashby",
+      "final_url": "https://jobs.ashbyhq.com/Maxima/c513fc8d-9f63-4e5d-a011-45238bf7d903/application",
+      "field_count": 8,
+      "identity_fields_detected": true,
+      "mapped_field_count": 7,
+      "required_answers_missing": [],
+      "fields": [
+        {
+          "label": "Autofill from resume",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone Number",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "LinkedIn Profile",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Website",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Resume",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "Start typing...",
+          "kind": "combobox",
+          "required": false
+        }
+      ],
+      "run_id": "4489229ff2d34d059788fbf4b831cbaa"
+    },
+    {
+      "id": "ashby-cerebras",
+      "url": "https://jobs.ashbyhq.com/cerebras/99c289fa-8fc6-49f7-b7e8-78ac4e9d99ac/",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 24 fields; no applicant data entered.",
+      "expected_ats": "ashby",
+      "ats": "ashby",
+      "final_url": "https://jobs.ashbyhq.com/cerebras/99c289fa-8fc6-49f7-b7e8-78ac4e9d99ac/application",
+      "field_count": 24,
+      "identity_fields_detected": true,
+      "mapped_field_count": 7,
+      "required_answers_missing": [
+        "Cerebras products, software, source code, technology, and/or services are subject to the U.S. Export Administration Regulations (EAR). Access to controlled source code and technology by our employees may require prior authorization. Cerebras can be required to perform an export compliance assessment to review if an individual is a U.S. person, or may require a license from the U.S. Government in order to release source code and technology to employees who are not U.S. persons. In order to comply with these regulations (and for no other reason), we are asking you to confirm citizenship and permanent residency as defined below. Please check the field that applies to you:"
+      ],
+      "fields": [
+        {
+          "label": "Autofill from resume",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Resume",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Phone",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Cover Letter",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "LinkedIn Profile",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "I am a U.S. person \u2013 this includes any individual who is a citizen of the United States, a permanent resident alien of the United States, or a protected individual as defined by 8 U.S.C. 1324b(a)(3).",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "I am not a U.S. person, and I am not a current citizen or permanent resident of Cuba, Iran, North Korea, or Syria",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "I am not a U.S. person, and I am a current citizen or permanent resident of Cuba, Iran, North Korea, or Syria",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Male",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "Female",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "Decline to self-identify",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "Hispanic or Latino",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "White (Not Hispanic or Latino)",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "Black or African American (Not Hispanic or Latino)",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "Native Hawaiian or Other Pacific Islander (Not Hispanic or Latino)",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "Asian (Not Hispanic or Latino)",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "American Indian or Alaska Native (Not Hispanic or Latino)",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "Two or More Races (Not Hispanic or Latino)",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "Decline to self-identify",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "I identify as one or more of the classifications of protected veteran listed above",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "I am not a protected veteran",
+          "kind": "radio",
+          "required": false
+        },
+        {
+          "label": "I decline to self-identify for protected veteran status",
+          "kind": "radio",
+          "required": false
+        }
+      ],
+      "run_id": "d3039ca60fb24ed1838ed37b95dfb757"
+    },
+    {
+      "id": "ashby-relay",
+      "url": "https://jobs.ashbyhq.com/relayfi/c412e8d5-d7fc-4dde-b905-e3e4ceb03c08/",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 13 fields; no applicant data entered.",
+      "expected_ats": "ashby",
+      "ats": "ashby",
+      "final_url": "https://jobs.ashbyhq.com/relayfi/c412e8d5-d7fc-4dde-b905-e3e4ceb03c08/application",
+      "field_count": 13,
+      "identity_fields_detected": true,
+      "mapped_field_count": 8,
+      "required_answers_missing": [
+        "What specifically at Relay interests you?"
+      ],
+      "fields": [
+        {
+          "label": "Autofill from resume",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Resume",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "LinkedIn Profile",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Start typing...",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "What are your preferred pronouns?",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "What is your preferred name (if different from your full name)?",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "What is your desired annual salary (CAD)?",
+          "kind": "number",
+          "required": true
+        },
+        {
+          "label": "What specifically at Relay interests you?",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "How do you use AI in your professional or personal life?",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "Start typing...",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "If you were referred by a Relay employee, please provide their name.",
+          "kind": "text",
+          "required": false
+        }
+      ],
+      "run_id": "53634dbed6fb4ed7bb9169e5fae0a4eb"
+    },
+    {
+      "id": "workday-autodesk",
+      "url": "https://autodesk.wd1.myworkdayjobs.com/en-US/Ext/job/Toronto-ON-CAN/Software-Engineer_26WD100762-1",
+      "code": "AUTH_REQUIRED",
+      "message": "Application stopped: AUTH_REQUIRED.",
+      "expected_ats": "workday",
+      "ats": "workday",
+      "final_url": "https://autodesk.wd1.myworkdayjobs.com/en-US/Ext/job/Toronto%2C-ON%2C-CAN/Software-Engineer_26WD100762-1/apply/applyManually",
+      "field_count": 5,
+      "identity_fields_detected": false,
+      "mapped_field_count": 1,
+      "required_answers_missing": [
+        "Password*",
+        "Verify New Password*"
+      ],
+      "fields": [
+        {
+          "label": "Email Address*",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Password*",
+          "kind": "password",
+          "required": true
+        },
+        {
+          "label": "Verify New Password*",
+          "kind": "password",
+          "required": true
+        },
+        {
+          "label": "Candidate acknowledgment",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Enter website. This input is for robots only, do not enter if you're human.",
+          "kind": "text",
+          "required": false
+        }
+      ],
+      "run_id": "c1a9c9c79ae74e66b9fc23ab3f576d9a"
+    },
+    {
+      "id": "workday-oclc",
+      "url": "https://oclc.wd1.myworkdayjobs.com/en-US/OCLC_Careers/job/Software-Engineer---Canada_R0003900",
+      "code": "FORM_NOT_FOUND",
+      "message": "No application form or recognized entry control found.",
+      "expected_ats": "workday",
+      "ats": "workday",
+      "final_url": "https://oclc.wd1.myworkdayjobs.com/en-US/OCLC_Careers/job/Ottawa/Software-Engineer---Canada_R0003900/apply/applyManually",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "8f33e17d8528427690d83e1bac2ded3a"
+    },
+    {
+      "id": "workable-thanks",
+      "url": "https://apply.workable.com/thanks-co/j/5F701F4719",
+      "code": "JOB_CLOSED",
+      "message": "Application stopped: JOB_CLOSED.",
+      "expected_ats": "workable",
+      "ats": "workable",
+      "final_url": "https://apply.workable.com/thanks-co/?not_found=true",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "e78660613a274845940d18f26aa997ac"
+    },
+    {
+      "id": "workable-activ",
+      "url": "https://apply.workable.com/activ-2/j/5304C1A39D/apply/",
+      "code": "JOB_CLOSED",
+      "message": "Application stopped: JOB_CLOSED.",
+      "expected_ats": "workable",
+      "ats": "workable",
+      "final_url": "https://apply.workable.com/activ-2/?not_found=true",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "638b99e61c3d4d03a9735cf6ac3ec147"
+    },
+    {
+      "id": "smartrecruiters-servicenow",
+      "url": "https://jobs.smartrecruiters.com/ServiceNow/744000132922559-sr-software-engineer-veza",
+      "code": "JOB_CLOSED",
+      "message": "Application stopped: JOB_CLOSED.",
+      "expected_ats": "smartrecruiters",
+      "ats": "smartrecruiters",
+      "final_url": "https://jobs.smartrecruiters.com/ServiceNow/744000132922559-sr-software-engineer-veza",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "74b99ad7bd174fa8b9cc128983965e05"
+    },
+    {
+      "id": "smartrecruiters-ubisoft",
+      "url": "https://jobs.smartrecruiters.com/oneclick-ui/company/Ubisoft2/publication/715fc046-f687-4ace-80a1-3af89c18c03f?dcr_ci=Ubisoft2",
+      "code": "ACCESS_DENIED",
+      "message": "Job page returned HTTP 403.",
+      "expected_ats": "smartrecruiters",
+      "ats": "smartrecruiters",
+      "final_url": "https://jobs.smartrecruiters.com/oneclick-ui/company/Ubisoft2/publication/715fc046-f687-4ace-80a1-3af89c18c03f?dcr_ci=Ubisoft2",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "d716a8b19f2443aa86cea05c0fc2c5b5"
+    },
+    {
+      "id": "jobvite-progress",
+      "url": "https://jobs.jobvite.com/progress/job/o0s9AfwV",
+      "code": "JOB_CLOSED",
+      "message": "Application stopped: JOB_CLOSED.",
+      "expected_ats": "jobvite",
+      "ats": "jobvite",
+      "final_url": "https://jobs.jobvite.com/careers/progress/jobs?error=404",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "d6f4ce5d3a96408d862d91f4097a5eaf"
+    },
+    {
+      "id": "jobvite-ezra",
+      "url": "https://jobs.jobvite.com/ezra/job/o233zfwr",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 1 fields; no applicant data entered.",
+      "expected_ats": "jobvite",
+      "ats": "jobvite",
+      "final_url": "https://jobs.jobvite.com/ezra/job/o233zfwr/apply",
+      "field_count": 1,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [
+        "Location of Residence and Language:"
+      ],
+      "fields": [
+        {
+          "label": "Location of Residence and Language:",
+          "kind": "select",
+          "required": true
+        }
+      ],
+      "run_id": "acdac64f88d249b4abacdcd75dfce553"
+    },
+    {
+      "id": "recruitee-bluestone",
+      "url": "https://bluestonelogic.recruitee.com/o/software-engineer-1",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 5 fields; no applicant data entered.",
+      "expected_ats": "recruitee",
+      "ats": "recruitee",
+      "final_url": "https://bluestonelogic.recruitee.com/o/software-engineer-1/c/new",
+      "field_count": 5,
+      "identity_fields_detected": true,
+      "mapped_field_count": 4,
+      "required_answers_missing": [],
+      "fields": [
+        {
+          "label": "Full name *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Personal email address *",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone number *",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "CV or resume *",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Cover letter",
+          "kind": "file",
+          "required": false
+        }
+      ],
+      "run_id": "5f7766d881ad4d3786fe446e2335402b"
+    },
+    {
+      "id": "recruitee-trafilea",
+      "url": "https://trafilea.recruitee.com/o/senior-software-engineer-backend",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 16 fields; no applicant data entered.",
+      "expected_ats": "recruitee",
+      "ats": "recruitee",
+      "final_url": "https://trafilea.recruitee.com/o/senior-software-engineer-backend/c/new",
+      "field_count": 16,
+      "identity_fields_detected": true,
+      "mapped_field_count": 7,
+      "required_answers_missing": [
+        "Where are you located? *",
+        "What AWS services have you worked with directly? *"
+      ],
+      "fields": [
+        {
+          "label": "Full name *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email address *",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone number *",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "CV or resume *",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Linkedin link profile *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "EMEA",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "North America",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "LATAM",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Asia",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "How many years of experience do you have working with Golang? *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "What AWS services have you worked with directly? *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "LinkedIn",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Facebook",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Company Website",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Referral",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "Other",
+          "kind": "radio",
+          "required": true
+        }
+      ],
+      "run_id": "543213940e224fbba2d5a83a7a048802"
+    },
+    {
+      "id": "bamboohr-r2",
+      "url": "https://r2.bamboohr.com/careers/177",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 14 fields; no applicant data entered.",
+      "expected_ats": "bamboohr",
+      "ats": "bamboohr",
+      "final_url": "https://r2.bamboohr.com/careers/177",
+      "field_count": 14,
+      "identity_fields_detected": true,
+      "mapped_field_count": 11,
+      "required_answers_missing": [
+        "Date Available *",
+        "\u00bfTienes nivel de ingl\u00e9s Intermedio - avanzado? *"
+      ],
+      "fields": [
+        {
+          "label": "First Name *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last Name *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Phone *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Address *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "City *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "ZIP *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "file-input",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Date Available *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Desired Pay *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Website, Blog or Portfolio *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "LinkedIn URL *",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Yes",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "No",
+          "kind": "radio",
+          "required": true
+        }
+      ],
+      "run_id": "f472b6b0527b48d98da198db16c2bc97"
+    },
+    {
+      "id": "bamboohr-versafile",
+      "url": "https://versafile1.bamboohr.com/careers/149",
+      "code": "FORM_NOT_FOUND",
+      "message": "No application form or recognized entry control found.",
+      "expected_ats": "bamboohr",
+      "ats": "bamboohr",
+      "final_url": "https://versafile1.bamboohr.com/careers",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "133530946cc7483eb2d759ff38b35c78"
+    },
+    {
+      "id": "teamtailor-reel",
+      "url": "https://reelenergy-1727862339.teamtailor.com/jobs/7501997-senior-software-engineer",
+      "code": "JOB_CLOSED",
+      "message": "Job page returned HTTP 410.",
+      "expected_ats": "teamtailor",
+      "ats": "generic",
+      "final_url": "https://careers.reel.energy/jobs/7501997-senior-software-engineer",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "e41d427fd2e8445a98e739196b8a9f8b"
+    },
+    {
+      "id": "teamtailor-jenni",
+      "url": "https://jenniai-1748504648.teamtailor.com/jobs/5989905-growth-engineer/applications/new",
+      "code": "JOB_CLOSED",
+      "message": "Job page returned HTTP 404.",
+      "expected_ats": "teamtailor",
+      "ats": "teamtailor",
+      "final_url": "https://jenniai-1748504648.teamtailor.com/jobs/5989905-growth-engineer/applications/new",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "a15aeeda8f5e439ea8e7283d4335c27f"
+    },
+    {
+      "id": "pinpoint-carto",
+      "url": "https://carto.pinpointhq.com/en/postings/1c2969dc-1d97-4784-a296-df39bf2269c9",
+      "code": "FORM_NOT_FOUND",
+      "message": "No application form or recognized entry control found.",
+      "expected_ats": "pinpoint",
+      "ats": "pinpoint",
+      "final_url": "https://carto.pinpointhq.com/",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "147115704f0548d196801e1683820736"
+    },
+    {
+      "id": "breezy-codebase",
+      "url": "https://codebase.breezy.hr/p/2d1498a8dcda-full-stack-developer-react-typescript",
+      "code": "FORM_NOT_FOUND",
+      "message": "No application form or recognized entry control found.",
+      "expected_ats": "breezy",
+      "ats": "breezy",
+      "final_url": "https://codebase.breezy.hr/p/2d1498a8dcda-full-stack-developer-react-typescript",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "dccf2944ebec44bd95dbd0a77268109a"
+    },
+    {
+      "id": "breezy-opensea",
+      "url": "https://opensea.breezy.hr/p/5d42cd50fcea-full-stack-software-engineer/apply",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 7 fields; no applicant data entered.",
+      "expected_ats": "breezy",
+      "ats": "breezy",
+      "final_url": "https://opensea.breezy.hr/p/5d42cd50fcea-full-stack-software-engineer/apply",
+      "field_count": 7,
+      "identity_fields_detected": true,
+      "mapped_field_count": 6,
+      "required_answers_missing": [],
+      "fields": [
+        {
+          "label": "cResume",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Full Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email Address",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone Number",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Address",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Work History*",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "Cover Letter",
+          "kind": "textarea",
+          "required": false
+        }
+      ],
+      "run_id": "362b55c056c74497bdba269d7a9a05c8"
+    },
+    {
+      "id": "icims-platform",
+      "url": "https://careers.icims.com/technology/jobs/6460?lang=en-gb&previousLocale=en-US",
+      "code": "ACCESS_DENIED",
+      "message": "Job page returned HTTP 403.",
+      "expected_ats": "icims",
+      "ats": "icims",
+      "final_url": "https://careers.icims.com/technology/jobs/6460?lang=en-gb&previousLocale=en-US",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "27c9a28db36d47cf9533c445e49004f4"
+    },
+    {
+      "id": "teamtailor-clearroute",
+      "url": "https://clearroute.teamtailor.com/jobs/8326970-software-engineer-platform-ai",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 27 fields; no applicant data entered.",
+      "expected_ats": "teamtailor",
+      "ats": "teamtailor",
+      "final_url": "https://clearroute.teamtailor.com/jobs/8326970-software-engineer-platform-ai",
+      "field_count": 27,
+      "identity_fields_detected": true,
+      "mapped_field_count": 13,
+      "required_answers_missing": [
+        "Whats your current CTC, please mentioned fixed and variable part.*Required",
+        "How many years of experience do you have building production microservices and RESTful APIs?*Required",
+        "Do you have production experience with CI/CD pipelines using GitHub Actions or Azure DevOps?*Required",
+        "How many years of hands-on Kubernetes experience do you have?*Required",
+        "How many years of hands-on Terraform or other Infrastructure as Code experience do you have?*Required",
+        "Do you have hands-on experience with GitHub or GitLab APIs for workflow automation?* Required",
+        "How many years have you been working specifically with GenAI or Agentic AI?*Required",
+        "Required.By submitting this application, I agree that I have read the Privacy Policy and confirm that ClearRoute store my personal details to be able to process my job application.*"
+      ],
+      "fields": [
+        {
+          "label": "What is your availability to start this role, and do you have a notice period?*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Where are you based?*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Whats your current CTC, please mentioned fixed and variable part.*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "What are your salary expectations?*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "We are looking for immediate joiners, please let us know you LWD or your NP*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "How familiar are you with AWS Cloud services?*Required",
+          "kind": "range",
+          "required": true
+        },
+        {
+          "label": "How many years of professional Python development experience do you have?*Required",
+          "kind": "number",
+          "required": true
+        },
+        {
+          "label": "How many years of experience do you have building production microservices and RESTful APIs?*Required",
+          "kind": "number",
+          "required": true
+        },
+        {
+          "label": "Do you have production experience with CI/CD pipelines using GitHub Actions or Azure DevOps?*Required",
+          "kind": "number",
+          "required": true
+        },
+        {
+          "label": "How many years of hands-on Kubernetes experience do you have?*Required",
+          "kind": "number",
+          "required": true
+        },
+        {
+          "label": "How many years of hands-on Terraform or other Infrastructure as Code experience do you have?*Required",
+          "kind": "number",
+          "required": true
+        },
+        {
+          "label": "Yes",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "No",
+          "kind": "radio",
+          "required": true
+        },
+        {
+          "label": "How many years have you been working specifically with GenAI or Agentic AI?*Required",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "Bengaluru",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Pune",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "First name*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last name*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email*Required",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone number with country code",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "Address",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Work history",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "Drop your file or upload, Upload CV",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Drop your file or upload, Additional files",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "Cover letter",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "Required.By submitting this application, I agree that I have read the Privacy Policy and confirm that ClearRoute store my personal details to be able to process my job application.*",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Yes, ClearRoute can contact me directly about specific future job opportunities.",
+          "kind": "checkbox",
+          "required": false
+        }
+      ],
+      "run_id": "e5e41946fbbe4fc488077d289c7cfa63"
+    },
+    {
+      "id": "pinpoint-carto-current",
+      "url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 7 fields; no applicant data entered.",
+      "expected_ats": "pinpoint",
+      "ats": "pinpoint",
+      "final_url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2/applications/new",
+      "field_count": 7,
+      "identity_fields_detected": true,
+      "mapped_field_count": 6,
+      "required_answers_missing": [
+        "(Required) Allow us to process your personal information. *"
+      ],
+      "fields": [
+        {
+          "label": "First Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email Address",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone",
+          "kind": "tel",
+          "required": false
+        },
+        {
+          "label": "LinkedIn URL",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Personal Summary This section is optional. Use it to tell us a little more about yourself.",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "(Required) Allow us to process your personal information. *",
+          "kind": "checkbox",
+          "required": true
+        }
+      ],
+      "run_id": "0566fa1054704425ac7374970f23cd31"
+    },
+    {
+      "id": "workable-chipply",
+      "url": "https://apply.workable.com/chipply/j/3EBC0B6983/",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 11 fields; no applicant data entered.",
+      "expected_ats": "workable",
+      "ats": "workable",
+      "final_url": "https://apply.workable.com/chipply/j/3EBC0B6983/apply/",
+      "field_count": 11,
+      "identity_fields_detected": true,
+      "mapped_field_count": 9,
+      "required_answers_missing": [],
+      "fields": [
+        {
+          "label": "First name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Headline",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Telephone country code",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "*Phone+1",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "Address",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Summary",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "Resume Choose file",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Cover letter",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "What are your compensation expectations?",
+          "kind": "text",
+          "required": true
+        }
+      ],
+      "run_id": "6bbb3c5dfaef413ea1cae94453c2053a"
+    },
+    {
+      "id": "breezy-codebase-current",
+      "url": "https://codebase.breezy.hr/p/c1b62fc81300-senior-full-stack-developer-react-js-node-js",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 11 fields; no applicant data entered.",
+      "expected_ats": "breezy",
+      "ats": "breezy",
+      "final_url": "https://codebase.breezy.hr/p/c1b62fc81300-senior-full-stack-developer-react-js-node-js/apply",
+      "field_count": 11,
+      "identity_fields_detected": true,
+      "mapped_field_count": 9,
+      "required_answers_missing": [],
+      "fields": [
+        {
+          "label": "cResume",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Full Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email Address",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone Number",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "smsConsent",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Address",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Desired Salary",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "label": "Work History*",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "Cover Letter",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "What is your current notice period?*",
+          "kind": "text",
+          "required": true
+        }
+      ],
+      "run_id": "3b794290819443ab9910aa662c30447c"
+    },
+    {
+      "id": "greenhouse-doordash-backend",
+      "url": "https://job-boards.greenhouse.io/doordashusa/jobs/5630445",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 38 fields; no applicant data entered.",
+      "expected_ats": "greenhouse",
+      "ats": "greenhouse",
+      "final_url": "https://job-boards.greenhouse.io/doordashusa/jobs/5630445",
+      "field_count": 38,
+      "identity_fields_detected": true,
+      "mapped_field_count": 14,
+      "required_answers_missing": [
+        "How much did content from the DoorDash Engineering blog influence your decision to apply for a role at DoorDash?*",
+        "Will you now require immigration sponsorship by our company to attain or maintain your employment eligibility (e.g., H-1B, E-3, TN, O-1, STEM OPT, or any immigration work authorization requiring a written submission from the company to a government agency)?*",
+        "Have you worked at DoorDash?*",
+        "Applicant Privacy Acknowledgement *",
+        "We would like to contact you via SMS or WhatsApp to provide updates on your progress. Mark yes if you agree. If you mark no, we will contact you via the email you provided.*",
+        "Will you in the future require immigration require immigration sponsorship by our company to attain or maintain your employment eligibility (e.g., H-1B, E-3, TN, O-1, STEM OPT, or any immigration work authorization requiring a written submission from the company to a government agency)? *",
+        "Bay Area, CA (Sunnyvale or San Francisco)",
+        "New York City, NY",
+        "Seattle, WA",
+        "Ann Arbor, MI",
+        "Toronto, ON, Canada",
+        "None of the above",
+        "How many years of software engineering industry experience do you have (excluding internships)?*",
+        "Early Career (E3)",
+        "Mid-Level (E4)",
+        "Senior (E5)",
+        "Staff (E6)",
+        "Senior Staff (E7)",
+        "Not sure",
+        "Gender*",
+        "Do you identify as transgender?*",
+        "Are you Hispanic or Latinx?*",
+        "Race (*Please select one option that best describes how you identify*)*"
+      ],
+      "fields": [
+        {
+          "label": "First Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Country*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Phone",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "Location (City)*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "resume",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "cover_letter",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "School",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Degree",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "LinkedIn Profile",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "How much did content from the DoorDash Engineering blog influence your decision to apply for a role at DoorDash?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Are you legally authorized to work in the United States?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Will you now require immigration sponsorship by our company to attain or maintain your employment eligibility (e.g., H-1B, E-3, TN, O-1, STEM OPT, or any immigration work authorization requiring a written submission from the company to a government agency)?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Have you worked at DoorDash?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Applicant Privacy Acknowledgement *",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "We would like to contact you via SMS or WhatsApp to provide updates on your progress. Mark yes if you agree. If you mark no, we will contact you via the email you provided.*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Will you in the future require immigration require immigration sponsorship by our company to attain or maintain your employment eligibility (e.g., H-1B, E-3, TN, O-1, STEM OPT, or any immigration work authorization requiring a written submission from the company to a government agency)? *",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Bay Area, CA (Sunnyvale or San Francisco)",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "New York City, NY",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Seattle, WA",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Ann Arbor, MI",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Toronto, ON, Canada",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "None of the above",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "How many years of software engineering industry experience do you have (excluding internships)?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Early Career (E3)",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Mid-Level (E4)",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Senior (E5)",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Staff (E6)",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Senior Staff (E7)",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Not sure",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "What are your target total annual compensation expectations?",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "Gender*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Do you identify as transgender?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Are you Hispanic or Latinx?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Race (*Please select one option that best describes how you identify*)*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Protected Veteran Status*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Disability Status*",
+          "kind": "combobox",
+          "required": true
+        }
+      ],
+      "run_id": "06bb7a5451fb4e8cbe03e61fa01e9462"
+    },
+    {
+      "id": "greenhouse-applied-intuition-full-stack",
+      "url": "https://job-boards.greenhouse.io/appliedintuition/jobs/4510436005",
+      "code": "JOB_CLOSED",
+      "message": "Job page returned HTTP 404.",
+      "expected_ats": "greenhouse",
+      "ats": "greenhouse",
+      "final_url": "https://job-boards.greenhouse.io/appliedintuition?error=true",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "6404ec0d9a1e48a29a414550cc0fcefe"
+    },
+    {
+      "id": "greenhouse-accenture-federal-software",
+      "url": "https://job-boards.greenhouse.io/accenturefederalservices/jobs/4700296006",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 31 fields; no applicant data entered.",
+      "expected_ats": "greenhouse",
+      "ats": "greenhouse",
+      "final_url": "https://job-boards.greenhouse.io/accenturefederalservices/jobs/4700296006",
+      "field_count": 31,
+      "identity_fields_detected": true,
+      "mapped_field_count": 15,
+      "required_answers_missing": [
+        "Are you at least 18 years of age?*",
+        "Will you now or in the future require sponsorship for employment visa status (for example, H-1B visa status)?*",
+        "Have you entered into a non-disclosure or non-compete agreement or understanding of any kind?*",
+        "Have you worked at Accenture in the past?*",
+        "Do you hold a security clearance?*",
+        "At your current employer, are you currently working on a project with Accenture or have you worked on a project with Accenture in the past 24 months?*",
+        "Are you a current employee of the U.S. Government (including U.S. Congress or military) or any state or local government? This includes entities owned or controlled by the U.S. Federal Government, such as Amtrak, the United States Postal Service, and USAID (see list of exceptions below). NOTE: answer yes if you have accepted the \u201cFork-in-the-Road\u201d offer, separated with a Deferred Retirement Plan, or are on administrative leave pending separation from the Government.*",
+        "Will you be serving as enlisted personnel in either the Reserves or the National Guard while working for AFS?*",
+        "Were you an employee of the U.S. Government (including U.S. Congress or military) or any state or local government within the past 10 years? This includes entities owned or controlled by the U.S. Federal Government, such as Amtrak, the United States Postal Service, and USAID (see list of exceptions below). *",
+        "Do you have any family members or people you have close relationships with who work for Accenture Federal Services?*",
+        "Affirmation*",
+        "Gender*",
+        "Are you Hispanic/Latino?*"
+      ],
+      "fields": [
+        {
+          "label": "First Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Country*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Phone",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "Location (City)*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "resume",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "cover_letter",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "School",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Degree*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Discipline",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "State*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Are you at least 18 years of age?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Are you legally authorized to work in the United States?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Many AFS positions require US citizenship. Please indicate your citizenship status so we can determine eligibility for specific roles.",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": " If yes, please list the full name of the employee(s) and your relationship to them.",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Will you now or in the future require sponsorship for employment visa status (for example, H-1B visa status)?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Have you entered into a non-disclosure or non-compete agreement or understanding of any kind?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Have you worked at Accenture in the past?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "How did you hear about us?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Do you hold a security clearance?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "At your current employer, are you currently working on a project with Accenture or have you worked on a project with Accenture in the past 24 months?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Are you a current employee of the U.S. Government (including U.S. Congress or military) or any state or local government? This includes entities owned or controlled by the U.S. Federal Government, such as Amtrak, the United States Postal Service, and USAID (see list of exceptions below). NOTE: answer yes if you have accepted the \u201cFork-in-the-Road\u201d offer, separated with a Deferred Retirement Plan, or are on administrative leave pending separation from the Government.*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Will you be serving as enlisted personnel in either the Reserves or the National Guard while working for AFS?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Were you an employee of the U.S. Government (including U.S. Congress or military) or any state or local government within the past 10 years? This includes entities owned or controlled by the U.S. Federal Government, such as Amtrak, the United States Postal Service, and USAID (see list of exceptions below). *",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Do you have any family members or people you have close relationships with who work for Accenture Federal Services?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Affirmation*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Gender*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Are you Hispanic/Latino?*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Veteran Status*",
+          "kind": "combobox",
+          "required": true
+        },
+        {
+          "label": "Disability Status*",
+          "kind": "combobox",
+          "required": true
+        }
+      ],
+      "run_id": "6cd4c4b35d4043169a4a949fac98e321"
+    },
+    {
+      "id": "workable-total-life-full-stack",
+      "url": "https://apply.workable.com/total-life/j/84F61216A8/apply/",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 12 fields; no applicant data entered.",
+      "expected_ats": "workable",
+      "ats": "workable",
+      "final_url": "https://apply.workable.com/total-life/j/84F61216A8/apply/",
+      "field_count": 12,
+      "identity_fields_detected": true,
+      "mapped_field_count": 7,
+      "required_answers_missing": [
+        "Cover letter",
+        "How many years of hands-on programming experience do you have, and what types of projects have you worked on during that time?",
+        "Which city do you currently live in?",
+        "Can you share an example of a backend system you have built and scaled in a production environment? What challenges did you face and how did you address them?"
+      ],
+      "fields": [
+        {
+          "label": "First name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Telephone country code",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "*Phone+1",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "Address",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "Summary",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "Resume Choose file",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Cover letter",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "How many years of hands-on programming experience do you have, and what types of projects have you worked on during that time?",
+          "kind": "textarea",
+          "required": true
+        },
+        {
+          "label": "Which city do you currently live in?",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Can you share an example of a backend system you have built and scaled in a production environment? What challenges did you face and how did you address them?",
+          "kind": "textarea",
+          "required": true
+        }
+      ],
+      "run_id": "feb5bbd9aabf4a38b436180fe2e4360a"
+    },
+    {
+      "id": "workable-devsinc-python",
+      "url": "https://apply.workable.com/devsinc-17/j/95442E6391/apply/",
+      "code": "JOB_CLOSED",
+      "message": "Application stopped: JOB_CLOSED.",
+      "expected_ats": "workable",
+      "ats": "workable",
+      "final_url": "https://apply.workable.com/devsinc-17/?not_found=true",
+      "field_count": 0,
+      "identity_fields_detected": false,
+      "mapped_field_count": 0,
+      "required_answers_missing": [],
+      "fields": [],
+      "run_id": "f1db30d3fe62435490c8cf79d520abb6"
+    },
+    {
+      "id": "breezy-centrl-software-engineer",
+      "url": "https://centrl.breezy.hr/p/5f71fbede25a-software-engineer/apply",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 7 fields; no applicant data entered.",
+      "expected_ats": "breezy",
+      "ats": "breezy",
+      "final_url": "https://centrl.breezy.hr/p/5f71fbede25a-software-engineer/apply",
+      "field_count": 7,
+      "identity_fields_detected": true,
+      "mapped_field_count": 6,
+      "required_answers_missing": [],
+      "fields": [
+        {
+          "label": "cResume",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Full Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email Address",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone Number",
+          "kind": "text",
+          "required": false
+        },
+        {
+          "label": "smsConsent",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Work History",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "Cover Letter",
+          "kind": "textarea",
+          "required": false
+        }
+      ],
+      "run_id": "fed4c6f0ece741669171ab9f62bfb60d"
+    },
+    {
+      "id": "breezy-utilityapi-ai-platform",
+      "url": "https://utilityapi.breezy.hr/p/7c161dbb2af0-senior-staff-software-engineer-ai-systems-platform",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 12 fields; no applicant data entered.",
+      "expected_ats": "breezy",
+      "ats": "breezy",
+      "final_url": "https://utilityapi.breezy.hr/p/7c161dbb2af0-senior-staff-software-engineer-ai-systems-platform/apply",
+      "field_count": 12,
+      "identity_fields_detected": true,
+      "mapped_field_count": 6,
+      "required_answers_missing": [
+        "Required Acknowledgement*",
+        "I have read the Privacy Notice below and consent to the processing of my data as part of my job application."
+      ],
+      "fields": [
+        {
+          "label": "cResume",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Full Name",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email Address",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone Number",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "smsConsent",
+          "kind": "checkbox",
+          "required": false
+        },
+        {
+          "label": "Address",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Required Acknowledgement*",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "What state do you currently reside in?*",
+          "kind": "select",
+          "required": true
+        },
+        {
+          "label": "Why does this role excite you?",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "What is your AI philosophy? Describe your principles around the use of AI.",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "Describe a way in which AI has enhanced your performance at work, and a way in which you\u2019ve put parameters or constraints on how you\u2019ve used AI.",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "I have read the Privacy Notice below and consent to the processing of my data as part of my job application.",
+          "kind": "checkbox",
+          "required": true
+        }
+      ],
+      "run_id": "c3feb67b2e9d4c9c8b121de281e46863"
+    },
+    {
+      "id": "teamtailor-clearroute-agentic-ai",
+      "url": "https://clearroute.teamtailor.com/jobs/8261776-agentic-ai-developer-python",
+      "code": "INSPECTED_NOT_SUBMITTED",
+      "message": "Detected 15 fields; no applicant data entered.",
+      "expected_ats": "teamtailor",
+      "ats": "teamtailor",
+      "final_url": "https://clearroute.teamtailor.com/jobs/8261776-agentic-ai-developer-python",
+      "field_count": 15,
+      "identity_fields_detected": true,
+      "mapped_field_count": 11,
+      "required_answers_missing": [
+        "Do you require visa sponsorship?*Required",
+        "Required.By submitting this application, I agree that I have read the Privacy Policy and confirm that ClearRoute store my personal details to be able to process my job application.*"
+      ],
+      "fields": [
+        {
+          "label": "What is your availability to start this role, and do you have a notice period?*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "What are your salary expectations?*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Do you require visa sponsorship?*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Where are you based?*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "First name*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Last name*Required",
+          "kind": "text",
+          "required": true
+        },
+        {
+          "label": "Email*Required",
+          "kind": "email",
+          "required": true
+        },
+        {
+          "label": "Phone number with country code",
+          "kind": "tel",
+          "required": true
+        },
+        {
+          "label": "Address",
+          "kind": "combobox",
+          "required": false
+        },
+        {
+          "label": "Work history",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "Drop your file or upload, Upload CV",
+          "kind": "file",
+          "required": true
+        },
+        {
+          "label": "Drop your file or upload, Additional files",
+          "kind": "file",
+          "required": false
+        },
+        {
+          "label": "Cover letter",
+          "kind": "textarea",
+          "required": false
+        },
+        {
+          "label": "Required.By submitting this application, I agree that I have read the Privacy Policy and confirm that ClearRoute store my personal details to be able to process my job application.*",
+          "kind": "checkbox",
+          "required": true
+        },
+        {
+          "label": "Yes, ClearRoute can contact me directly about specific future job opportunities.",
+          "kind": "checkbox",
+          "required": false
+        }
+      ],
+      "run_id": "5b2ff85e05e14b7ca558faad953123b0"
+    }
+  ]
+}

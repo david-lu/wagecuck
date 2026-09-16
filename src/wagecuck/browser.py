@@ -10,6 +10,7 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Page
 
 from .ats import annotate, detect
+from .field_values import FieldValueError, normalize_field_value
 from .models import Action, ApplicationError, Code, Control, FormField, Snapshot
 
 PARSE = Path(__file__).with_name("parse.js").read_text(encoding="utf-8")
@@ -167,14 +168,39 @@ async def combobox_matches(page, target, action, expected):
         await target.press("Escape")
 
 
+async def set_choice(target, value: bool) -> None:
+    """Set native and visually hidden custom choice inputs, then verify state."""
+    try:
+        await target.set_checked(value)
+    except PlaywrightError:
+        if await target.is_checked() != value:
+            label = target.locator("xpath=ancestor::label[1]")
+            if await label.count():
+                await label.click()
+            else:
+                await target.evaluate("e => e.click()")
+    if await target.is_checked() != value:
+        raise ValueError("Check state not retained")
+
+
+async def native_value_is_valid(target) -> bool:
+    """Use the browser's own type/pattern/range/length validation when available."""
+    return await target.evaluate("e => !e.willValidate || e.validity.valid")
+
+
 async def fill(page: Page, action: Action):
     field, value = action.field, action.value
     target = locator(page, field)
-    string = "Yes" if value is True else "No" if value is False else value
     try:
+        if not (field.kind == "combobox" and action.random_choice):
+            value = normalize_field_value(field, value)
+            action.value = value
+        string = "Yes" if value is True else "No" if value is False else value
         if field.kind == "file":
             await target.set_input_files(string)
-            if await target.evaluate("e => e.files.length") < 1:
+            if await target.evaluate("e => e.files.length") < 1 or not await native_value_is_valid(
+                target
+            ):
                 raise ValueError("Upload not retained")
         elif field.kind == "select":
             option = match_option(value, field.options)
@@ -183,20 +209,19 @@ async def fill(page: Page, action: Action):
                     Code.UNSUPPORTED_CONTROL, f"No unambiguous option for {field.label}"
                 )
             await target.select_option(value=option.value)
-            if await target.input_value() != option.value:
+            if await target.input_value() != option.value or not await native_value_is_valid(
+                target
+            ):
                 raise ValueError("Selection not retained")
         elif field.kind in ("checkbox", "radio"):
             if not isinstance(value, bool):
                 raise ApplicationError(
                     Code.UNSUPPORTED_CONTROL, f"Boolean answer required for {field.label}"
                 )
-            if field.kind == "radio":
-                if value:
-                    await target.check()
-            else:
-                await target.set_checked(value)
-            if await target.is_checked() != value:
-                raise ValueError("Check state not retained")
+            if field.kind != "radio" or value:
+                await set_choice(target, value)
+            if not await native_value_is_valid(target):
+                raise ValueError("Choice violates native constraints")
         elif field.kind == "combobox":
             if action.random_choice:
                 frame = page.frames[field.frame]
@@ -244,7 +269,21 @@ async def fill(page: Page, action: Action):
             # Input-like widgets must retain a selected label; arbitrary widgets are unsupported.
             if not await combobox_matches(page, target, action, string):
                 raise ValueError("Combobox selection not retained")
-        elif field.kind in ("text", "email", "tel", "url", "number", "date", "textarea", "search"):
+        elif field.kind in (
+            "text",
+            "email",
+            "tel",
+            "url",
+            "number",
+            "range",
+            "date",
+            "datetime-local",
+            "month",
+            "week",
+            "time",
+            "textarea",
+            "search",
+        ):
             await target.fill(string)
             await target.blur()
             actual = await target.input_value()
@@ -260,7 +299,7 @@ async def fill(page: Page, action: Action):
                 await target.press_sequentially(string, delay=20)
                 await target.blur()
                 valid = await phone_matches(target, string)
-            if not valid:
+            if not valid or not await native_value_is_valid(target):
                 raise ValueError("Value not retained")
         else:
             raise ApplicationError(
@@ -268,7 +307,7 @@ async def fill(page: Page, action: Action):
             )
     except ApplicationError:
         raise
-    except (PlaywrightError, ValueError) as exc:
+    except (FieldValueError, PlaywrightError, ValueError) as exc:
         # Do not serialize Playwright exception bodies: they can contain applicant values.
         raise ApplicationError(
             Code.FIELD_FILL_FAILED, f"Could not verify field: {field.label}"
@@ -311,6 +350,8 @@ async def verify_actions(page: Page, actions: list[Action]):
             valid = actual == string or (
                 field.kind == "tel" and await phone_matches(target, string)
             )
+        if field.kind != "combobox":
+            valid = valid and await native_value_is_valid(target)
         if not valid:
             raise ApplicationError(
                 Code.VALIDATION_FAILED,

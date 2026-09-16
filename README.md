@@ -35,6 +35,16 @@ This actually uploads the PDF and submits to the local fixture server. A second 
 
 ## Run against a job link
 
+After activating the virtual environment, one dry run against one URL is:
+
+```powershell
+wagecuck run "JOB_APPLICATION_URL" --profile demo --dry-run
+```
+
+`--profile demo` resolves to `profiles/demo/profile.json`; similarly, `--profile ryan` resolves
+to `profiles/ryan/profile.json`. A complete JSON path is still accepted. `--dry-run` opens and
+inspects the application without entering applicant data or submitting it.
+
 ```powershell
 .venv\Scripts\python.exe -m wagecuck run "JOB_APPLICATION_URL" --profile profiles/demo/profile.json --mode inspect
 .venv\Scripts\python.exe -m wagecuck run "JOB_APPLICATION_URL" --profile profiles/private/me.json --mode fill
@@ -153,7 +163,7 @@ The default hosted model is `gpt-5.6-terra`, configurable through `--agent-model
 `WAGECUCK_AGENT_MODEL`. Requests use the Responses API with strict JSON schemas and `store=false`.
 
 ```powershell
-.venv\Scripts\python.exe scripts/dry_run_all.py --agent-provider openai --agent-fill --output docs/dry-run-openai.json
+.venv\Scripts\python.exe scripts/dry_run_all.py --agent-provider openai --agent-fill --output docs/dry-run-training.json
 ```
 
 Navigation is deterministic. The subsequent offline DOM probe runs the configured model for
@@ -235,13 +245,21 @@ Each run saves `result.json`, an event journal, normalized step snapshots and pe
 .venv\Scripts\python.exe scripts/inspect_live.py
 ```
 
-The local browser suite submits only to the loopback fixture server and checks actual HTTP submissions/PDF bytes. Live inspection uses the [researched posting corpus](examples/live-jobs.json), writes [live results](docs/live-report.json), and never enters applicant data or submits. Listings can close between search and browser inspection.
+The local browser suite submits only to the loopback fixture server and checks actual HTTP submissions/PDF bytes. Live inspection uses the [training corpus](examples/training-jobs.json), writes live results, and never submits. Listings can close between search and browser inspection.
 
-The [expanded corpus](examples/expanded-jobs.json) adds 20 URLs spanning nine more ATS families. To repeat the entire 31-URL diagnostic:
+The training corpus expands the original and expanded shards and adds current postings. It contains 39 URLs across thirteen ATS families. To run it:
 
 ```powershell
 .venv\Scripts\python.exe scripts/dry_run_all.py
 ```
+
+The eight-posting [validation corpus](examples/validation-jobs.json) is held out from development. Run it only as an aggregate evaluation after implementation and training work is complete:
+
+```powershell
+.venv\Scripts\python.exe scripts/dry_run_all.py --split validation --agent-provider openai --agent-fill
+```
+
+Validation artifacts contain counts and outcomes only. Field labels, choices, mappings and failure details are discarded, and the report records the exact runtime-source fingerprint. Do not change field-identification or filling behavior in response to validation results. The full protocol and contamination rules are in [the evaluation guide](docs/evaluation.md).
 
 This navigates every URL, records closed/auth/access failures, then exercises the real field planner and executor on reachable forms with networking disabled before entering the fictional profile. It blocks service workers and WebSockets and never clicks Next or Submit after filling. See the [per-application report](docs/dry-run-all.md) and [field-level results](docs/dry-run-all.json). Offline checks cannot prove server validation, uploaded-document acceptance, network-backed autocomplete, later application pages, or CAPTCHA acceptance. No universal ATS support is claimed.
 

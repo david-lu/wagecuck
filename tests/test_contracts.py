@@ -66,9 +66,11 @@ async def test_agent_cannot_invent_values(profile):
             return [Mapping(field_id="0:1", fact_key="invented_salary", confidence=1)]
 
     field = FormField(id="1", frame=0, label="Where can we view your work?", kind="text")
-    with pytest.raises(ApplicationError) as error:
-        await WorkflowAgent(BadAgent()).plan([field], profile)
-    assert error.value.code == Code.AGENT_FAILED
+    planner = WorkflowAgent(BadAgent())
+    actions, unresolved = await planner.plan([field], profile)
+    assert not actions and unresolved == [field]
+    assert planner.warnings[0]["field_id"] == "0:1"
+    assert planner.warnings[0]["code"] == Code.AGENT_FAILED
 
 
 async def test_agent_maps_known_fact_only(profile):

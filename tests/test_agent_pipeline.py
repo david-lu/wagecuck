@@ -116,15 +116,31 @@ async def test_drafting_rejects_unsupported_sources_and_numbers(profile, keys, t
     assert exc.value.code == Code.AGENT_FAILED
 
 
-async def test_agent_cannot_inject_document_path_into_text_field(profile):
+async def test_invalid_document_mapping_isolated_from_valid_field_mapping(profile):
     class Agent:
         async def map(self, fields, keys):
             return [
-                Mapping(field_id="0:x", fact_keys=["first_name", "documents.resume"], confidence=1)
+                Mapping(field_id="0:good", fact_key="website", confidence=1),
+                Mapping(
+                    field_id="0:x",
+                    fact_keys=["first_name", "documents.resume"],
+                    confidence=1,
+                ),
             ]
 
-    with pytest.raises(ApplicationError):
-        await WorkflowAgent(Agent()).plan([field("x", "Some unknown question")], profile)
+    planner = WorkflowAgent(Agent())
+    fields = [field("good", "Public work sample"), field("x", "Some unknown question")]
+    actions, unresolved = await planner.plan(fields, profile)
+    assert [action.source for action in actions] == ["agent:website"]
+    assert unresolved == [fields[1]]
+    assert planner.warnings == [
+        {
+            "field_id": "0:x",
+            "stage": "mapping",
+            "message": "Document mappings must target upload fields only.",
+            "code": Code.AGENT_FAILED,
+        }
+    ]
 
 
 async def test_optional_and_unknown_requirements_are_distinguished(profile):
@@ -169,6 +185,42 @@ async def test_mapping_schema_constrains_choices_and_sends_adjacent_metadata():
         )
         == []
     )
+
+
+async def test_malformed_mapping_item_does_not_discard_valid_sibling(profile):
+    def respond(request):
+        body = json.loads(request.content)
+        if body["format"]["title"] == "Requirements":
+            content = {"assessments": []}
+        else:
+            content = {
+                "mappings": [
+                    {
+                        "field_id": "0:good",
+                        "fact_key": "website",
+                        "fact_keys": [],
+                        "separator": " ",
+                        "evidence": "Public work sample",
+                        "confidence": 1,
+                    },
+                    {
+                        "field_id": "0:bad",
+                        "fact_key": "first_name",
+                        "fact_keys": [],
+                        "separator": " ",
+                        "evidence": "Other value",
+                    },
+                ]
+            }
+        return httpx.Response(200, json={"message": {"content": json.dumps(content)}})
+
+    planner = WorkflowAgent(OllamaMappingAgent("test", transport=httpx.MockTransport(respond)))
+    fields = [field("good", "Public work sample"), field("bad", "Other value")]
+    actions, unresolved = await planner.plan(fields, profile)
+    assert [action.source for action in actions] == ["agent:website"]
+    assert unresolved == [fields[1]]
+    assert planner.warnings[0]["field_id"] == "0:bad"
+    assert "malformed mapping metadata" in planner.warnings[0]["message"]
 
 
 async def test_ollama_draft_transport():

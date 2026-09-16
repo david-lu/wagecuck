@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "split": "validation",
+  "researched_at": "2026-09-16",
+  "purpose": "Held-out evaluation corpus. Do not inspect field metadata or change field behavior in response to these cases.",
+  "cases": [
+    {
+      "id": "validation-ashby-mycroft",
+      "ats": "ashby",
+      "company": "Mycroft",
+      "title": "Software Engineer",
+      "url": "https://jobs.ashbyhq.com/mycroft/7b832163-c9e5-48f1-a68b-6523073800ff",
+      "holdout_tokens": ["mycroft", "7b832163-c9e5-48f1-a68b-6523073800ff"]
+    },
+    {
+      "id": "validation-ashby-gigi",
+      "ats": "ashby",
+      "company": "Gigi",
+      "title": "Software Engineer, Full Stack",
+      "url": "https://jobs.ashbyhq.com/gigi/5fb915ce-aa72-41a7-976e-430a10928c24",
+      "holdout_tokens": ["5fb915ce-aa72-41a7-976e-430a10928c24"]
+    },
+    {
+      "id": "validation-ashby-harvey",
+      "ats": "ashby",
+      "company": "Harvey",
+      "title": "Software Engineer, Full Stack",
+      "url": "https://jobs.ashbyhq.com/harvey/9fa38e48-dba2-496d-baf7-32a8c5e0c730",
+      "holdout_tokens": ["9fa38e48-dba2-496d-baf7-32a8c5e0c730"]
+    },
+    {
+      "id": "validation-breezy-skyspecs",
+      "ats": "breezy",
+      "company": "SkySpecs",
+      "title": "Senior Software Engineer",
+      "url": "https://skyspecs.breezy.hr/p/d9399b066206-senior-software-engineer",
+      "holdout_tokens": ["skyspecs", "d9399b066206"]
+    },
+    {
+      "id": "validation-teamtailor-mannarino",
+      "ats": "teamtailor",
+      "company": "MANNARINO",
+      "title": "Drone Ground Station Software Developer",
+      "url": "https://careers.mss.ca/jobs/5977506-drone-ground-station-software-developer",
+      "holdout_tokens": ["5977506", "drone-ground-station-software-developer"]
+    },
+    {
+      "id": "validation-workable-goglobal",
+      "ats": "workable",
+      "company": "GoGlobal",
+      "title": "Senior Software Engineer",
+      "url": "https://apply.workable.com/j/8E35097D4B",
+      "holdout_tokens": ["8e35097d4b"]
+    },
+    {
+      "id": "validation-greenhouse-zip",
+      "ats": "greenhouse",
+      "company": "Zip",
+      "title": "Software Engineer",
+      "url": "https://job-boards.greenhouse.io/zipcolimited/jobs/4654133006",
+      "holdout_tokens": ["zipcolimited", "4654133006"]
+    },
+    {
+      "id": "validation-lever-glue",
+      "ats": "lever",
+      "company": "Glue",
+      "title": "Software Engineer, Backend",
+      "url": "https://jobs.lever.co/gluegroups/357a840b-e0eb-47ff-97f9-1d7161bbb399",
+      "holdout_tokens": ["gluegroups", "357a840b-e0eb-47ff-97f9-1d7161bbb399"]
+    }
+  ]
+}

@@ -1,11 +1,13 @@
 import json
+from datetime import date
 
 import pytest
 
 from wagecuck import ApplicationRunner
 from wagecuck.agent import Mapping, WorkflowAgent
 from wagecuck.demo import generate_profile
-from wagecuck.models import ApplicationError, Code, FormField, Option
+from wagecuck.inference import FieldAnswer
+from wagecuck.models import Code, FormField, Option
 
 
 @pytest.mark.parametrize(
@@ -13,7 +15,6 @@ from wagecuck.models import ApplicationError, Code, FormField, Option
     [
         ("When would you be available to start? ✱", "text", "availability"),
         ("When are you looking to start? ✱", "textarea", "availability"),
-        ("Date Available *", "text", "availability"),
         (
             "What is your availability to start this role, and do you have a notice period?*Required",
             "text",
@@ -27,7 +28,8 @@ from wagecuck.models import ApplicationError, Code, FormField, Option
         ),
         ("What salary range are you targeting? ✱", "textarea", "compensation_expectations"),
         ("What are your salary expectations?*Required", "text", "compensation_expectations"),
-        ("Desired Pay *", "text", "compensation_expectations"),
+        ("Desired Pay *", "text", "application.compensation.annual_target"),
+        ("Desired Salary", "text", "application.compensation.annual_target"),
         ("Work History*", "textarea", "work_history"),
         (
             "Personal Summary This section is optional. Use it to tell us a little more about yourself.",
@@ -66,6 +68,60 @@ async def test_real_unmapped_questions_use_named_values(profile, label, kind, ke
     assert actions[0].value == profile.values()[key]
     assert actions[0].source == f"facts:{key}"
     assert not profile.answers
+
+
+async def test_date_available_uses_typed_profile_date_or_inference(profile):
+    field = FormField(
+        id="date",
+        frame=0,
+        label="Date Available *",
+        kind="text",
+        placeholder="mm/dd/yyyy",
+        required=True,
+    )
+    profile.application.available_start_date = date(2026, 10, 1)
+    actions, unresolved = await WorkflowAgent().plan([field], profile)
+    assert not unresolved and actions[0].value == "10/01/2026"
+    assert actions[0].source == "facts:application.available_start_date"
+
+    profile.application.available_start_date = None
+
+    class Agent:
+        async def map(self, fields, keys):
+            pytest.fail("A recognized missing date should proceed directly to answer inference")
+
+        async def infer(self, fields, facts):
+            assert facts["application.notice_period_days"] == "14"
+            return [
+                FieldAnswer(
+                    field_id="0:date",
+                    value="2026-10-01",
+                    basis="inferred",
+                    fact_keys=["application.notice_period_days"],
+                    reason="Calculated an available date using the supplied notice period.",
+                )
+            ]
+
+    actions, unresolved = await WorkflowAgent(Agent()).plan([field], profile, agent_fill=True)
+    assert not unresolved and actions[0].value == "10/01/2026"
+    assert actions[0].source == "agent_fill:application.notice_period_days"
+
+
+async def test_unrelated_native_date_remains_available_for_semantic_mapping(profile):
+    field = FormField(id="date", frame=0, label="Engagement began", kind="date")
+
+    class Agent:
+        async def map(self, fields, keys):
+            return [
+                Mapping(
+                    field_id="0:date",
+                    fact_key="employment.0.start_date",
+                    confidence=1,
+                )
+            ]
+
+    actions, unresolved = await WorkflowAgent(Agent()).plan([field], profile)
+    assert not unresolved and actions[0].value == "2023-06-01"
 
 
 @pytest.mark.parametrize(
@@ -108,7 +164,7 @@ async def test_named_values_are_live_profile_data_not_hardcoded_answers(profile)
     ]
     actions, unresolved = await WorkflowAgent().plan(fields, profile)
     assert not unresolved
-    assert [a.value for a in actions] == ["30 days", "CAD 123456 per year", False, False]
+    assert [a.value for a in actions] == ["30 days", "CAD 123456 per year", "No", "No"]
     assert profile.values()["authorized_canada"] is False
 
 
@@ -147,20 +203,18 @@ async def test_agent_cannot_substitute_different_country_or_identity(profile, ke
             return [Mapping(field_id="0:q", fact_key=key, confidence=1)]
 
     # Explicit sensitive wording prevents an arbitrary contact field answering this question.
-    with pytest.raises(ApplicationError) as exc:
-        await WorkflowAgent(Agent()).plan(
-            [
-                FormField(
-                    id="q",
-                    frame=0,
-                    kind="select",
-                    label="Do you have permission for employment in Canada?",
-                    options=[Option(label="Not a known option", value="x")],
-                )
-            ],
-            profile,
-        )
-    assert exc.value.code == Code.AGENT_FAILED
+    field = FormField(
+        id="q",
+        frame=0,
+        kind="select",
+        label="Do you have permission for employment in Canada?",
+        options=[Option(label="Not a known option", value="x")],
+    )
+    planner = WorkflowAgent(Agent())
+    actions, unresolved = await planner.plan([field], profile)
+    assert not actions and unresolved == [field]
+    assert planner.warnings[0]["field_id"] == "0:q"
+    assert planner.warnings[0]["code"] == Code.AGENT_FAILED
 
 
 async def test_named_radio_group_uses_actual_option_and_false_is_valid(profile):
@@ -185,6 +239,7 @@ def test_demo_has_no_question_keyed_answers(tmp_path):
     data = json.loads(generate_profile(tmp_path / "demo").read_text())
     assert "answers" not in data
     assert data["screening"]["work_authorization"]["CA"]["authorized"] is True
+    assert data["application"]["available_start_date"] == "2026-10-01"
     assert data["application"]["notice_period_days"] == 14
 
 

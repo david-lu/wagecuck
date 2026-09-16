@@ -4,6 +4,7 @@ import random
 import re
 
 from .browser import normalize
+from .field_values import value_contract
 from .models import Action
 from .screening import Answer, answer_for, plan_answer
 
@@ -47,11 +48,16 @@ def key_for(field, profile):
         q,
     ) and not re.search(r"referr(?:er|al).*name|name.*referr|who referred", q):
         return "source"
+    if re.fullmatch(r"date available|available (?:start )?date|start date available", q) or (
+        value_contract(field) == "date"
+        and re.search(r"available.*start|start.*available|when.*(?:start|join)|earliest.*start", q)
+    ):
+        return "application.available_start_date"
     if re.search(
-        r"when.*(?:available|looking).*start|date available|availability.*start|available to start|immediate joiners",
+        r"when.*(?:available|looking).*start|availability.*start|available to start|immediate joiners",
         q,
     ):
-        return "application.available_start_date" if field.kind == "date" else "availability"
+        return "availability"
     if re.search(r"notice period", q):
         return "application.notice_period_days" if field.kind == "number" else "notice_period"
     if re.search(r"salary|compensation|desired pay", q):
@@ -70,6 +76,8 @@ def key_for(field, profile):
         currency = profile.application.compensation.currency
         if len(requested) > 1 or (requested and requested != [currency]):
             return None
+        if re.search(r"\bdesired (?:annual )?(?:salary|pay)\b", q):
+            return "application.compensation.annual_target" if currency else None
         if field.kind == "number":
             return "application.compensation.annual_target" if currency and "annual" in q else None
         return "compensation_expectations"
@@ -176,7 +184,20 @@ def action_for_key(field, fields, profile, key):
         if action:
             action.source = f"facts:{key}"
         return handled, action
-    if field.kind in ("text", "textarea", "number", "date", "email", "url", "tel"):
+    if field.kind in (
+        "text",
+        "textarea",
+        "number",
+        "range",
+        "date",
+        "datetime-local",
+        "month",
+        "week",
+        "time",
+        "email",
+        "url",
+        "tel",
+    ):
         if field.kind == "number" and (
             isinstance(value, bool) or not re.fullmatch(r"\d+(?:\.\d+)?", str(value))
         ):

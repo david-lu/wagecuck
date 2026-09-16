@@ -78,7 +78,11 @@
     const context = ((scope ? labelText(scope) : lab) + ' ' + described).trim().slice(0, 1600);
     return {
       id: identify(el), label: lab, name: el.name || el.id || '', kind,
-      required, autocomplete: el.autocomplete || '', group, fact_key: el.getAttribute('data-wagecuck-fact') || '',
+      required, autocomplete: el.autocomplete || '', placeholder: el.placeholder || '',
+      input_mode: el.inputMode || '', pattern: el.pattern || '', minimum: el.min || '', maximum: el.max || '', step: el.step || '',
+      min_length: el.hasAttribute('minlength') && el.minLength >= 0 ? el.minLength : null,
+      max_length: el.hasAttribute('maxlength') && el.maxLength >= 0 ? el.maxLength : null,
+      group, fact_key: el.getAttribute('data-wagecuck-fact') || '',
       context, required_evidence: required ? 'DOM required marker or constraint' : /optional|not required/i.test(lab + ' ' + described) ? 'DOM optional marker' : '',
       requirement_status: required ? 'required' : /optional|not required/i.test(lab + ' ' + described) ? 'optional' : 'unknown',
       options: el.tagName === 'SELECT' ? [...el.options].filter(o => !o.disabled && o.value !== '').map(o => ({label: text(o), value: o.value})) : [],

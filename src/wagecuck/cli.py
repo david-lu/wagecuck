@@ -11,7 +11,15 @@ from .models import Profile, RunOptions
 from .runner import ApplicationRunner
 
 
-def main():
+def resolve_profile_path(reference: str | Path) -> Path:
+    """Resolve a short profile name while preserving explicit filesystem paths."""
+    path = Path(reference)
+    if path.exists() or path.suffix or len(path.parts) > 1:
+        return path
+    return Path("profiles") / path / "profile.json"
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(prog="wagecuck")
     commands = parser.add_subparsers(dest="command", required=True)
     demo = commands.add_parser("demo-profile", help="Generate a synthetic profile and resume PDF")
@@ -20,8 +28,18 @@ def main():
     server.add_argument("--port", type=int, default=8765)
     run = commands.add_parser("run", help="Process one job application URL")
     run.add_argument("url")
-    run.add_argument("--profile", type=Path, required=True)
-    run.add_argument("--mode", choices=("inspect", "fill", "submit"), default="fill")
+    run.add_argument(
+        "--profile",
+        required=True,
+        help="Profile name (for example, ryan) or path to a profile JSON file",
+    )
+    mode = run.add_mutually_exclusive_group()
+    mode.add_argument("--mode", choices=("inspect", "fill", "submit"), default="fill")
+    mode.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Inspect the application without entering applicant data or submitting",
+    )
     run.add_argument(
         "--wait-for-user",
         action="store_true",
@@ -59,7 +77,7 @@ def main():
         help="Save screenshot and trace, which contain applicant data",
     )
     add_agent_arguments(run)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.command == "demo-server":
         from .fixtures import serve
 
@@ -68,16 +86,17 @@ def main():
     if args.command == "demo-profile":
         print(json.dumps({"profile": str(generate_profile(args.output))}))
         return 0
-    if args.wait_for_user and (args.mode != "fill" or args.headed is False):
+    selected_mode = "inspect" if args.dry_run else args.mode
+    if args.wait_for_user and (selected_mode != "fill" or args.headed is False):
         parser.error("--wait-for-user requires fill mode and cannot be combined with --headless")
     try:
         agent = create_agent(args)
     except ValueError as exc:
         parser.error(str(exc))
     try:
-        profile = Profile.load(args.profile)
+        profile = Profile.load(resolve_profile_path(args.profile))
         options = RunOptions(
-            mode=args.mode,
+            mode=selected_mode,
             headless=not args.headed,
             wait_for_user=args.wait_for_user,
             agent_fill=args.agent_fill,

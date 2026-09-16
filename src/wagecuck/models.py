@@ -392,6 +392,14 @@ class FormField(BaseModel):
     filled: bool = False
     invalid: bool = False
     autocomplete: str = ""
+    placeholder: str = ""
+    input_mode: str = ""
+    pattern: str = ""
+    minimum: str = ""
+    maximum: str = ""
+    step: str = ""
+    min_length: int | None = None
+    max_length: int | None = None
     group: str = ""
     fact_key: str = ""
     context: str = ""

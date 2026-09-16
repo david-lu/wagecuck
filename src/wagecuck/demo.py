@@ -67,7 +67,7 @@ def generate_profile(directory: Path) -> Path:
             "pronouns": None,
             "headline": "Software engineer focused on Python services and browser automation",
             "personal_summary": "Fictional software engineer with experience building Python services, TypeScript interfaces, and browser testing workflows.",
-            "available_start_date": None,
+            "available_start_date": "2026-10-01",
             "notice_period_days": 14,
             "availability_summary": None,
             "preferred_location": "Toronto",

@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-16T07:17:14.194993+00:00",
+  "checked_at": "2026-09-16T08:41:37.158795+00:00",
   "mode": "inspect",
   "applicant_data_entered": false,
   "applications_submitted": 0,
@@ -17,7 +17,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "dcbf1c34d36e4ad9a9e74f51bc8d6a8a"
+      "run_id": "8ddf21a1920b49f9aa8b406ddcfd1faf"
     },
     {
       "id": "workable-activ",
@@ -32,7 +32,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "2176577b8c15467c96cf007500d37718"
+      "run_id": "eae0871a598d4b3ab33ad5883f6ea087"
     },
     {
       "id": "smartrecruiters-servicenow",
@@ -47,7 +47,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "026ab042e78a452882f29396838cafc9"
+      "run_id": "44d04f6de28f4842a850b7f9a225cb5f"
     },
     {
       "id": "smartrecruiters-ubisoft",
@@ -62,7 +62,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "1ea217778cda4137a880a1593fdb1bbb"
+      "run_id": "f8858f601c2a4d8b9547dce350ebe787"
     },
     {
       "id": "jobvite-progress",
@@ -77,7 +77,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "d2b7daacaa254eb8819629ccd49f883b"
+      "run_id": "eed4d2b7f8dd4c7ea5644600adfc7403"
     },
     {
       "id": "jobvite-ezra",
@@ -100,7 +100,7 @@
           "required": true
         }
       ],
-      "run_id": "d14fbb18a20440ff8731909f9e577d42"
+      "run_id": "13a56161ffce47c8bfa8845de40af49e"
     },
     {
       "id": "recruitee-bluestone",
@@ -141,7 +141,7 @@
           "required": false
         }
       ],
-      "run_id": "e56ac975096f455dbabf9af563fd6027"
+      "run_id": "6e60ab7ffabe4754ac860ed2170b17d9"
     },
     {
       "id": "recruitee-trafilea",
@@ -240,7 +240,7 @@
           "required": true
         }
       ],
-      "run_id": "a4ecb03ce7ed4d84b5509cb7ecdc0afe"
+      "run_id": "013932ef0018429795f527a9c7e72aa4"
     },
     {
       "id": "bamboohr-r2",
@@ -328,7 +328,7 @@
           "required": true
         }
       ],
-      "run_id": "cdf556a7ee084838b266591a96cb03d5"
+      "run_id": "3e32fd89454c45a680ce6b57fabdbb30"
     },
     {
       "id": "bamboohr-versafile",
@@ -343,7 +343,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "82343890079c4126ad8fcb1c1c7b2129"
+      "run_id": "6f001e8045d841109fde421531b20a9e"
     },
     {
       "id": "teamtailor-reel",
@@ -358,7 +358,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "795f1f269cb141cda12f9e852f56074d"
+      "run_id": "56c6b58c113f4092aedbbb0c79ec5752"
     },
     {
       "id": "teamtailor-jenni",
@@ -373,7 +373,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "06f74efda8564693b1d93841e03faea7"
+      "run_id": "9d7c3296faef4d6da1f2ce74cef91aee"
     },
     {
       "id": "pinpoint-carto",
@@ -388,7 +388,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "09313dcbb1334ce487f0ddfa4f22d654"
+      "run_id": "cfba1400d53046609a917c9352febe71"
     },
     {
       "id": "breezy-codebase",
@@ -403,7 +403,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "302bfa3d2b1c44f2b0efcb5a364d2643"
+      "run_id": "6871fdd65be94d71bbbc51bb7c10f488"
     },
     {
       "id": "breezy-opensea",
@@ -454,7 +454,7 @@
           "required": false
         }
       ],
-      "run_id": "6d2cbc60e56e406bb0b32d870f514da8"
+      "run_id": "e507ac008eaf4220b6eee61b4e777c7a"
     },
     {
       "id": "icims-platform",
@@ -469,7 +469,7 @@
       "mapped_field_count": 0,
       "required_answers_missing": [],
       "fields": [],
-      "run_id": "f3a987c67312405ba549e47760523735"
+      "run_id": "a3c46050c58b4a1b8e13b2cf5a92e5dc"
     },
     {
       "id": "teamtailor-clearroute",
@@ -629,19 +629,19 @@
           "required": false
         }
       ],
-      "run_id": "0632c56270ff42bd89a5f449b4516a63"
+      "run_id": "c6538ccee73045caa7710d380b419e37"
     },
     {
       "id": "pinpoint-carto-current",
       "url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2",
       "code": "INSPECTED_NOT_SUBMITTED",
-      "message": "Detected 6 fields; no applicant data entered.",
+      "message": "Detected 7 fields; no applicant data entered.",
       "expected_ats": "pinpoint",
       "ats": "pinpoint",
       "final_url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2/applications/new",
-      "field_count": 6,
+      "field_count": 7,
       "identity_fields_detected": true,
-      "mapped_field_count": 5,
+      "mapped_field_count": 6,
       "required_answers_missing": [
         "(Required) Allow us to process your personal information. *"
       ],
@@ -662,6 +662,11 @@
           "required": true
         },
         {
+          "label": "Phone",
+          "kind": "tel",
+          "required": false
+        },
+        {
           "label": "LinkedIn URL",
           "kind": "text",
           "required": false
@@ -677,7 +682,7 @@
           "required": true
         }
       ],
-      "run_id": "a833d48a299f4149ae0fd45fdfbdd0c4"
+      "run_id": "44b5c28ba3a04f72aa2ebc7e316aef5a"
     },
     {
       "id": "workable-chipply",
@@ -748,7 +753,7 @@
           "required": true
         }
       ],
-      "run_id": "a57b1bb0116144c3bb1eb172e18f9df8"
+      "run_id": "3922a0c9349f4cbe8edd701e7613c805"
     },
     {
       "id": "breezy-codebase-current",
@@ -819,7 +824,7 @@
           "required": true
         }
       ],
-      "run_id": "56c487b144044265a0aae0e3ab0cb476"
+      "run_id": "c96a2a20bfad4f9a9c9e768d42a0982d"
     }
   ]
 }
