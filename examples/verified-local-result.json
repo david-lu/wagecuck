@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "run_id": "08544e532a7446179928912bf52d9372",
+  "profile_id": "synthetic-alex-morgan-v1",
+  "job_url": "http://127.0.0.1:50938/single",
+  "final_url": "http://127.0.0.1:50938/submit",
+  "ats": "generic",
+  "mode": "submit",
+  "success": true,
+  "status": "succeeded",
+  "code": "OK",
+  "message": "The application page confirmed receipt.",
+  "retryable": false,
+  "submitted": true,
+  "submission_attempted": true,
+  "steps": 1,
+  "fields_filled": 4,
+  "unresolved": [],
+  "evidence": [
+    "Your application has been received"
+  ],
+  "artifact_dir": "C:\\Users\\david\\OneDrive\\Documents\\GitHub\\wagecuck\\runs\\08544e532a7446179928912bf52d9372",
+  "started_at": "2026-09-16T04:49:14.034669+00:00",
+  "finished_at": "2026-09-16T04:49:16.353404+00:00"
+}

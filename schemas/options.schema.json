@@ -1,0 +1,102 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "mode": {
+      "default": "fill",
+      "enum": [
+        "inspect",
+        "fill",
+        "submit"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "headless": {
+      "default": true,
+      "title": "Headless",
+      "type": "boolean"
+    },
+    "wait_for_user": {
+      "default": false,
+      "title": "Wait For User",
+      "type": "boolean"
+    },
+    "agent_fill": {
+      "default": false,
+      "title": "Agent Fill",
+      "type": "boolean"
+    },
+    "slow_mo_ms": {
+      "default": 0,
+      "maximum": 5000,
+      "minimum": 0,
+      "title": "Slow Mo Ms",
+      "type": "integer"
+    },
+    "max_steps": {
+      "default": 12,
+      "maximum": 50,
+      "minimum": 1,
+      "title": "Max Steps",
+      "type": "integer"
+    },
+    "timeout_seconds": {
+      "default": 120,
+      "exclusiveMinimum": 0,
+      "maximum": 900,
+      "title": "Timeout Seconds",
+      "type": "number"
+    },
+    "action_timeout_ms": {
+      "default": 7000,
+      "maximum": 60000,
+      "minimum": 100,
+      "title": "Action Timeout Ms",
+      "type": "integer"
+    },
+    "navigation_timeout_ms": {
+      "default": 30000,
+      "maximum": 120000,
+      "minimum": 100,
+      "title": "Navigation Timeout Ms",
+      "type": "integer"
+    },
+    "confirmation_timeout_seconds": {
+      "default": 12,
+      "exclusiveMinimum": 0,
+      "maximum": 120,
+      "title": "Confirmation Timeout Seconds",
+      "type": "number"
+    },
+    "artifacts_dir": {
+      "format": "path",
+      "title": "Artifacts Dir",
+      "type": "string"
+    },
+    "database": {
+      "format": "path",
+      "title": "Database",
+      "type": "string"
+    },
+    "storage_state": {
+      "anyOf": [
+        {
+          "format": "path",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Storage State"
+    },
+    "capture_sensitive_artifacts": {
+      "default": false,
+      "title": "Capture Sensitive Artifacts",
+      "type": "boolean"
+    }
+  },
+  "title": "RunOptions",
+  "type": "object"
+}

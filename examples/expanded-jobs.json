@@ -1,0 +1,106 @@
+{
+  "researched_at": "2026-09-16",
+  "purpose": "Additional live navigation cases. Inspection does not prove successful filling or submission.",
+  "cases": [
+    {
+      "id": "workable-thanks",
+      "ats": "workable",
+      "url": "https://apply.workable.com/thanks-co/j/5F701F4719"
+    },
+    {
+      "id": "workable-activ",
+      "ats": "workable",
+      "url": "https://apply.workable.com/activ-2/j/5304C1A39D/apply/"
+    },
+    {
+      "id": "smartrecruiters-servicenow",
+      "ats": "smartrecruiters",
+      "url": "https://jobs.smartrecruiters.com/ServiceNow/744000132922559-sr-software-engineer-veza"
+    },
+    {
+      "id": "smartrecruiters-ubisoft",
+      "ats": "smartrecruiters",
+      "url": "https://jobs.smartrecruiters.com/oneclick-ui/company/Ubisoft2/publication/715fc046-f687-4ace-80a1-3af89c18c03f?dcr_ci=Ubisoft2"
+    },
+    {
+      "id": "jobvite-progress",
+      "ats": "jobvite",
+      "url": "https://jobs.jobvite.com/progress/job/o0s9AfwV"
+    },
+    {
+      "id": "jobvite-ezra",
+      "ats": "jobvite",
+      "url": "https://jobs.jobvite.com/ezra/job/o233zfwr"
+    },
+    {
+      "id": "recruitee-bluestone",
+      "ats": "recruitee",
+      "url": "https://bluestonelogic.recruitee.com/o/software-engineer-1"
+    },
+    {
+      "id": "recruitee-trafilea",
+      "ats": "recruitee",
+      "url": "https://trafilea.recruitee.com/o/senior-software-engineer-backend"
+    },
+    {
+      "id": "bamboohr-r2",
+      "ats": "bamboohr",
+      "url": "https://r2.bamboohr.com/careers/177"
+    },
+    {
+      "id": "bamboohr-versafile",
+      "ats": "bamboohr",
+      "url": "https://versafile1.bamboohr.com/careers/149"
+    },
+    {
+      "id": "teamtailor-reel",
+      "ats": "teamtailor",
+      "url": "https://reelenergy-1727862339.teamtailor.com/jobs/7501997-senior-software-engineer"
+    },
+    {
+      "id": "teamtailor-jenni",
+      "ats": "teamtailor",
+      "url": "https://jenniai-1748504648.teamtailor.com/jobs/5989905-growth-engineer/applications/new"
+    },
+    {
+      "id": "pinpoint-carto",
+      "ats": "pinpoint",
+      "url": "https://carto.pinpointhq.com/en/postings/1c2969dc-1d97-4784-a296-df39bf2269c9"
+    },
+    {
+      "id": "breezy-codebase",
+      "ats": "breezy",
+      "url": "https://codebase.breezy.hr/p/2d1498a8dcda-full-stack-developer-react-typescript"
+    },
+    {
+      "id": "breezy-opensea",
+      "ats": "breezy",
+      "url": "https://opensea.breezy.hr/p/5d42cd50fcea-full-stack-software-engineer/apply"
+    },
+    {
+      "id": "icims-platform",
+      "ats": "icims",
+      "url": "https://careers.icims.com/technology/jobs/6460?lang=en-gb&previousLocale=en-US"
+    },
+    {
+      "id": "teamtailor-clearroute",
+      "ats": "teamtailor",
+      "url": "https://clearroute.teamtailor.com/jobs/8326970-software-engineer-platform-ai"
+    },
+    {
+      "id": "pinpoint-carto-current",
+      "ats": "pinpoint",
+      "url": "https://carto.pinpointhq.com/en/postings/202b72e3-f76b-4096-80c2-a5be77d8a2e2"
+    },
+    {
+      "id": "workable-chipply",
+      "ats": "workable",
+      "url": "https://apply.workable.com/chipply/j/3EBC0B6983/"
+    },
+    {
+      "id": "breezy-codebase-current",
+      "ats": "breezy",
+      "url": "https://codebase.breezy.hr/p/c1b62fc81300-senior-full-stack-developer-react-js-node-js"
+    }
+  ]
+}

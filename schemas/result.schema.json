@@ -1,0 +1,169 @@
+{
+  "$defs": {
+    "Code": {
+      "enum": [
+        "OK",
+        "READY_NOT_SUBMITTED",
+        "INSPECTED_NOT_SUBMITTED",
+        "INVALID_INPUT",
+        "PROFILE_INVALID",
+        "DOCUMENT_MISSING",
+        "NAVIGATION_FAILED",
+        "JOB_CLOSED",
+        "AUTH_REQUIRED",
+        "CAPTCHA_REQUIRED",
+        "CAPTCHA_KEY_MISSING",
+        "CAPTCHA_UNSUPPORTED",
+        "CAPTCHA_SOLVE_FAILED",
+        "CAPTCHA_TIMEOUT",
+        "ACCESS_DENIED",
+        "FORM_NOT_FOUND",
+        "UNSUPPORTED_CONTROL",
+        "REQUIRED_ANSWER_MISSING",
+        "FIELD_FILL_FAILED",
+        "VALIDATION_FAILED",
+        "AGENT_FAILED",
+        "STEP_LIMIT",
+        "NO_PROGRESS",
+        "SUBMIT_NOT_FOUND",
+        "SUBMISSION_UNCONFIRMED",
+        "USER_SUBMISSION_UNCONFIRMED",
+        "ALREADY_SUBMITTED",
+        "RUN_IN_PROGRESS",
+        "PRIOR_SUBMISSION_UNCERTAIN",
+        "SYNTHETIC_PROFILE_BLOCKED",
+        "TIMEOUT",
+        "BROWSER_ERROR",
+        "INTERNAL_ERROR"
+      ],
+      "title": "Code",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "job_url": {
+      "title": "Job Url",
+      "type": "string"
+    },
+    "final_url": {
+      "default": "",
+      "title": "Final Url",
+      "type": "string"
+    },
+    "ats": {
+      "default": "generic",
+      "title": "Ats",
+      "type": "string"
+    },
+    "mode": {
+      "title": "Mode",
+      "type": "string"
+    },
+    "success": {
+      "default": false,
+      "title": "Success",
+      "type": "boolean"
+    },
+    "status": {
+      "default": "failed",
+      "enum": [
+        "succeeded",
+        "ready",
+        "inspected",
+        "failed",
+        "unknown"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "code": {
+      "$ref": "#/$defs/Code",
+      "default": "INTERNAL_ERROR"
+    },
+    "message": {
+      "default": "",
+      "title": "Message",
+      "type": "string"
+    },
+    "retryable": {
+      "default": false,
+      "title": "Retryable",
+      "type": "boolean"
+    },
+    "submitted": {
+      "default": false,
+      "title": "Submitted",
+      "type": "boolean"
+    },
+    "submission_attempted": {
+      "default": false,
+      "title": "Submission Attempted",
+      "type": "boolean"
+    },
+    "user_handoff": {
+      "default": false,
+      "title": "User Handoff",
+      "type": "boolean"
+    },
+    "steps": {
+      "default": 0,
+      "title": "Steps",
+      "type": "integer"
+    },
+    "fields_filled": {
+      "default": 0,
+      "title": "Fields Filled",
+      "type": "integer"
+    },
+    "unresolved": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unresolved",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "artifact_dir": {
+      "default": "",
+      "title": "Artifact Dir",
+      "type": "string"
+    },
+    "started_at": {
+      "title": "Started At",
+      "type": "string"
+    },
+    "finished_at": {
+      "default": "",
+      "title": "Finished At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "profile_id",
+    "job_url",
+    "mode",
+    "started_at"
+  ],
+  "title": "ApplicationResult",
+  "type": "object"
+}

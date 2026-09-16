@@ -1,0 +1,128 @@
+{
+  "greenhouse": {
+    "hosts": [
+      "greenhouse.io"
+    ],
+    "fields": {
+      "first_name": "input#first_name",
+      "last_name": "input#last_name",
+      "email": "input#email",
+      "phone": "input#phone",
+      "resume": "input#resume"
+    },
+    "actions": {
+      "submit": "button[type=submit], input#submit_app",
+      "start": "a[href='#app'], button[data-testid='apply-button']"
+    }
+  },
+  "lever": {
+    "hosts": [
+      "lever.co"
+    ],
+    "fields": {
+      "full_name": "input[name=name]",
+      "email": "input[name=email]",
+      "phone": "input[name=phone]",
+      "current_company": "input[name=org]",
+      "resume": "input[name=resume]"
+    },
+    "actions": {
+      "start": "a.postings-btn[href$='/apply']",
+      "submit": "button#btn-submit, button.template-btn-submit"
+    }
+  },
+  "ashby": {
+    "hosts": [
+      "ashbyhq.com"
+    ],
+    "fields": {
+      "full_name": "input[name='_systemfield_name']",
+      "email": "input[name='_systemfield_email']",
+      "resume": "input[name='_systemfield_resume']"
+    },
+    "actions": {
+      "start": "button[role=tab][data-state=inactive]:has-text('Application')",
+      "submit": "button[type=submit]"
+    }
+  },
+  "workday": {
+    "hosts": [
+      "myworkdayjobs.com",
+      "myworkdaysite.com",
+      "myworkday.com"
+    ],
+    "fields": {
+      "first_name": "[data-automation-id='legalNameSection_firstName'] input",
+      "last_name": "[data-automation-id='legalNameSection_lastName'] input",
+      "email": "[data-automation-id='email'] input"
+    },
+    "actions": {
+      "start": "[data-automation-id='applyManually'], [data-automation-id='adventureButton']",
+      "next": "[data-automation-id='bottom-navigation-next-button']",
+      "submit": "[data-automation-id='bottom-navigation-submit-button']"
+    }
+  },
+  "workable": {
+    "hosts": [
+      "workable.com"
+    ],
+    "fields": {},
+    "actions": {}
+  },
+  "smartrecruiters": {
+    "hosts": [
+      "smartrecruiters.com"
+    ],
+    "fields": {},
+    "actions": {}
+  },
+  "jobvite": {
+    "hosts": [
+      "jobvite.com"
+    ],
+    "fields": {},
+    "actions": {}
+  },
+  "recruitee": {
+    "hosts": [
+      "recruitee.com"
+    ],
+    "fields": {},
+    "actions": {}
+  },
+  "bamboohr": {
+    "hosts": [
+      "bamboohr.com"
+    ],
+    "fields": {"resume": "[data-fabric-component='FileUpload']:has(input[name='resumeFileId']) input[type=file]"},
+    "actions": {}
+  },
+  "teamtailor": {
+    "hosts": [
+      "teamtailor.com"
+    ],
+    "fields": {},
+    "actions": {}
+  },
+  "pinpoint": {
+    "hosts": [
+      "pinpointhq.com"
+    ],
+    "fields": {},
+    "actions": {}
+  },
+  "breezy": {
+    "hosts": [
+      "breezy.hr"
+    ],
+    "fields": {},
+    "actions": {}
+  },
+  "icims": {
+    "hosts": [
+      "icims.com"
+    ],
+    "fields": {},
+    "actions": {}
+  }
+}
