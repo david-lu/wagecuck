@@ -20,6 +20,7 @@ from .browser import (
     confirmation,
     detect_ats,
     dismiss_optional_cookies,
+    enrich_dynamic_options,
     entry_controls,
     locator,
     snapshot,
@@ -298,6 +299,8 @@ class ApplicationRunner:
                 continue
             if code:
                 raise ApplicationError(code, f"Application stopped: {code.value}.")
+            if snap.fields:
+                snap = await enrich_dynamic_options(page, snap)
             if options.mode == "inspect" and snap.fields:
                 result.status, result.code = "inspected", Code.INSPECTED
                 result.message = f"Detected {len(snap.fields)} fields; no applicant data entered."
@@ -423,7 +426,11 @@ class ApplicationRunner:
                     "Required questions have no explicit profile answer.",
                     missing,
                 )
-            invalid = [f.label for f in after.fields if f.invalid]
+            invalid = [
+                question["question"]
+                for question in report["fields"]
+                if question["code"] == Code.VALIDATION_FAILED.value
+            ]
             if invalid or after.errors:
                 raise ApplicationError(
                     Code.VALIDATION_FAILED, "The page reported form validation errors.", invalid

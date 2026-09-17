@@ -25,5 +25,5 @@ details, validation timestamp, and source links. This was a completed run with
 partial source coverage, not an exhaustive inventory of these sites.
 
 These files are curated exports for version control. Intermediate discovery,
-validation journals, browser diagnostics, and temporary scripts remain in the
-ignored `runs/` and `.tmp/` directories.
+validation journals, browser diagnostics, and temporary scripts remain in
+dot-prefixed `.artifacts` folders under the ignored `runs/` directory, or in `.tmp/`.

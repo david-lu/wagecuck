@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,8 +10,24 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Page
 
 from .ats import annotate, detect
+from .controls.base import native_value_is_valid, normalize
+from .controls.combobox import (
+    enrich_dynamic_options,
+)
+from .controls.combobox import (
+    matches_combobox as combobox_matches,
+)
+from .controls.native import match_option
+from .controls.registry import handler_for
 from .field_values import FieldValueError, normalize_field_value, render_field_value
 from .models import Action, ApplicationError, Code, Control, FormField, Snapshot
+
+__all__ = [
+    "combobox_matches",
+    "enrich_dynamic_options",
+    "match_option",
+    "normalize",
+]
 
 PARSE = Path(__file__).with_name("parse.js").read_text(encoding="utf-8")
 CONTROL_SCRIPT = """els => els.filter(e => e.getClientRects().length && !e.disabled).map(e => {
@@ -44,6 +59,11 @@ async def snapshot(page: Page) -> Snapshot:
                 raise
     result.errors = [e.strip()[:400] for e in result.errors if e.strip()]
     return result
+
+
+async def prepared_snapshot(page: Page) -> Snapshot:
+    """Parse controls and open dynamic dropdowns so planning sees real choices."""
+    return await enrich_dynamic_options(page, await snapshot(page))
 
 
 def locator(page: Page, target: FormField | Control):
@@ -78,294 +98,35 @@ async def dismiss_optional_cookies(page: Page, snap: Snapshot) -> bool:
     return False
 
 
-def normalize(value: str) -> str:
-    return re.sub(r"[^\w]+", " ", value.casefold()).strip()
-
-
-def match_option(value: str | bool, options):
-    target = normalize("Yes" if value is True else "No" if value is False else value)
-    exact = [o for o in options if target in (normalize(o.label), normalize(o.value))]
-    if len(exact) == 1:
-        return exact[0]
-    # Declining disclosure is equivalent only to other explicit decline options.
-    if target in ("prefer not to say", "decline to self identify", "i do not wish to answer"):
-        matches = [
-            o
-            for o in options
-            if re.search(r"decline|prefer not|do not wish", o.label, re.IGNORECASE)
-        ]
-        if len(matches) == 1:
-            return matches[0]
-    return None
-
-
-async def combobox_value(target):
-    # React Select clears its search input after selection and renders the selected
-    # value alongside it. Never mistake the transient search text for a selection.
-    return await target.evaluate("""e => {
-      let parent = e.parentElement;
-      for (let depth = 0; parent && depth < 3; depth++, parent = parent.parentElement) {
-        if (parent.querySelectorAll('[role=combobox]').length > 1) break;
-        const chosen = parent.querySelectorAll('[class*="single-value"], [class*="singleValue"]');
-        if (chosen.length === 1) return chosen[0].innerText;
-      }
-      return e.value || e.getAttribute('aria-valuetext') || e.innerText || '';
-    }""")
-
-
-async def phone_matches(target, expected):
-    actual = await target.evaluate("""e => {
-      const value = e.value || '';
-      const separate = e.closest('.iti--separate-dial-code');
-      const dial = separate?.querySelector('.iti__selected-dial-code')?.textContent || '';
-      return !value.trim().startsWith('+') && dial ? dial + value : value;
-    }""")
-    return re.sub(r"\D", "", actual) == re.sub(r"\D", "", expected)
-
-
-def selected_value(value, action):
-    if action.source == "facts:country":
-        value = re.sub(r"\s*\+\d{1,4}$", "", value)
-    return normalize(value)
-
-
-def option_name(value, action):
-    if action.choice_labels:
-        return re.compile(
-            r"^(?:"
-            + "|".join(re.escape(label).replace("/", r"\/") for label in action.choice_labels)
-            + r")$",
-            re.IGNORECASE,
-        )
-    return (
-        re.compile(r"^" + re.escape(value) + r"(?:\s*\+\d{1,4})?$", re.IGNORECASE)
-        if action.source == "facts:country"
-        else value
-    )
-
-
-async def combobox_options(page: Page, target, action: Action):
-    """Use the widget's owned popup for every selection and verification path."""
-    frame = page.frames[action.field.frame]
-    owned = await target.evaluate(
-        """e => [...new Set(['aria-controls', 'aria-owns'].flatMap(attribute =>
-          (e.getAttribute(attribute) || '').split(/\\s+/).filter(Boolean)))]
-          .map(id => '#' + CSS.escape(id)).join(',')"""
-    )
-    scope = frame.locator(owned) if owned else frame
-    return scope.get_by_role("option", disabled=False).filter(visible=True)
-
-
-async def combobox_matches(page, target, action, expected):
-    actual = await combobox_value(target)
-    if not actual.strip():
-        return False
-    if action.choice_labels and normalize(actual) in {
-        normalize(label) for label in action.choice_labels
-    }:
-        return True
-    if selected_value(expected, action) == selected_value(actual, action):
-        return True
-    if action.source != "facts:country":
-        return False
-    # A dial code by itself is ambiguous: inspect the widget's selected option.
-    await target.click()
-    try:
-        options = await combobox_options(page, target, action)
-        selected = options.and_(
-            page.frames[action.field.frame].get_by_role(
-                "option", name=option_name(expected, action), selected=True, exact=True
-            )
-        )
-        await options.first.wait_for(state="visible")
-        return await selected.count() == 1
-    finally:
-        await target.press("Escape")
-
-
-async def set_choice(target, value: bool) -> None:
-    """Set native and visually hidden custom choice inputs, then verify state."""
-    try:
-        await target.set_checked(value)
-    except PlaywrightError:
-        if await target.is_checked() != value:
-            label = target.locator("xpath=ancestor::label[1]")
-            if await label.count():
-                await label.click()
-            else:
-                await target.evaluate("e => e.click()")
-    if await target.is_checked() != value:
-        raise ValueError("Check state not retained")
-
-
-async def native_value_is_valid(target) -> bool:
-    """Use the browser's own type/pattern/range/length validation when available."""
-    return await target.evaluate("e => !e.willValidate || e.validity.valid")
-
-
-async def _write_file(page, target, action, value):
-    await target.set_input_files(value)
-
-
-async def _matches_file(page, target, action, value):
-    return await target.evaluate("e => [...e.files].map(file => file.name)") == [Path(value).name]
-
-
-async def _write_select(page, target, action, value):
-    option = match_option(value, action.field.options)
-    if option is None:
-        raise ApplicationError(
-            Code.UNSUPPORTED_CONTROL, f"No unambiguous option for {action.field.label}"
-        )
-    await target.select_option(value=option.value)
-
-
-async def _matches_select(page, target, action, value):
-    option = match_option(value, action.field.options)
-    return option is not None and await target.input_value() == option.value
-
-
-async def _write_choice(page, target, action, value):
-    if not isinstance(value, bool):
-        raise ApplicationError(
-            Code.UNSUPPORTED_CONTROL, f"Boolean answer required for {action.field.label}"
-        )
-    if action.field.kind != "radio" or value:
-        await set_choice(target, value)
-
-
-async def _matches_choice(page, target, action, value):
-    return await target.is_checked() == value
-
-
-async def _write_combobox(page, target, action, value):
-    await target.click()
-    if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
-        await target.fill("" if action.random_choice else value)
-    options = await combobox_options(page, target, action)
-    if action.random_choice:
-        await options.first.wait_for(state="visible")
-        candidates = [
-            (index, label.strip())
-            for index, label in enumerate(await options.all_text_contents())
-            if label.strip()
-            and not re.fullmatch(r"(?:please )?(?:select|choose)(?: an? option)?", normalize(label))
-        ]
-        if not candidates:
-            raise ApplicationError(
-                Code.UNSUPPORTED_CONTROL, f"No source choices for {action.field.label}"
-            )
-        index, label = random.choice(candidates)
-        await options.nth(index).click()
-        action.value = label
-        action.choice_labels = [label]
-        return
-    matching = options.and_(
-        page.frames[action.field.frame].get_by_role(
-            "option", name=option_name(value, action), exact=True
-        )
-    )
-    await matching.first.wait_for(state="visible")
-    if await matching.count() != 1:
-        raise ApplicationError(
-            Code.UNSUPPORTED_CONTROL, f"Ambiguous choices for {action.field.label}"
-        )
-    await matching.click()
-
-
-async def _write_text(page, target, action, value):
-    await target.fill(value)
-    await target.blur()
-    if action.field.kind == "tel" and not await _matches_text(page, target, action, value):
-        # Some phone masks mishandle a bulk input event. Retry with keystrokes.
-        await target.press("ControlOrMeta+A")
-        await target.press("Backspace")
-        await target.press("ControlOrMeta+A")
-        await target.press_sequentially(value, delay=20)
-        await target.blur()
-
-
-async def _matches_text(page, target, action, value):
-    return await target.input_value() == value or (
-        action.field.kind == "tel" and await phone_matches(target, value)
-    )
-
-
-async def _write_range(page, target, action, value):
-    # Playwright fill() does not accept range inputs. Use the native setter and
-    # standard events, then read back the value to catch clamping or step rounding.
-    await target.evaluate(
-        """(element, value) => {
-        const setter = Object.getOwnPropertyDescriptor(
-            element.ownerDocument.defaultView.HTMLInputElement.prototype, 'value'
-        ).set;
-        setter.call(element, value);
-        element.dispatchEvent(new Event('input', {bubbles: true}));
-        element.dispatchEvent(new Event('change', {bubbles: true}));
-    }""",
-        value,
-    )
-    await target.blur()
-
-
-async def _matches_number(page, target, action, value):
-    actual = await target.input_value()
-    return normalize_field_value(action.field, actual) == normalize_field_value(action.field, value)
-
-
-# Small function pairs keep writing and readback consistent without widget classes.
-_CONTROL_HANDLERS = {
-    "file": (_write_file, _matches_file),
-    "select": (_write_select, _matches_select),
-    "checkbox": (_write_choice, _matches_choice),
-    "radio": (_write_choice, _matches_choice),
-    "combobox": (_write_combobox, combobox_matches),
-    "number": (_write_text, _matches_number),
-    "range": (_write_range, _matches_number),
-    **dict.fromkeys(
-        (
-            "text",
-            "email",
-            "tel",
-            "url",
-            "date",
-            "datetime-local",
-            "month",
-            "week",
-            "time",
-            "textarea",
-            "search",
-        ),
-        (_write_text, _matches_text),
-    ),
-}
-
-
 def _control_handler(action: Action):
-    handler = _CONTROL_HANDLERS.get(action.field.kind)
+    handler = handler_for(action.field)
     if handler is None:
         raise ApplicationError(
-            Code.UNSUPPORTED_CONTROL, f"Unsupported {action.field.kind}: {action.field.label}"
+            Code.UNSUPPORTED_CONTROL,
+            f"Unsupported {action.field.control_type or action.field.kind}: {action.field.label}",
         )
     return handler
 
 
 async def _matches_control(page, target, action, value):
-    _, matches = _control_handler(action)
-    return await matches(page, target, action, value) and await native_value_is_valid(target)
+    handler = _control_handler(action)
+    matches = await handler.matches(page, target, action, value)
+    return matches and (
+        not handler.validates_natively or await native_value_is_valid(target)
+    )
 
 
 async def fill(page: Page, action: Action):
     field = action.field
     target = locator(page, field)
     try:
-        write, _ = _control_handler(action)
+        handler = _control_handler(action)
         if field.kind == "combobox" and action.random_choice:
             value = ""  # The concrete canonical answer is assigned after selecting an option.
         else:
             action.value = normalize_field_value(field, action.value)
             value = render_field_value(field, action.value)
-        await write(page, target, action, value)
+        await handler.write(page, target, action, value)
         expected = render_field_value(field, action.value) if action.random_choice else value
         if not await _matches_control(page, target, action, expected):
             raise ValueError("Value not retained")

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from .execution import ExecutionResult, field_id
-from .logical_fields import logical_field_results
+from .logical_fields import group_invalid, logical_field_results
 from .models import Code
 
 SATISFIED_CODES = {"FILLED", "ALREADY_FILLED"}
@@ -42,9 +42,8 @@ def execution_report(execution: ExecutionResult, analysis: list[dict]) -> dict:
     questions = logical_field_results(fields, outcomes, analysis)
     by_id = {field_id(field): field for field in fields}
     for question in questions:
-        if question["code"] != "UNRESOLVED" and any(
-            by_id[key].invalid for key in question["control_ids"]
-        ):
+        controls = [by_id[key] for key in question["control_ids"]]
+        if question["code"] != "UNRESOLVED" and group_invalid(controls):
             question["code"] = Code.VALIDATION_FAILED.value
     question_results = [
         QuestionExecution(row["question"], row["required"], row["code"], tuple(row["control_ids"]))

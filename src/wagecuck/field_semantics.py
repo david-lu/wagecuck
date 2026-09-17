@@ -75,6 +75,7 @@ def field_metadata(field: FormField, peers: list[FormField] | None = None) -> di
         "name": field.name,
         "autocomplete": field.autocomplete,
         "kind": field.kind,
+        "control_type": field.control_type,
         "value_contract": field_contract(field),
         "context": field.context,
         "required": field.required,

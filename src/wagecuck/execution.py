@@ -6,7 +6,8 @@ import asyncio
 from collections import Counter
 from dataclasses import dataclass
 
-from .browser import fill, match_option, snapshot, verify_action_results
+from .browser import fill, match_option, prepared_snapshot, snapshot, verify_action_results
+from .controls.registry import handler_for
 from .field_values import FieldValueError, normalize_field_value
 from .logical_fields import logical_key
 from .models import Action, ApplicationError, Code, FormField, Snapshot
@@ -26,6 +27,7 @@ def form_signature(snap: Snapshot) -> tuple:
                 field.name,
                 field.label,
                 field.kind,
+                field.control_type,
                 field.group,
                 field.group_id,
                 field.required,
@@ -46,16 +48,44 @@ def form_signature(snap: Snapshot) -> tuple:
     )
 
 
+def field_contracts(fields: list[FormField]) -> tuple:
+    """Compare control contracts while ignoring ordinary value/validity changes."""
+    return tuple(
+        (
+            field.frame,
+            field.name,
+            field.label,
+            field.kind,
+            field.control_type,
+            field.group,
+            field.group_id,
+            field.required,
+            field.requirement_status,
+            tuple((option.label, option.value) for option in field.options),
+            field.placeholder,
+            field.pattern,
+            field.minimum,
+            field.maximum,
+            field.step,
+            field_id(field),
+        )
+        for field in fields
+    )
+
+
+def fields_changed(before: list[FormField], after: list[FormField]) -> bool:
+    return field_contracts(before) != field_contracts(after)
+
+
 def form_changed(before: Snapshot, after: Snapshot) -> bool:
-    """Replan changed contracts and replaced nodes, excluding normal filling changes."""
-
-    def contracts(snap):
-        copy = snap.model_copy(deep=True)
-        for field in copy.fields:
-            field.filled = field.invalid = False
-        return form_signature(copy), tuple(field_id(field) for field in snap.fields)
-
-    return contracts(before) != contracts(after)
+    """Replan changed contracts and replaced nodes, excluding ordinary filling."""
+    return (
+        before.url != after.url
+        or fields_changed(before.fields, after.fields)
+        or tuple((control.label, control.action, control.kind) for control in before.controls)
+        != tuple((control.label, control.action, control.kind) for control in after.controls)
+        or tuple(before.errors) != tuple(after.errors)
+    )
 
 
 async def settled_snapshot(page, *, polls: int = 4, interval: float = 0.1) -> Snapshot:
@@ -72,7 +102,7 @@ async def settled_snapshot(page, *, polls: int = 4, interval: float = 0.1) -> Sn
         previous = state
         if index + 1 >= polls and quiet >= 2:
             break
-    return current
+    return await prepared_snapshot(page)
 
 
 @dataclass(frozen=True)
@@ -100,6 +130,7 @@ class FieldExecution:
             "made_up": action.made_up,
             "source_keys": action.source_keys,
             "inference_reason": action.inference_reason,
+            "message": self.message,
             "selected": self.selected,
         }
 
@@ -210,6 +241,8 @@ async def execute_actions(
     }
     by_id.update({field_id(action.field): action for action in actions})
     failures = {}
+    structural_checkpoint = None
+    current_fields = list(assessed_fields or [])
     for check in await verify_action_results(page, actions):
         if not check.present or (check.valid and not check.action.random_choice):
             continue
@@ -217,7 +250,15 @@ async def execute_actions(
             await fill(page, check.action)
         except ApplicationError as exc:
             failures[field_id(check.action.field)] = exc
-    after = await settled_snapshot(page, polls=settle_polls)
+            continue
+        handler = handler_for(check.action.field)
+        if handler and handler.may_change_form:
+            candidate = await settled_snapshot(page, polls=settle_polls)
+            if current_fields and fields_changed(current_fields, candidate.fields):
+                structural_checkpoint = candidate
+                break
+            current_fields = candidate.fields
+    after = structural_checkpoint or await settled_snapshot(page, polls=settle_polls)
     assessed = {field_id(field): field for field in assessed_fields or []}
     for field in after.fields:
         previous = assessed.get(field_id(field))

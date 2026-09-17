@@ -6,7 +6,13 @@ import pytest
 from playwright.async_api import async_playwright
 
 from wagecuck.browser import snapshot
-from wagecuck.execution import ExecutionResult, execute_actions, field_id, reusable_answer
+from wagecuck.execution import (
+    ExecutionResult,
+    execute_actions,
+    field_id,
+    form_changed,
+    reusable_answer,
+)
 from wagecuck.models import Action, FormField, Option, Snapshot
 from wagecuck.reporting import execution_report
 
@@ -281,3 +287,51 @@ def test_summary_does_not_recalculate_or_modify_recorded_results(tmp_path):
     script("dry_run_all").summarize(path)
     assert path.read_bytes() == before
     assert "| no |" in path.with_suffix(".md").read_text(encoding="utf-8")
+
+
+async def test_choice_change_stops_batch_and_exposes_conditional_field(page):
+    await page.set_content("""<form>
+      <label>Needs sponsorship<input id="sponsor" type="checkbox"
+        onchange="setTimeout(() => {
+          if (!document.querySelector('#details')) {
+            const label = document.createElement('label');
+            label.innerHTML = 'Sponsorship details<input id=details required>';
+            document.querySelector('form').append(label);
+          }
+        }, 50)"></label>
+      <label>Email<input id="email" type="email" required></label>
+    </form>""")
+    initial = await snapshot(page)
+    actions = [
+        Action(field=initial.fields[0], value=True, source="facts:sponsor"),
+        Action(field=initial.fields[1], value="alex@example.com", source="facts:email"),
+    ]
+    result = await execute_actions(page, actions, assessed_fields=initial.fields)
+    assert form_changed(initial, result.snapshot)
+    assert any(field.label == "Sponsorship details" for field in result.snapshot.fields)
+    assert await page.locator("#sponsor").is_checked()
+    assert await page.locator("#email").input_value() == ""
+
+
+async def test_required_checkbox_group_validates_as_one_question(page):
+    await page.set_content("""<form><fieldset><legend>Office locations *</legend>
+      <label>Toronto<input type="checkbox" name="toronto" required></label>
+      <label>Seattle<input type="checkbox" name="seattle" required></label>
+    </fieldset></form>""")
+    fields = (await snapshot(page)).fields
+    actions = [
+        Action(field=fields[0], value=True, source="facts:location"),
+        Action(field=fields[1], value=False, source="facts:location"),
+    ]
+    result = await execute_actions(page, actions, assessed_fields=fields)
+    analysis = [
+        {
+            "field_id": field_id(field),
+            "route": "deterministic",
+            "source": "facts:location",
+        }
+        for field in fields
+    ]
+    report = execution_report(result, analysis)
+    assert report["required_fill_pass"]
+    assert report["required_question_satisfied_count"] == 1

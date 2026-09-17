@@ -7,7 +7,12 @@ name = "wagecuck-search"
 version = "0.1.0"
 description = "Independent multi-site job discovery, filtering, and deduplication"
 requires-python = ">=3.11"
-dependencies = ["playwright>=1.51,<2", "beautifulsoup4>=4.12,<5"]
+dependencies = [
+    "playwright>=1.51,<2",
+    "beautifulsoup4>=4.12,<5",
+    "httpx>=0.28,<1",
+    "python-dotenv>=1,<2",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.11,<1"]

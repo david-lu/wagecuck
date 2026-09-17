@@ -61,6 +61,14 @@ def option_label(field: FormField, question: str) -> str:
     return label or field.label
 
 
+def group_invalid(group: list[FormField]) -> bool:
+    """Validate choice groups as questions, not as independent required inputs."""
+    grouped_choice = len(group) > 1 and group[0].kind in ("radio", "checkbox")
+    if grouped_choice:
+        return any(field.required for field in group) and not any(field.filled for field in group)
+    return any(field.invalid for field in group)
+
+
 def logical_field_results(fields, outcomes, analysis):
     """Return one report row per question while retaining physical controls as options."""
     outcome_by_id = {row["field_id"]: row for row in outcomes}
@@ -78,7 +86,7 @@ def logical_field_results(fields, outcomes, analysis):
             code = failures[0]["code"]
         elif any(row["route"] == "unresolved" for row in group_analysis):
             code = "UNRESOLVED"
-        elif any(field.invalid for field in group):
+        elif group_invalid(group):
             code = "VALIDATION_FAILED"
         elif group_outcomes:
             code = "FILLED"

@@ -73,6 +73,13 @@
     return visible(el);
   }).map(el => {
     const kind = el.type === 'file' ? 'file' : el.getAttribute('role') === 'combobox' ? 'combobox' : el.tagName === 'SELECT' ? 'select' : el.type || 'text';
+    const controlType = kind === 'file' ? 'file_upload'
+      : kind === 'combobox' ? 'dynamic_combobox'
+      : kind === 'select' ? 'native_select'
+      : kind === 'checkbox' ? 'checkbox'
+      : kind === 'radio' ? 'radio'
+      : kind === 'range' ? 'range'
+      : 'text_input';
     const groupEl = el.closest('fieldset, [role="radiogroup"], [role="group"]');
     const localHeading = questionHeading(container(el), el);
     const groupHeading = localHeading || questionHeading(groupEl, el);
@@ -98,7 +105,7 @@
     if (scope?.matches('form, body') || (!groupEl && scope?.querySelectorAll('input:not([type=hidden]), select, textarea').length > 1)) scope = null;
     const context = ((scope ? labelText(scope) : lab) + ' ' + described).trim().slice(0, 1600);
     return {
-      id: identify(el), label: lab, name: el.name || el.id || '', kind,
+      id: identify(el), label: lab, name: el.name || el.id || '', kind, control_type: controlType,
       required, autocomplete: el.autocomplete || '', placeholder: el.placeholder || '',
       input_mode: el.inputMode || '', pattern: el.pattern || '', minimum: el.min || '', maximum: el.max || '', step: el.step || '',
       min_length: el.hasAttribute('minlength') && el.minLength >= 0 ? el.minLength : null,

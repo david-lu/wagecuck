@@ -35,6 +35,7 @@ NO_DISABILITY = [
 NO_DISABILITY_HISTORY = [
     "No, I do not have a disability and have not had one in the past",
     "No, I don't have a disability, or a history/record of having a disability",
+    "No, I do not have a disability, or have a history/record of having a disability",
     "No, I don't have a disability and have not had one in the past",
 ]
 NO_VETERAN = [
@@ -45,6 +46,7 @@ NO_VETERAN = [
     "Not a protected veteran",
     "I do not identify as a protected veteran",
     "I am not a veteran of the U.S. military",
+    "No military service",
 ]
 
 GENDER_LABELS = {
@@ -56,6 +58,7 @@ GENDER_LABELS = {
         "Gender non-conforming",
         "Genderqueer",
         "Non-binary / gender non-conforming",
+        "Non-binary (inclusive of bigender, agender, androgynous, gender fluid, and gender non-conforming)",
     ],
     "decline": DECLINE,
 }
@@ -63,7 +66,7 @@ ORIENTATION_LABELS = {
     "heterosexual": ["Heterosexual", "Straight", "Heterosexual / straight"],
     "gay": ["Gay"],
     "lesbian": ["Lesbian"],
-    "bisexual": ["Bisexual", "Bi"],
+    "bisexual": ["Bisexual", "Bi", "Bisexual, pansexual, or queer"],
     "pansexual": ["Pansexual"],
     "asexual": ["Asexual"],
     "queer": ["Queer"],
@@ -364,11 +367,15 @@ def plan_answer(field, fields, answer):
         value = field.id in desired
         if not value and not field.filled:
             return True, None
-    elif field.kind == "select":
+    elif field.kind in ("select", "combobox") and field.options:
         option = pick_option(field.options, answer.labels)
         if option is None:
+            # The profile concept is known, but this employer uses an unfamiliar
+            # label. Leave it unresolved so constrained model inference can select
+            # from the runtime options instead of typing a guessed value.
             return False, None
-        value = option.value
+        value = option.value if field.kind == "select" else option.label
+        answer = Answer(value, answer.source, [option.label])
     elif field.kind == "checkbox":
         if not isinstance(value, bool):
             return False, None

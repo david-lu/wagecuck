@@ -326,12 +326,25 @@ class Option(BaseModel):
     value: str
 
 
+ControlType = Literal[
+    "text_input",
+    "file_upload",
+    "native_select",
+    "dynamic_combobox",
+    "checkbox",
+    "radio",
+    "range",
+]
+
+
 class FormField(BaseModel):
     id: str
     frame: int
     label: str
     name: str = ""
     kind: str
+    # kind describes the value contract; control_type describes interaction.
+    control_type: ControlType | None = None
     required: bool = False
     options: list[Option] = Field(default_factory=list)
     filled: bool = False
@@ -351,6 +364,20 @@ class FormField(BaseModel):
     context: str = ""
     required_evidence: str = ""
     requirement_status: Literal["required", "optional", "unknown"] = "unknown"
+
+    @model_validator(mode="after")
+    def infer_control_type(self):
+        if self.control_type is not None:
+            return self
+        self.control_type = {
+            "file": "file_upload",
+            "select": "native_select",
+            "combobox": "dynamic_combobox",
+            "checkbox": "checkbox",
+            "radio": "radio",
+            "range": "range",
+        }.get(self.kind, "text_input")
+        return self
 
 
 class Control(BaseModel):

@@ -59,3 +59,25 @@ def test_search_package_never_imports_application_code():
             elif isinstance(node, ast.ImportFrom) and node.module:
                 names = [node.module]
             assert all(name != "wagecuck" and not name.startswith("wagecuck.") for name in names)
+
+
+def test_post_filter_mode_does_not_require_job_title(monkeypatch, capsys):
+    async def fake_filter(source, output, criteria, **kwargs):
+        assert source == Path("validated.csv")
+        assert output == Path("filtered.csv")
+        assert criteria.job_title == "generated jobs"
+        return {"summary": {"stage": "filter", "input": 10, "returned": 3}}
+
+    monkeypatch.setattr(cli, "filter_csv", fake_filter)
+    assert cli.main([
+        "--post-filter-input", "validated.csv",
+        "--post-filter-output", "filtered.csv",
+        "--min-salary", "180000",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["returned"] == 3
+
+
+def test_post_filter_requires_distinct_input_and_output_flags():
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--post-filter-input", "validated.csv"])
+    assert exc.value.code == 2

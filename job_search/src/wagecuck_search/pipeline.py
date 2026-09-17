@@ -11,7 +11,8 @@ from .workers import map_bounded
 
 
 async def search(
-    criteria: SearchCriteria, providers=None, validator=None, *, progress=None, on_discovery=None
+    criteria: SearchCriteria, providers=None, validator=None, *, progress=None, on_discovery=None,
+    filter_candidates=True,
 ) -> dict:
     """Discover, deduplicate, filter, and validate employer application destinations."""
     started = utc_now()
@@ -58,6 +59,7 @@ async def search(
                         validator or native,
                         progress,
                         on_discovery,
+                        filter_candidates=filter_candidates,
                     )
                 finally:
                     if native:
@@ -78,19 +80,22 @@ async def search(
                 ]
             )
             return await _validated_report(
-                criteria, query, results, started, None, progress, on_discovery
+                criteria, query, results, started, None, progress, on_discovery,
+                filter_candidates=filter_candidates,
             )
     return await _validated_report(
-        criteria, query, results, started, validator, progress, on_discovery
+        criteria, query, results, started, validator, progress, on_discovery,
+        filter_candidates=filter_candidates,
     )
 
 
 async def _validated_report(
-    criteria, query, results, started, validator, progress=None, on_discovery=None
+    criteria, query, results, started, validator, progress=None, on_discovery=None,
+    *, filter_candidates=True,
 ):
     if on_discovery:
         on_discovery(results)
-    report = build_report(criteria, query, results, started)
+    report = build_report(criteria, query, results, started, apply_filters=filter_candidates)
     unique, _ = deduplicate([job for result in results for job in result.jobs])
     by_url = {job.url: job for job in unique}
 
@@ -262,13 +267,13 @@ async def _fetch(criteria, query, providers, progress=None):
     return await asyncio.gather(*(one(site) for site in criteria.sites))
 
 
-def build_report(criteria, query, results, started):
+def build_report(criteria, query, results, started, *, apply_filters=True):
     raw = [job for result in results for job in result.jobs]
     unique, removed = deduplicate(raw)
     matched = []
     reasons = {}
     for job in unique:
-        accepted, notes = matches(job, criteria, started)
+        accepted, notes = matches(job, criteria, started) if apply_filters else (True, [])
         if accepted:
             if notes:
                 job.note = "; ".join(filter(None, [job.note, *notes]))
@@ -297,7 +302,7 @@ def build_report(criteria, query, results, started):
     return {
         "criteria": asdict(criteria),
         "broad_query": query,
-        "jobs": [job.output() for job in matched],
+        "jobs": [job.output() if apply_filters else asdict(job) for job in matched],
         "summary": {
             "started_at": started.isoformat(),
             "finished_at": utc_now().isoformat(),

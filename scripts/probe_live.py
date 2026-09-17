@@ -21,6 +21,7 @@ from wagecuck.browser import (
     click_and_settle,
     dismiss_optional_cookies,
     entry_controls,
+    prepared_snapshot,
     snapshot,
 )
 from wagecuck.captcha import detect_challenge
@@ -41,7 +42,7 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
     # caller also blocks service workers and WebSockets from context creation.
     await page.context.route("**/*", lambda route: route.abort())
     await page.context.set_offline(True)
-    snap = await snapshot(page)
+    snap = await prepared_snapshot(page)
     challenge = await detect_challenge(page)
     planner = WorkflowAgent(agent)
     previous_actions, analysis, warnings = {}, {}, []

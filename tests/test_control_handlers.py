@@ -1,10 +1,12 @@
 import pytest
 from playwright.async_api import async_playwright
 
+from wagecuck.agent import WorkflowAgent
 from wagecuck.browser import (
     combobox_matches,
     fill,
     locator,
+    prepared_snapshot,
     snapshot,
     verify_action_results,
     verify_actions,
@@ -151,3 +153,31 @@ async def test_country_preflight_returns_mismatch_without_waiting_for_selected_o
     assert not await combobox_matches(page, locator(page, field), action, "Canada")
     assert await page.evaluate("window.opens || 0") == (1 if initial else 0)
     assert await page.locator("#owned").is_hidden()
+
+
+async def test_prepared_snapshot_classifies_controls_and_discovers_dynamic_options(page, profile):
+    await page.set_content("""<form>
+      <label>Veteran status<input id="veteran" role="combobox" readonly
+        aria-controls="veteran-options"
+        onclick="document.querySelector('#veteran-options').hidden=false"></label>
+      <div id="veteran-options" role="listbox" hidden>
+        <div role="option">No military service</div>
+        <div role="option">Military service</div>
+      </div>
+      <fieldset><legend>Locations</legend>
+        <label>Toronto<input type="checkbox" name="toronto"></label>
+        <label>Seattle<input type="checkbox" name="seattle"></label>
+      </fieldset>
+    </form>""")
+    snap = await prepared_snapshot(page)
+    veteran, toronto, seattle = snap.fields
+    assert veteran.control_type == "dynamic_combobox"
+    assert [option.label for option in veteran.options] == [
+        "No military service",
+        "Military service",
+    ]
+    assert toronto.control_type == seattle.control_type == "checkbox"
+    assert toronto.group_id == seattle.group_id
+    actions, unresolved = await WorkflowAgent().plan([veteran], profile)
+    assert not unresolved
+    assert actions[0].value == "No military service"

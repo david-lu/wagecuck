@@ -10,8 +10,17 @@ def test_training_and_validation_corpora_are_explicit_and_disjoint():
     validation = load_corpus(
         ROOT / "examples" / "validation-jobs.json", expected_split="validation"
     )
-    assert len(training.cases) == 59
+    assert len(training.cases) >= 100
     assert len(validation.cases) == 28
+    imported = [case for case in training.cases if case["id"].startswith("csv-")]
+    assert len(imported) >= 41
+    assert len({case["company"] for case in imported}) >= 40
+    assert len({case["source_platform"] for case in imported}) >= 10
+    assert {"remote", "hybrid", "onsite"} <= {case["workplace"] for case in imported}
+    assert all(
+        case["source_dataset"] == "job_search/results/senior-staff-2026-09-16.csv"
+        for case in imported
+    )
     assert {case["id"] for case in training.cases}.isdisjoint(
         case["id"] for case in validation.cases
     )

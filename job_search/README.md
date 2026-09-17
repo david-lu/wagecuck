@@ -12,6 +12,8 @@ contains 1,710 postings with validated employer or ATS application URLs.
 See [run details and coverage](results/README.md) and the
 [per-site summary](results/senior-staff-2026-09-16-summary.csv).
 These exports are kept outside the ignored `runs/` directory so Git can track them.
+Inside `runs/`, each run keeps user-facing results at the top level and puts
+checkpoints, journals, criteria, progress logs, and diagnostics in `.artifacts/`.
 
 ## Install and run
 
@@ -27,7 +29,62 @@ python -m venv .venv
 An installed Chrome or Edge can also be used with `--browser-channel chrome` or
 `--browser-channel msedge`. `--show-browser` makes the search browser visible.
 `python -m wagecuck_search` is equivalent to the console command.
-No model API key is required.
+No model API key is required for search or URL validation. Natural-language
+post-filtering uses the location agent described below.
+
+## Three-stage runs
+
+Use `--stages-output-dir` when you want inspectable boundaries between discovery,
+native URL validation, and post-generation filtering:
+
+```powershell
+.venv\Scripts\wagecuck-search.exe `
+  --job-title "software engineer" `
+  --seniority senior staff `
+  --stages-output-dir runs/senior-staff `
+  --location-prompt "remote, in the Los Angeles area, or in OC" `
+  --min-salary 180000 `
+  --include-unknown
+```
+
+This writes:
+
+| File | Contents |
+| --- | --- |
+| `01-search.csv` / `01-search.json` | Broad, deduplicated search results before URL validation or user filters |
+| `02-validation.csv` / `02-validation.json` | Jobs whose URLs resolve to live employer or ATS application pages |
+| `03-filter.locations.csv` | One agent-completed row per unique `(location, workplace)` value |
+| `03-filter.csv` / `03-filter.json` | Validated jobs after joining the location decisions and applying local filters |
+| `03-filter.rejections.csv` | Rejected job URLs and filter reasons |
+
+The location agent receives only the unique location vocabulary, the workplace
+labels, and the location prompt. It returns a canonical location, match decision,
+and short reason for every ID in one structured call. The completed location CSV
+is then joined back to all job rows. For example, 1,710 jobs in the checked-in
+result currently collapse to 616 unique location/workplace values. Salary,
+seniority, internship, sponsorship, employment type, keywords, company exclusions,
+and posting age remain local deterministic filters and do not create agent calls.
+
+Set `OPENAI_API_KEY` in the environment or the current directory's `.env` when a
+location prompt is used. Override the default model with
+`WAGECUCK_SEARCH_AGENT_MODEL` or `--agent-model`.
+
+## Filter an existing generated CSV
+
+Filtering can be repeated without searching or validating again:
+
+```powershell
+.venv\Scripts\wagecuck-search.exe `
+  --post-filter-input results/senior-staff-2026-09-16.csv `
+  --post-filter-output results/senior-staff-oc.csv `
+  --location-prompt "in OC" `
+  --min-salary 180000 `
+  --include-unknown
+```
+
+This creates `senior-staff-oc.csv`, `senior-staff-oc.locations.csv`,
+`senior-staff-oc.summary.json`, and `senior-staff-oc.rejections.csv`. Input and
+output paths must differ, so the validated source list is preserved.
 
 For remote senior/staff jobs in Canada, with a salary range reaching CAD 180,000/year:
 
@@ -45,6 +102,7 @@ Only `--job-title` is required.
 | `--location Canada` | Repeat for alternative locations. Matches published location text, case-insensitively. |
 | `--workplace remote` | Remote, hybrid, or onsite. `--location remote` also requests remote work. A country and remote together require both. |
 | `--min-salary 180000` | Keep advertised ranges whose upper bound reaches this amount; a lone amount must reach it. This is not a guaranteed minimum offer. |
+| `--max-salary 250000` | During staged/post-filter runs, reject a known range whose lower bound exceeds this amount. |
 | `--salary-currency CAD` | Currency for the salary threshold; default USD. No exchange conversion. |
 | `--salary-period year` | Year, month, week, day, hour; default year. No assumed annualization. |
 | `--internship` / `--no-internship` | Require or exclude internships. Omitted means either. |
@@ -63,8 +121,8 @@ Only `--job-title` is required.
 | `--validation-timeout-seconds 60` | Deadline per matched job for resolving and validating its employer application URL. |
 | `--validation-workers 8` | Concurrent HTTP-validation workers (1–64); default 8. Browser fallback is capped at 8. |
 | `--detail-workers 4` | Concurrent detail-enrichment workers for batch discovery (1–8); default 4. |
-| `--discovery-output runs/discovery.json` | Save public candidates before validation, for later reuse. This is not a verified result file. |
-| `--resume-discovery runs/discovery.json` | Reuse a discovery checkpoint with the same title/filters/sites and rerun native-URL validation. |
+| `--discovery-output runs/01-search.checkpoint.json` | Save public candidates before validation, for later reuse. This is not a verified result file. |
+| `--resume-discovery runs/01-search.checkpoint.json` | Reuse a discovery checkpoint with the same title/filters/sites and rerun native-URL validation. |
 | `--output runs/results.json` | Save the same JSON report printed to stdout. |
 
 Unknown requested fields fail filters by default. A missing sponsorship statement does
@@ -132,14 +190,14 @@ batch discovery; the other boards still use their public search/detail pages and
 or blocked. Higher budgets cannot make a blocked board accessible.
 
 ```powershell
-.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --max-per-site 10000 --discovery-output runs/discovery.json --output runs/verified.json
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --max-per-site 10000 --discovery-output runs/01-search.checkpoint.json --output runs/03-filter.json
 ```
 
 Progress on stderr separates discovered candidates from completed URL checks. Discovery is
 saved before validation starts. To retry validation after an interruption or network problem:
 
 ```powershell
-.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --resume-discovery runs/discovery.json --output runs/verified.json
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --resume-discovery runs/01-search.checkpoint.json --output runs/03-filter.json
 ```
 
 Resume avoids rediscovery and rechecks every matching native URL; it does not reuse old validation

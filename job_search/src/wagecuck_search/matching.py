@@ -71,7 +71,7 @@ def parse_date(value: str | None) -> datetime | None:
 
 
 def matches(
-    job: JobPosting, criteria: SearchCriteria, now: datetime | None = None
+    job: JobPosting, criteria: SearchCriteria, now: datetime | None = None, *, check_title=True
 ) -> tuple[bool, list[str]]:
     now = now or utc_now()
     rejected, unknown = [], []
@@ -82,7 +82,8 @@ def matches(
         elif not value:
             rejected.append(name)
 
-    check("title", title_matches(criteria.job_title, job.title))
+    if check_title:
+        check("title", title_matches(criteria.job_title, job.title))
     requested_levels = set(criteria.seniority) or levels(criteria.job_title)
     if requested_levels:
         actual = levels(job.title) or set(job.experience_levels)
