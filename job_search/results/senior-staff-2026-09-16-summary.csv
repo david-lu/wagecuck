@@ -1,0 +1,6 @@
+﻿site,discovered,fetched,deduplicated,validation_attempted,validation_rejected,returned,status,limited
+wellfound,76,66,2,16,16,0,partial,False
+indeed,0,0,0,0,0,0,blocked,False
+linkedin,60,26,0,8,8,0,partial,False
+simplify,10000,10000,2020,4198,2488,1710,ok,True
+TOTAL,10136,10092,2022,4222,2512,1710,,
