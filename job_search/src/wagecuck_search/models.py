@@ -15,6 +15,15 @@ SITES = (
     "trueup",
     "yc",
     "builtin",
+    "theirstack",
+    "jobshifu",
+    "mygreenhouse",
+    "rolesweep",
+    "google",
+    "ventureloop",
+    "remote_rocketship",
+    "backchannel",
+    "hn",
 )
 LEVELS = ("intern", "junior", "mid", "senior", "staff", "principal", "lead", "manager")
 

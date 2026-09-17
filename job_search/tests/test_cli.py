@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from wagecuck_search import cli
-from wagecuck_search.models import SiteResult, utc_now
+from wagecuck_search.models import SITES, SiteResult, utc_now
 from wagecuck_search.pipeline import build_report
 
 
@@ -45,7 +45,7 @@ def test_cli_outputs_machine_json_and_human_summary_even_for_blocked_sites(monke
     )
     captured = capsys.readouterr()
     report = json.loads(captured.out)
-    assert len(report["summary"]["sites"]) == 10
+    assert len(report["summary"]["sites"]) == len(SITES)
     assert "Total: 0 jobs; 0 duplicates removed" in captured.err
 
 

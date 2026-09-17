@@ -284,7 +284,7 @@ def test_default_site_run_dedupes_before_filter_and_reports_every_stage():
     assert summary["deduplicated"] == 1
     assert summary["filtered_out"] == 1
     assert summary["returned"] == 2
-    assert len(summary["sites"]) == 10
+    assert len(summary["sites"]) == len(SearchCriteria("software engineer").sites)
     assert sum(v["returned"] for v in summary["sites"].values()) == 2
     assert summary["sites"]["indeed"]["deduplicated"] == 1
     assert summary["sites"]["indeed"]["matched_with_duplicates"] == 1

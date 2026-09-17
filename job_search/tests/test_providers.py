@@ -6,8 +6,12 @@ from wagecuck_search.providers import (
     BrowserProvider,
     PostingUnavailable,
     SiteAccessError,
+    backchannel_jobs,
+    hn_jobs,
     levels_search_data,
+    provider_for,
     search_url,
+    theirstack_jobs,
 )
 
 HTML = """<h1>Senior Software Engineer</h1>
@@ -142,6 +146,75 @@ def test_new_board_search_urls_use_only_the_broad_title():
     assert "query=software+engineer" in search_url("trueup", query)
     assert "query=software+engineer" in search_url("yc", query)
     assert "search=software+engineer" in search_url("builtin", query)
+    assert "keyword=software+engineer" in search_url("rolesweep", query)
+    assert "/jobs/software-engineer/" in search_url("remote_rocketship", query)
+
+
+def test_provider_factory_uses_feed_and_access_aware_adapters():
+    assert type(provider_for("backchannel", None)).__name__ == "BackchannelProvider"
+    assert type(provider_for("theirstack", None)).__name__ == "TheirStackProvider"
+    assert type(provider_for("hn", None)).__name__ == "HackerNewsProvider"
+    assert type(provider_for("ventureloop", None)).__name__ == "VentureLoopProvider"
+    assert type(provider_for("jobshifu", None)).__name__ == "UnavailableProvider"
+    assert type(provider_for("rolesweep", None)).__name__ == "BrowserProvider"
+
+
+def test_public_feed_records_map_to_normalized_jobs():
+    backchannel = backchannel_jobs(
+        {
+            "jobs": [
+                {
+                    "title": "Senior Software Engineer",
+                    "company": "Acme",
+                    "location": "Remote",
+                    "post_url": "https://linkedin.com/posts/acme-123",
+                    "summary": "USD 180k - 220k per year",
+                    "salary": "USD 180k - 220k per year",
+                    "apply_method": "email",
+                }
+            ]
+        }
+    )[0]
+    assert backchannel.company == "Acme" and backchannel.workplace == "remote"
+    assert backchannel.salary.maximum == 220000
+
+    theirstack = theirstack_jobs(
+        {
+            "data": [
+                {
+                    "job_title": "Staff Software Engineer",
+                    "company": "Acme",
+                    "source_url": "https://linkedin.com/jobs/view/1",
+                    "url": "https://boards.greenhouse.io/acme/jobs/1",
+                    "long_location": "San Francisco, CA",
+                    "remote": True,
+                    "min_annual_salary": 200000,
+                    "max_annual_salary": 250000,
+                    "salary_currency": "USD",
+                }
+            ]
+        }
+    )[0]
+    assert theirstack.location == "Remote; San Francisco, CA"
+    assert theirstack.application_urls == ["https://boards.greenhouse.io/acme/jobs/1"]
+
+    hn = hn_jobs(
+        {
+            "hits": [
+                {
+                    "objectID": "123",
+                    "created_at": "2026-09-01T00:00:00Z",
+                    "comment_text": (
+                        "Acme | Remote | Staff Software Engineer<p>"
+                        '<a href="https://jobs.lever.co/acme/123">Apply</a>'
+                    ),
+                }
+            ]
+        },
+        "software engineer",
+    )[0]
+    assert hn.company == "Acme" and hn.location == "Remote"
+    assert hn.application_urls == ["https://jobs.lever.co/acme/123"]
 
 
 def test_levels_bulk_records_keep_only_their_own_application_url():

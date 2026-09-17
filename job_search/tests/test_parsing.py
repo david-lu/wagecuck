@@ -23,6 +23,8 @@ URLS = {
     "trueup": "https://www.trueup.io/jobs/senior-software-engineer-acme",
     "yc": "https://www.ycombinator.com/companies/acme/jobs/abc-senior-software-engineer",
     "builtin": "https://builtin.com/job/senior-software-engineer/11221046",
+    "rolesweep": "https://rolesweep.com/jobs/62ecdf1c3aef8fa14372316733eb1a53-software-engineer",
+    "remote_rocketship": "https://www.remoterocketship.com/us/company/acme/jobs/senior-software-engineer-united-states-remote/",
 }
 
 
@@ -137,6 +139,16 @@ def test_listing_links_ignore_other_hosts_and_navigation_and_tracking_duplicates
             '<a href="/company/acme">Acme</a>',
             '<div class="location">Toronto, Canada</div>',
         ),
+        (
+            "rolesweep",
+            '<a href="/companies/acme">Acme</a>',
+            '<div class="location">Toronto, Canada</div>',
+        ),
+        (
+            "remote_rocketship",
+            '<a href="/company/acme/">Acme</a>',
+            '<div class="location">Toronto, Canada</div>',
+        ),
     ],
 )
 def test_board_specific_dom_fallback(site, company, location):
@@ -151,6 +163,18 @@ def test_board_specific_dom_fallback(site, company, location):
 def test_recommendation_schema_is_not_the_requested_job():
     html = schema(url=URLS["wellfound"]) + "<h1>Please log in</h1>"
     assert parse_posting("linkedin", html, URLS["linkedin"]) is None
+
+
+def test_remote_rocketship_does_not_mix_related_job_application_urls():
+    html = schema(
+        url=URLS["remote_rocketship"],
+        applicationUrl="https://jobs.ashbyhq.com/acme/current",
+    ) + schema(
+        url="https://www.remoterocketship.com/company/other/jobs/related/",
+        applicationUrl="https://jobs.ashbyhq.com/other/related",
+    )
+    posting = parse_posting("remote_rocketship", html, URLS["remote_rocketship"])
+    assert posting.application_urls == ["https://jobs.ashbyhq.com/acme/current"]
 
 
 def test_internship_title_overrides_full_time():

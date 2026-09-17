@@ -39,15 +39,13 @@ async def discover(criteria, providers=None, progress=None):
     if providers is None:
         from playwright.async_api import async_playwright
 
-        from .providers import BrowserProvider
-        from .simplify import SimplifyProvider
+        from .providers import provider_for
 
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(
                 headless=not criteria.show_browser, channel=criteria.browser_channel)
             try:
-                providers = [(SimplifyProvider if site == "simplify" else BrowserProvider)(site, browser)
-                             for site in criteria.sites]
+                providers = [provider_for(site, browser) for site in criteria.sites]
                 results = await _fetch(criteria, query, providers, progress)
             finally:
                 await browser.close()

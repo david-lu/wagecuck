@@ -24,6 +24,17 @@ BOARD_DOMAINS = (
     "monster.com",
     "dice.com",
     "builtin.com",
+    "theirstack.com",
+    "jobshifu.com",
+    "my.greenhouse.com",
+    "my.greenhouse.io",
+    "rolesweep.com",
+    "google.com",
+    "ventureloop.com",
+    "remoterocketship.com",
+    "backchanneljobs.com",
+    "news.ycombinator.com",
+    "hn.algolia.com",
     "theorg.com",
     "talent.com",
     "jooble.org",
@@ -61,6 +72,8 @@ ATS_DOMAINS = (
     "avature.net",
     "eightfold.ai",
     "taleo.net",
+    "careers-page.com",
+    "zohorecruit.com",
 )
 APPLY_LABEL = re.compile(
     r"^(?:apply(?:\s+(?:now|here|for .+|on .+|to .+))?|"

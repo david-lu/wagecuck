@@ -22,6 +22,8 @@ LINK_PATTERNS = {
     "trueup": r"/(?:job|jobs)/[a-zA-Z0-9-]+",
     "yc": r"/companies/[^/?#]+/jobs/[^/?#]+",
     "builtin": r"/job/[^/?#]+/\d+",
+    "rolesweep": r"/jobs/[a-fA-F0-9]{32}-[^/?#]+",
+    "remote_rocketship": r"/(?:[a-z]{2}/)?company/[^/?#]+/jobs/[^/?#]+",
 }
 DOMAINS = {
     "wellfound": ("wellfound.com",),
@@ -34,6 +36,8 @@ DOMAINS = {
     "trueup": ("trueup.io",),
     "yc": ("ycombinator.com",),
     "builtin": ("builtin.com",),
+    "rolesweep": ("rolesweep.com",),
+    "remote_rocketship": ("remoterocketship.com",),
 }
 
 
@@ -213,6 +217,10 @@ def first_text(soup, selectors: str) -> str:
 
 def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
     application_urls, employer_urls = extract_links(html, url)
+    if site == "remote_rocketship":
+        # Its detail payload embeds a carousel of complete related-job records after
+        # the current job. The current posting's native Apply target is published first.
+        application_urls = application_urls[:1]
     soup = document(html)
     jobs = structured_jobs(soup)
     # Ignore recommendation JSON-LD when another posting is being visited.
@@ -242,6 +250,8 @@ def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
         "trueup": 'a[href*="/company/"], [class*="company"]',
         "yc": 'a[href^="/companies/"]:not([href*="/jobs/"]), [class*="company"]',
         "builtin": 'a[href*="/company/"], [data-id="company-title"], [class*="company"]',
+        "rolesweep": 'a[href*="/companies/"], [class*="company"]',
+        "remote_rocketship": 'a[href*="/company/"]:not([href*="/jobs/"]), [class*="company"]',
     }
     company = text(company) or first_text(soup, company_selectors[site])
     if not company:

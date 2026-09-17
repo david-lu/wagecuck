@@ -1,7 +1,9 @@
 # wagecuck-search
 
-An independent job-search package for Wellfound, Indeed, LinkedIn, Simplify,
-HiringCafe, Jobright, Levels.fyi, TrueUp, Y Combinator, and Built In.
+An independent job-search package with 19 source adapters: Wellfound, Indeed,
+LinkedIn, Simplify, HiringCafe, Jobright, Levels.fyi, TrueUp, Y Combinator,
+Built In, TheirStack, JobShifu, MyGreenhouse, RoleSweep, Google Jobs,
+VentureLoop, Remote Rocketship, BackchannelJobs, and Hacker News Who Is Hiring.
 This directory can be copied and installed on its own. It does not import `wagecuck`,
 read application profiles, use application browser sessions, or share application storage.
 Its dependencies, entry point, configuration, output, and tests live here.
@@ -30,7 +32,10 @@ python -m venv .venv
 An installed Chrome or Edge can also be used with `--browser-channel chrome` or
 `--browser-channel msedge`. `--show-browser` makes the search browser visible.
 `python -m wagecuck_search` is equivalent to the console command.
-No model API key is required for search or URL validation. Natural-language
+No model API key is required for search or URL validation. TheirStack is a paid
+API source and is enabled when `THEIRSTACK_API_KEY` is present in the environment
+or current directory's `.env`; its API charges one credit per returned job. Without
+that key, the source reports `blocked` and consumes no credits. Natural-language
 post-filtering uses the location agent described below.
 
 ## Three-stage runs
@@ -114,7 +119,7 @@ Only `--job-title` is required.
 | `--exclude-company "Acme"` | Repeat to exclude company names. |
 | `--posted-within-days 14` | Use the posted date, independently of the last-updated date. |
 | `--include-unknown` | Retain unknown optional filters and mark each unverified criterion in `note`. Known mismatches still fail. |
-| `--sites wellfound linkedin` | Select a subset; default is all ten sites. |
+| `--sites wellfound linkedin` | Select a subset; default is all 19 sites. |
 | `--max-pages 200` | Maximum search pages/batches per site; default 200. |
 | `--max-per-site 10000` | Maximum posting records/URLs to process per site, before filtering; default 10,000. |
 | `--timeout-seconds 30` | Timeout for each browser operation. |
@@ -143,8 +148,11 @@ will not match a posting that only says `Toronto`. Use location variants as need
    every posting. Detail pages are read only when requested filters require missing metadata.
    Levels.fyi reads its public result records in bulk and keeps the application URL attached
    to that exact job ID, avoiding unrelated Apply links embedded elsewhere on the page.
-   The other adapters enrich detail pages with the bounded `--detail-workers` pool instead
-   of serially waiting on every posting.
+   RoleSweep and Remote Rocketship use their public paginated result and detail pages.
+   BackchannelJobs uses its public bulk search response, while Hacker News searches the
+   current Who Is Hiring thread in batches. TheirStack uses its authenticated JSON API.
+   The remaining page adapters enrich detail pages with the bounded `--detail-workers` pool
+   instead of serially waiting on every posting.
    Public search credentials remain in memory and are never included in checkpoints or logs.
 3. Deduplicate before filtering so one copy can supply metadata missing from another.
    Canonical posting URLs ignore tracking parameters and changing title slugs.
@@ -190,8 +198,8 @@ is accepted as application-entry evidence only after native-domain and employer 
 ## Large searches and checkpoints
 
 The default budgets permit thousands of candidates. Actual volume depends on site access,
-pagination, title/filter selectivity, and native application URL validation. Simplify supports
-batch discovery; the other boards still use their public search/detail pages and can be slower
+pagination, title/filter selectivity, and native application URL validation. Simplify,
+TheirStack, BackchannelJobs, and Hacker News support batch discovery; page boards can be slower
 or blocked. Higher budgets cannot make a blocked board accessible.
 
 ```powershell
@@ -293,6 +301,20 @@ live check successfully extracted current jobs from Jobright, Levels.fyi, Y Comb
 Built In. HiringCafe and TrueUp returned HTTP 403 security challenges from this environment,
 which their adapters report as `blocked` instead of silently returning zero jobs.
 
+The new sources are grouped by the requested coverage waves:
+
+| Wave | Sources | Current adapter behavior |
+| --- | --- | --- |
+| 1 | Simplify, HiringCafe, TheirStack, JobShifu, TrueUp, Jobright, MyGreenhouse, RoleSweep | Public page/API search where available. TheirStack reads `THEIRSTACK_API_KEY`; JobShifu and MyGreenhouse explicitly report their account gate. |
+| 2 | LinkedIn, Indeed, Google Jobs, VentureLoop, Wellfound, YC, Built In, Remote Rocketship, BackchannelJobs, HN | Public page/feed search where available. VentureLoop reports its anonymous preview count but does not emit hidden-company records; Google reports its verification challenge. |
+
+The existing Levels.fyi adapter remains enabled as an additional source. On 2026-09-17,
+a bounded live smoke check extracted records from RoleSweep, Remote Rocketship,
+BackchannelJobs, and the current Hacker News thread. VentureLoop reported 6,330 broad
+matches but withheld company and application details from anonymous access. The smoke check
+also confirmed the explicit credential/account/challenge statuses for TheirStack, JobShifu,
+MyGreenhouse, and Google Jobs.
+
 The page URLs used by these adapters can be inspected directly:
 [Simplify](https://simplify.jobs/jobs),
 [HiringCafe](https://hiring.cafe/jobs/software-engineer),
@@ -302,8 +324,17 @@ The page URLs used by these adapters can be inspected directly:
 [Levels.fyi](https://www.levels.fyi/jobs/title/software-engineer),
 [TrueUp](https://www.trueup.io/engineering),
 [Wellfound](https://wellfound.com/role/software-engineer),
-[Y Combinator](https://www.ycombinator.com/jobs?query=software%20engineer), and
-[Built In](https://builtin.com/jobs/dev-engineering?search=software%20engineer).
+[Y Combinator](https://www.ycombinator.com/jobs?query=software%20engineer),
+[Built In](https://builtin.com/jobs/dev-engineering?search=software%20engineer),
+[TheirStack API](https://theirstack.com/en/docs/api-reference/jobs/search_jobs_v1),
+[JobShifu](https://app.jobshifu.com/),
+[MyGreenhouse](https://my.greenhouse.com/),
+[RoleSweep](https://rolesweep.com/jobs?keyword=software%20engineer),
+[Google Jobs](https://www.google.com/search?q=software+engineer+jobs),
+[VentureLoop](https://ventureloop.com/jobs?query=software%20engineer),
+[Remote Rocketship](https://www.remoterocketship.com/jobs/software-engineer/),
+[BackchannelJobs](https://www.backchanneljobs.com/), and
+[Hacker News Who Is Hiring](https://news.ycombinator.com/ask).
 
 ## Tests and Python API
 

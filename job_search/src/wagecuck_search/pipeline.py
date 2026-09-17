@@ -21,8 +21,7 @@ async def search(
     if providers is None or validator is None:
         from playwright.async_api import async_playwright
 
-        from .providers import BrowserProvider
-        from .simplify import SimplifyProvider
+        from .providers import provider_for
         from .validation import BrowserValidator
 
         try:
@@ -36,12 +35,7 @@ async def search(
                         results = await _fetch(
                             criteria,
                             query,
-                            [
-                                (SimplifyProvider if site == "simplify" else BrowserProvider)(
-                                    site, browser
-                                )
-                                for site in criteria.sites
-                            ],
+                            [provider_for(site, browser) for site in criteria.sites],
                             progress,
                         )
                     if validator is None:
