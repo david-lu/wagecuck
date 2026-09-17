@@ -12,7 +12,7 @@ from .workers import map_bounded
 
 async def search(
     criteria: SearchCriteria, providers=None, validator=None, *, progress=None, on_discovery=None,
-    filter_candidates=True,
+    filter_candidates=True, deduplicate_candidates=True,
 ) -> dict:
     """Discover, deduplicate, filter, and validate employer application destinations."""
     started = utc_now()
@@ -54,6 +54,7 @@ async def search(
                         progress,
                         on_discovery,
                         filter_candidates=filter_candidates,
+                        deduplicate_candidates=deduplicate_candidates,
                     )
                 finally:
                     if native:
@@ -76,22 +77,33 @@ async def search(
             return await _validated_report(
                 criteria, query, results, started, None, progress, on_discovery,
                 filter_candidates=filter_candidates,
+                deduplicate_candidates=deduplicate_candidates,
             )
     return await _validated_report(
         criteria, query, results, started, validator, progress, on_discovery,
         filter_candidates=filter_candidates,
+        deduplicate_candidates=deduplicate_candidates,
     )
 
 
 async def _validated_report(
     criteria, query, results, started, validator, progress=None, on_discovery=None,
-    *, filter_candidates=True,
+    *, filter_candidates=True, deduplicate_candidates=True,
 ):
     if on_discovery:
         on_discovery(results)
-    report = build_report(criteria, query, results, started, apply_filters=filter_candidates)
-    unique, _ = deduplicate([job for result in results for job in result.jobs])
-    by_url = {job.url: job for job in unique}
+    report = build_report(
+        criteria,
+        query,
+        results,
+        started,
+        apply_filters=filter_candidates,
+        deduplicate_candidates=deduplicate_candidates,
+    )
+    candidates = [job for result in results for job in result.jobs]
+    if deduplicate_candidates:
+        candidates, _ = deduplicate(candidates)
+    by_url = {job.url: job for job in candidates}
 
     async def one(posting):
         from .validation import ValidationResult
@@ -193,7 +205,7 @@ async def _validated_report(
         stats.update(
             validation_attempted=0, validation_rejected=0, returned=0, matched_with_duplicates=0
         )
-    accepted, seen = [], {}
+    validated = []
     for posting, check in zip(report["jobs"], checks):
         original = by_url[posting["url"]]
         stats = summary["sites"][original.source]
@@ -219,18 +231,26 @@ async def _validated_report(
         posting["url"] = check.url
         posting["url_validated_at"] = check.checked_at or utc_now().isoformat()
         posting["application_url_type"] = check.kind
-        key = canonical_url(check.url)
+        validated.append((posting, original.source))
+
+    # This is deliberately the final transformation. Every filtered row is
+    # validated first; only then can two discovery records be identified as
+    # the same opening by their resolved native application URL.
+    accepted, seen = [], {}
+    for posting, source in validated:
+        stats = summary["sites"][source]
+        key = canonical_url(posting["url"])
         if key in seen:
             target = seen[key]
-            for source in posting["sources"]:
-                if source not in target["sources"]:
-                    target["sources"].append(source)
+            for origin in posting["sources"]:
+                if origin not in target["sources"]:
+                    target["sources"].append(origin)
             summary["application_url_deduplicated"] += 1
             stats["deduplicated"] += 1
-        else:
-            seen[key] = posting
-            accepted.append(posting)
-            stats["returned"] += 1
+            continue
+        seen[key] = posting
+        accepted.append(posting)
+        stats["returned"] += 1
     for site, stats in summary["sites"].items():
         stats["matched_with_duplicates"] = sum(
             any(s["site"] == site for s in p["sources"]) for p in accepted
@@ -261,9 +281,14 @@ async def _fetch(criteria, query, providers, progress=None):
     return await asyncio.gather(*(one(site) for site in criteria.sites))
 
 
-def build_report(criteria, query, results, started, *, apply_filters=True):
+def build_report(
+    criteria, query, results, started, *, apply_filters=True, deduplicate_candidates=True
+):
     raw = [job for result in results for job in result.jobs]
-    unique, removed = deduplicate(raw)
+    if deduplicate_candidates:
+        unique, removed = deduplicate(raw)
+    else:
+        unique, removed = raw, {}
     matched = []
     reasons = {}
     for job in unique:

@@ -133,7 +133,9 @@ async def main():
         csv_stream.close()
         # Final export includes merged source provenance and filter notes from the pipeline.
         write_csv(RUN / "jobs.csv", report["jobs"])
-        (RUN / "03-filter.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        (RUN / "03-validation.json").write_text(
+            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         summary = report["summary"]
         columns = ["site", "discovered", "fetched", "deduplicated", "validation_attempted",
                    "validation_rejected", "returned", "status", "limited"]
@@ -143,8 +145,9 @@ async def main():
             for site, stats in summary["sites"].items():
                 out.writerow({"site": site, **stats})
             out.writerow({"site": "TOTAL", **summary})
-        (RUN / "03-filter.summary.json").write_text(json.dumps({"csv": str(RUN / "jobs.csv"),
-            "count": len(report["jobs"]), "summary": summary}, indent=2), encoding="utf-8")
+        (RUN / "03-validation.summary.json").write_text(json.dumps({
+            "csv": str(RUN / "jobs.csv"), "count": len(report["jobs"]), "summary": summary
+        }, indent=2), encoding="utf-8")
         print("COMPLETE=" + json.dumps({"csv": str(RUN / "jobs.csv"), "count": len(report["jobs"])}), flush=True)
     finally:
         csv_stream.close()

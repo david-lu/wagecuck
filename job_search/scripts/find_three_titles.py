@@ -14,7 +14,7 @@ from playwright.async_api import async_playwright
 
 from wagecuck_search.checkpoint import save_discovery
 from wagecuck_search.dedupe import canonical_url, deduplicate
-from wagecuck_search.export import read_jobs, write_jobs
+from wagecuck_search.export import read_jobs, write_filtered_job_rows, write_jobs
 from wagecuck_search.location_agent import OpenAILocationAgent
 from wagecuck_search.matching import matches
 from wagecuck_search.models import SearchCriteria, utc_now
@@ -34,6 +34,11 @@ argument_parser.add_argument(
     type=Path,
     default=BASE / "profiles" / "los-angeles-or-remote.json",
 )
+argument_parser.add_argument(
+    "--validation-only",
+    action="store_true",
+    help="Validate the existing 02-filter.csv without rerunning search or filtering",
+)
 arguments = argument_parser.parse_args()
 profile_path = arguments.profile
 if not profile_path.is_absolute() and not profile_path.exists():
@@ -48,8 +53,8 @@ REQUESTED_TITLES = PROFILE.job_titles
 SEARCH_QUERIES = PROFILE.search_queries
 SEARCH_CSV = OUTPUT / "01-search.csv"
 CANDIDATE_CSV = ARTIFACTS / "title-matched.lossless.csv"
-VALIDATION_CSV = OUTPUT / "02-validation.csv"
-FINAL_CSV = OUTPUT / "03-filter.csv"
+FILTER_CSV = OUTPUT / "02-filter.csv"
+VALIDATION_CSV = OUTPUT / "03-validation.csv"
 PROGRESS = ARTIFACTS / "progress.jsonl"
 VALIDATION_JOURNAL = ARTIFACTS / "validation.jsonl"
 
@@ -166,8 +171,14 @@ class CachedValidator:
 
 async def discover_titles():
     if CANDIDATE_CSV.exists() and SEARCH_CSV.exists():
-        emit({"phase": "resume_discovery", "candidates": len(read_jobs(CANDIDATE_CSV))})
-        return read_jobs(CANDIDATE_CSV), json.loads(
+        candidates = read_jobs(CANDIDATE_CSV)
+        for candidate in candidates:
+            if candidate.get("note"):
+                parts = [part.strip() for part in candidate["note"].split(";")]
+                parts = [part for part in parts if not part.startswith("Matched requested title:")]
+                candidate["note"] = "; ".join(parts) or None
+        emit({"phase": "resume_discovery", "candidates": len(candidates)})
+        return candidates, json.loads(
             (OUTPUT / "01-search.summary.json").read_text(encoding="utf-8")
         )
 
@@ -222,8 +233,6 @@ async def discover_titles():
             continue
         for title in requested:
             title_counts[title] += 1
-        label = "Matched requested title: " + ", ".join(requested)
-        job.note = "; ".join(filter(None, (job.note, label)))
         candidates.append(job)
     write_jobs(CANDIDATE_CSV, [asdict(job) for job in candidates])
     sources = aggregate_sources(query_reports, removed)
@@ -247,7 +256,35 @@ async def discover_titles():
     return [asdict(job) for job in candidates], summary
 
 
-async def validate_candidates(candidates, search_summary):
+async def filter_then_validate(candidates, search_summary):
+    location_agent = OpenAILocationAgent() if PROFILE.location_prompt else None
+    filtered = await filter_jobs(
+        candidates,
+        PROFILE.filter_criteria(),
+        location_prompt=PROFILE.location_prompt,
+        location_map_path=ARTIFACTS / "02-filter.locations.csv",
+        agent=location_agent,
+        max_salary=PROFILE.max_salary,
+        progress=emit,
+    )
+    filter_title_counts = {
+        title: sum(matches_from_output(job, title) for job in filtered["jobs"])
+        for title in REQUESTED_TITLES
+    }
+    filter_summary = filtered["summary"] | {
+        "requested_titles": REQUESTED_TITLES,
+        "title_matches": filter_title_counts,
+        "search_profile": PROFILE.name,
+    }
+    filtered["summary"] = filter_summary
+    save_stage(FILTER_CSV, filtered)
+    write_filtered_job_rows(
+        SEARCH_CSV, FILTER_CSV, (job["url"] for job in filtered["jobs"])
+    )
+    await validate_filtered(filtered["jobs"], search_summary, filter_summary)
+
+
+async def validate_filtered(filtered_jobs, search_summary, filter_summary):
     criteria = SearchCriteria(
         "software engineer",
         sites=PROFILE.sites,
@@ -266,38 +303,16 @@ async def validate_candidates(candidates, search_summary):
             VALIDATION_JOURNAL,
         )
         try:
-            report = await validate_jobs(candidates, criteria, validator, emit)
+            report = await validate_jobs(filtered_jobs, criteria, validator, emit)
         finally:
             await validator.close()
     save_stage(VALIDATION_CSV, report)
-    location_agent = OpenAILocationAgent() if PROFILE.location_prompt else None
-    filtered = await filter_jobs(
-        report["jobs"],
-        PROFILE.filter_criteria(),
-        location_prompt=PROFILE.location_prompt,
-        location_map_path=FINAL_CSV.with_suffix(".locations.csv"),
-        agent=location_agent,
-        max_salary=PROFILE.max_salary,
-    )
-    save_stage(FINAL_CSV, filtered)
-    final_title_counts = {
-        title: sum(matches_from_output(job, title) for job in filtered["jobs"])
-        for title in REQUESTED_TITLES
-    }
-    final_summary = filtered["summary"] | {
-        "requested_titles": REQUESTED_TITLES,
-        "title_matches": final_title_counts,
-        "search_profile": PROFILE.name,
-    }
-    (OUTPUT / "03-filter.summary.json").write_text(
-        json.dumps(final_summary, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-    write_source_summary(OUTPUT / "source-summary.csv", search_summary["sites"], filtered["jobs"])
+    write_source_summary(OUTPUT / "source-summary.csv", search_summary["sites"], report["jobs"])
     combined = {
         "output_directory": str(OUTPUT),
         "search": {key: value for key, value in search_summary.items() if key not in ("sites", "queries")},
+        "filter": filter_summary,
         "validation": report["summary"],
-        "filter": final_summary,
     }
     (OUTPUT / "summary.json").write_text(
         json.dumps(combined, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -306,9 +321,9 @@ async def validate_candidates(candidates, search_summary):
         {
             "phase": "complete",
             "search_unique": search_summary["unique_search_results"],
-            "title_candidates": len(candidates),
+            "title_candidates": search_summary["title_matched_candidates"],
+            "profile_matched": len(filtered_jobs),
             "validated": len(report["jobs"]),
-            "location_filtered": len(filtered["jobs"]),
             "validation_rejected": report["summary"]["validation_rejected"],
             "deduplicated": search_summary["deduplicated"]
             + report["summary"]["application_url_deduplicated"],
@@ -323,8 +338,27 @@ def matches_from_output(job, title):
 
 
 async def main():
+    if arguments.validation_only:
+        required = [
+            FILTER_CSV,
+            OUTPUT / "01-search.summary.json",
+            OUTPUT / "02-filter.summary.json",
+        ]
+        missing = [str(path) for path in required if not path.exists()]
+        if missing:
+            raise FileNotFoundError("Validation inputs are missing: " + ", ".join(missing))
+        filtered_jobs = read_jobs(FILTER_CSV)
+        search_summary = json.loads(
+            (OUTPUT / "01-search.summary.json").read_text(encoding="utf-8")
+        )
+        filter_summary = json.loads(
+            (OUTPUT / "02-filter.summary.json").read_text(encoding="utf-8")
+        )
+        emit({"phase": "validation_started", "input": len(filtered_jobs)})
+        await validate_filtered(filtered_jobs, search_summary, filter_summary)
+        return
     candidates, search_summary = await discover_titles()
-    await validate_candidates(candidates, search_summary)
+    await filter_then_validate(candidates, search_summary)
 
 
 asyncio.run(main())

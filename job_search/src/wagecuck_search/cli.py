@@ -68,7 +68,7 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--output", type=Path, help="Also save the JSON report to this path")
     command.add_argument(
         "--stages-output-dir", type=Path,
-        help="Run search, validation, and filtering separately and write a CSV for each stage",
+        help="Run search, filtering, and validation separately and write a CSV for each stage",
     )
     command.add_argument("--post-filter-input", type=Path, help="Filter an existing job CSV")
     command.add_argument("--post-filter-output", type=Path, help="Write the filtered job CSV")
@@ -79,7 +79,12 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--max-salary", type=float)
     command.add_argument("--agent-model")
     command.add_argument("--agent-endpoint")
-    command.add_argument("--agent-timeout", type=float, default=180)
+    command.add_argument(
+        "--agent-timeout",
+        type=float,
+        default=60,
+        help="Seconds to wait for one location-agent response before keeping that batch",
+    )
     return command
 
 
@@ -124,6 +129,35 @@ def main(argv=None) -> int:
             )
         except ValueError as exc:
             command.error(str(exc))
+
+    def filter_progress(event):
+        phase = event["phase"]
+        if phase == "filter_started":
+            message = f"[filter] loaded {event['input']} rows"
+        elif phase == "filter_locations":
+            message = (
+                f"[filter] {event['unique_locations']} unique locations; "
+                f"{event['cached']} cached, {event['pending']} pending"
+            )
+        elif phase == "filter_location_progress":
+            message = (
+                f"[filter] classified {event['completed']}/{event['total']} locations "
+                f"({event['requests']} agent requests; {event['skipped']} skipped)"
+            )
+        elif phase == "filter_row_progress":
+            message = (
+                f"[filter] processed {event['processed']}/{event['total']} rows; "
+                f"kept {event['kept']}, removed {event['removed']}"
+            )
+        elif phase == "filter_complete":
+            message = (
+                f"[filter] kept {event['returned']}/{event['input']} rows; "
+                f"removed {event['filtered_out']} in {event['elapsed_seconds']:.2f}s"
+            )
+        else:
+            return
+        print(message, file=sys.stderr, flush=True)
+
     if filter_input:
         try:
             report = asyncio.run(filter_csv(
@@ -133,6 +167,7 @@ def main(argv=None) -> int:
                 location_prompt=effective_location_prompt,
                 agent=agent,
                 max_salary=max_salary,
+                progress=filter_progress,
             ))
         except (OSError, ValueError, RuntimeError) as exc:
             command.error(str(exc))
@@ -146,6 +181,7 @@ def main(argv=None) -> int:
                 location_prompt=effective_location_prompt,
                 agent=agent,
                 max_salary=max_salary,
+                progress=filter_progress,
             ))
         except (OSError, ValueError, RuntimeError) as exc:
             command.error(str(exc))

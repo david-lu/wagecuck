@@ -3,6 +3,7 @@
 import csv
 import json
 import math
+from collections import Counter
 from dataclasses import asdict, fields
 from pathlib import Path
 
@@ -45,6 +46,34 @@ def write_table(path, columns, rows):
 
 def write_jobs(path, jobs):
     write_table(path, FIELDS, (csv_row(j) for j in jobs))
+
+
+def write_filtered_job_rows(source, destination, accepted_urls):
+    """Copy accepted CSV rows byte-for-field without changing the input schema."""
+    csv.field_size_limit(16 * 1024 * 1024)
+    remaining = Counter(str(url) for url in accepted_urls)
+    source = Path(source)
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(destination.name + ".tmp")
+    with source.open(encoding="utf-8-sig", newline="") as input_stream:
+        reader = csv.DictReader(input_stream)
+        columns = reader.fieldnames or []
+        if "url" not in columns:
+            raise ValueError("Job CSV requires a url column")
+        with temporary.open("w", encoding="utf-8-sig", newline="") as output_stream:
+            writer = csv.DictWriter(output_stream, fieldnames=columns)
+            writer.writeheader()
+            for row in reader:
+                url = row["url"]
+                if remaining[url] > 0:
+                    writer.writerow(row)
+                    remaining[url] -= 1
+    missing = sum(remaining.values())
+    if missing:
+        temporary.unlink(missing_ok=True)
+        raise ValueError(f"Filtered jobs contain {missing} rows absent from the source CSV")
+    temporary.replace(destination)
 
 
 def read_jobs(path):

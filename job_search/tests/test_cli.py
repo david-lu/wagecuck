@@ -66,6 +66,15 @@ def test_post_filter_mode_does_not_require_job_title(monkeypatch, capsys):
         assert source == Path("validated.csv")
         assert output == Path("filtered.csv")
         assert criteria.job_title == "generated jobs"
+        kwargs["progress"]({"phase": "filter_started", "input": 10})
+        kwargs["progress"]({
+            "phase": "filter_row_progress", "processed": 5, "total": 10,
+            "kept": 2, "removed": 3,
+        })
+        kwargs["progress"]({
+            "phase": "filter_complete", "input": 10, "returned": 3,
+            "filtered_out": 7, "elapsed_seconds": 0.25,
+        })
         return {"summary": {"stage": "filter", "input": 10, "returned": 3}}
 
     monkeypatch.setattr(cli, "filter_csv", fake_filter)
@@ -74,7 +83,11 @@ def test_post_filter_mode_does_not_require_job_title(monkeypatch, capsys):
         "--post-filter-output", "filtered.csv",
         "--min-salary", "180000",
     ]) == 0
-    assert json.loads(capsys.readouterr().out)["returned"] == 3
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["returned"] == 3
+    assert "[filter] loaded 10 rows" in captured.err
+    assert "[filter] processed 5/10 rows; kept 2, removed 3" in captured.err
+    assert "[filter] kept 3/10 rows; removed 7 in 0.25s" in captured.err
 
 
 def test_post_filter_requires_distinct_input_and_output_flags():

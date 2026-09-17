@@ -48,7 +48,7 @@ post-filtering uses the location agent described below.
 ## Three-stage runs
 
 Use `--stages-output-dir` when you want inspectable boundaries between discovery,
-native URL validation, and post-generation filtering:
+post-generation filtering, and native URL validation:
 
 ```powershell
 .venv\Scripts\wagecuck-search.exe `
@@ -65,22 +65,28 @@ This writes:
 | File | Contents |
 | --- | --- |
 | `01-search.csv` / `01-search.json` | Broad, deduplicated search results before URL validation or user filters |
-| `02-validation.csv` / `02-validation.json` | Jobs whose URLs resolve to live employer or ATS application pages |
-| `03-filter.locations.csv` | One agent-completed row per unique `(location, workplace)` value |
-| `03-filter.csv` / `03-filter.json` | Validated jobs after joining the location decisions and applying local filters |
-| `03-filter.rejections.csv` | Rejected job URLs and filter reasons |
+| `02-filter.csv` / `02-filter.json` | Search results after joining location decisions and applying local filters |
+| `03-validation.csv` / `03-validation.json` | Filtered jobs whose URLs resolve to live employer or ATS application pages |
+
+The filter CSV preserves the search CSV's columns and retained values exactly; it
+only removes nonmatching rows. Unique-location decisions and rejection diagnostics
+are intermediate files under the run's hidden `.artifacts/` directory.
 
 The location agent receives only the unique location vocabulary, the workplace
 labels, and the location prompt. It returns a canonical location, match decision,
-and short reason for every ID in one structured call. The completed location CSV
-is then joined back to all job rows. For example, 1,710 jobs in the checked-in
+and short reason for every ID in bounded structured batches. The completed location
+CSV is then joined back to all job rows. For example, 1,710 jobs in the checked-in
 result currently collapse to 616 unique location/workplace values. Salary,
 seniority, internship, sponsorship, employment type, keywords, company exclusions,
 and posting age remain local deterministic filters and do not create agent calls.
+If an agent batch times out, it is checkpointed as unclassified and its jobs are
+kept; the summary and progress log report the number of skipped locations. Agent
+responses have a 60-second read timeout, with 10-second connection and pool limits.
 
 Set `OPENAI_API_KEY` in the environment or the current directory's `.env` when a
 location prompt is used. Override the default model with
-`WAGECUCK_SEARCH_AGENT_MODEL` or `--agent-model`.
+`WAGECUCK_SEARCH_AGENT_MODEL` or `--agent-model`. Location classification defaults to
+`gpt-5.4-mini` for more reliable structured batches.
 
 ## Filter an existing generated CSV
 
@@ -176,9 +182,9 @@ will not match a posting that only says `Toronto`. Use location variants as need
    closed/expired postings, broken links, generic careers pages, blocked pages, and destinations
    that remain on a job board or social-media site. Employer domain evidence comes from the
    source posting; an arbitrary external page cannot establish its own employer identity.
-6. Deduplicate again when different source postings resolve to the same application URL.
-   Emit the report with the validated native URL in `url`, keeping original board links in
-   `sources`. Validation is mandatory, including when `--include-unknown` is enabled.
+6. After every filtered row has been validated, deduplicate one final time by resolved native
+   application URL. Emit that URL in `url`, keeping all original board links in `sources`.
+   Validation is mandatory, including when `--include-unknown` is enabled.
 
 Employer-hosted ATS pages (for example, Greenhouse, Lever, Ashby, or Workday) count as native
 application destinations. Validation follows navigation only; it never fills or submits forms.
@@ -210,14 +216,14 @@ TheirStack, BackchannelJobs, and Hacker News support batch discovery; page board
 or blocked. Higher budgets cannot make a blocked board accessible.
 
 ```powershell
-.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --max-per-site 10000 --discovery-output .artifacts/01-search.checkpoint.json --output results/03-filter.json
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --max-per-site 10000 --discovery-output .artifacts/01-search.checkpoint.json --output results/03-validation.json
 ```
 
 Progress on stderr separates discovered candidates from completed URL checks. Discovery is
 saved before validation starts. To retry validation after an interruption or network problem:
 
 ```powershell
-.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --resume-discovery .artifacts/01-search.checkpoint.json --output results/03-filter.json
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --resume-discovery .artifacts/01-search.checkpoint.json --output results/03-validation.json
 ```
 
 Resume avoids rediscovery and rechecks every matching native URL; it does not reuse old validation
@@ -280,9 +286,10 @@ Every run includes all selected sites, including failed sites, in `summary.sites
   attributed to the group's first source site.
 - `pages`, `limited`, `status`, `errors`: coverage and failures.
 
-Total counts satisfy `fetched - discovery_deduplicated = unique_before_filtering` and
-`unique_before_filtering - filtered_out - validation_rejected - application_url_deduplicated = returned`.
-`deduplicated` includes both discovery duplicates and duplicates of validated native URLs.
+Search counts satisfy `fetched - discovery_deduplicated = unique_before_filtering`. Final counts
+satisfy `unique_before_filtering - filtered_out - validation_rejected - application_url_deduplicated = returned`.
+Filtering never merges records. Deduplication occurs during search and once more at
+the very end of validation, when native application URL identity is available.
 `validation_rejections` records source URLs, company, title, and the failure reason for every
 excluded matched group. Filter-reason counts can overlap because
 one posting may fail several criteria. Repeated links inside one search page are ignored as
@@ -371,6 +378,7 @@ For other providers, pass `providers=[...]` to `search`. Each provider exposes
 `site` and `async fetch(broad_query, criteria) -> SiteResult`; it must return `JobPosting` records
 and its coverage/error metadata. Providers can supply internal `application_urls` and `employer_urls`
 discovered from the posting; these unvalidated hints are never emitted as final URLs.
-The common search pipeline owns filtering, deduplication, URL validation, and reporting.
+The common search pipeline owns search deduplication, filtering, URL validation, final native-URL
+deduplication, and reporting.
 Offline tests also inject `validator=...` with `async validate(job) -> ValidationResult`.
 Custom providers without a validator still use the real browser validator; validation is not skipped.

@@ -572,7 +572,7 @@ class Validator:
         return ValidationResult(ATS, "ats")
 
 
-def test_pipeline_validates_after_filters_dedupes_native_urls_and_counts_rejections():
+def test_pipeline_validates_every_row_then_dedupes_native_urls_and_counts_rejections():
     report = asyncio.run(
         search(SearchCriteria("software engineer", sites=("linkedin",)), [Provider()], Validator())
     )

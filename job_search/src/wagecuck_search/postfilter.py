@@ -5,15 +5,16 @@ from dataclasses import replace
 from math import isfinite
 from time import perf_counter
 
-from .dedupe import canonical_url
 from .export import posting
 from .location_agent import classify_locations
 from .matching import matches
 
 
 async def filter_jobs(jobs, criteria, *, location_prompt=None, location_map_path=None,
-                      agent=None, max_salary=None):
+                      agent=None, max_salary=None, progress=None):
     started = perf_counter()
+    if progress:
+        progress({"phase": "filter_started", "input": len(jobs)})
     if max_salary is not None and (not isfinite(max_salary) or max_salary < 0):
         raise ValueError("max_salary must be finite and nonnegative")
     if (max_salary is not None and criteria.min_salary is not None
@@ -24,14 +25,16 @@ async def filter_jobs(jobs, criteria, *, location_prompt=None, location_map_path
     if location_prompt:
         if location_map_path is None:
             raise ValueError("location_map_path is required with a location prompt")
-        location_rows = await classify_locations(jobs, location_prompt, location_map_path, agent)
+        location_rows = await classify_locations(
+            jobs, location_prompt, location_map_path, agent, progress
+        )
         location_lookup = {
             (row["raw_location"], row["workplace"]): row for row in location_rows
         }
     options = replace(criteria, locations=())
-    accepted, rejected, reasons, seen = [], [], Counter(), {}
-    duplicates = 0
-    for original in jobs:
+    accepted, rejected, reasons = [], [], Counter()
+    total = len(jobs)
+    for processed, original in enumerate(jobs, start=1):
         job = posting(original)
         keep, notes = matches(job, options, check_title=False)
         notes = list(notes)
@@ -57,34 +60,42 @@ async def filter_jobs(jobs, criteria, *, location_prompt=None, location_map_path
         if not keep:
             reasons.update(n for n in notes if not n.startswith("Unverified filter:"))
             rejected.append({"url": job.url, "title": job.title, "reason": "; ".join(notes)})
-            continue
-        result = dict(original)
-        if notes:
-            result["note"] = "; ".join(dict.fromkeys(
-                value for value in [result.get("note"), *notes] if value
-            ))
-        key = canonical_url(job.url)
-        if key in seen:
-            duplicates += 1
-            target = seen[key]
-            target["sources"] = list(target.get("sources") or [])
-            for source in result.get("sources") or []:
-                if source not in target["sources"]:
-                    target["sources"].append(source)
         else:
-            accepted.append(result)
-            seen[key] = result
+            # Filtering is pure row selection. Accepted records retain exactly the
+            # fields and values produced by the search stage.
+            accepted.append(original)
+        if progress and (processed % 1000 == 0 or processed == total):
+            progress({
+                "phase": "filter_row_progress",
+                "processed": processed,
+                "total": total,
+                "kept": len(accepted),
+                "removed": len(rejected),
+            })
     canonical = {row["canonical_location"].strip().casefold() for row in location_rows
                  if row["canonical_location"].strip()}
-    return {"jobs": accepted, "locations": location_rows, "rejections": rejected,
-            "summary": {"stage": "filter", "input": len(jobs), "returned": len(accepted),
-                        "filtered_out": len(rejected), "deduplicated": duplicates,
+    summary = {"stage": "filter", "input": len(jobs), "returned": len(accepted),
+                        "filtered_out": len(rejected),
                         "filter_reasons": dict(reasons),
                         "location_prompt": location_prompt,
                         "raw_unique_locations": len(location_rows),
                         "unique_locations": len(canonical),
+                        "unclassified_locations": sum(
+                            str(row.get("reason", "")).startswith("Unclassified:")
+                            for row in location_rows
+                        ),
                         "agent_location_calls": (
                             getattr(agent, "request_count", 1) if location_rows else 0
                         ),
                         "agent_model": getattr(agent, "model", None) if location_rows else None,
-                        "elapsed_seconds": round(perf_counter() - started, 4)}}
+                        "elapsed_seconds": round(perf_counter() - started, 4)}
+    if progress:
+        progress({
+            "phase": "filter_complete",
+            "input": len(jobs),
+            "returned": len(accepted),
+            "filtered_out": len(rejected),
+            "elapsed_seconds": summary["elapsed_seconds"],
+        })
+    return {"jobs": accepted, "locations": location_rows, "rejections": rejected,
+            "summary": summary}
