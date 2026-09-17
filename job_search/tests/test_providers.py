@@ -1,7 +1,14 @@
 import asyncio
+import json
 
 from wagecuck_search.models import SearchCriteria
-from wagecuck_search.providers import BrowserProvider, PostingUnavailable, SiteAccessError
+from wagecuck_search.providers import (
+    BrowserProvider,
+    PostingUnavailable,
+    SiteAccessError,
+    levels_search_data,
+    search_url,
+)
 
 HTML = """<h1>Senior Software Engineer</h1>
 <a class="topcard__org-name-link">Acme</a>
@@ -123,3 +130,91 @@ def test_removed_posting_does_not_stop_remaining_discovery():
     assert result.unavailable == 1
     assert len(result.jobs) == 1
     assert result.status == "ok"
+
+
+def test_new_board_search_urls_use_only_the_broad_title():
+    query = "software engineer"
+    assert search_url("hiringcafe", query).startswith(
+        "https://hiring.cafe/jobs/software-engineer"
+    )
+    assert "software-engineer-jobs-in-united-states" in search_url("jobright", query)
+    assert search_url("levels", query) == "https://www.levels.fyi/jobs/title/software-engineer"
+    assert "query=software+engineer" in search_url("trueup", query)
+    assert "query=software+engineer" in search_url("yc", query)
+    assert "search=software+engineer" in search_url("builtin", query)
+
+
+def test_levels_bulk_records_keep_only_their_own_application_url():
+    payload = {
+        "props": {
+            "pageProps": {
+                "initialJobsData": {
+                    "totalMatchingJobs": 73600,
+                    "results": [
+                        {
+                            "companyName": "Acme",
+                            "jobs": [
+                                {
+                                    "id": "123",
+                                    "title": "Senior Software Engineer",
+                                    "locations": ["San Francisco, CA"],
+                                    "applicationUrl": "https://boards.greenhouse.io/acme/jobs/123",
+                                    "postingDate": "2026-09-01",
+                                    "expiryDate": "2026-10-01",
+                                    "minBaseSalary": 180000,
+                                    "maxBaseSalary": 240000,
+                                    "baseSalaryCurrency": "USD",
+                                    "workArrangement": "remote",
+                                }
+                            ],
+                        },
+                        {
+                            "companyName": "Other",
+                            "jobs": [
+                                {
+                                    "id": "456",
+                                    "title": "Software Engineer",
+                                    "locations": [],
+                                    "applicationUrl": "https://linkedin.com/jobs/view/456",
+                                }
+                            ],
+                        },
+                    ],
+                }
+            }
+        }
+    }
+    html = '<script id="__NEXT_DATA__" type="application/json">' + json.dumps(payload) + "</script>"
+    jobs, advertised = levels_search_data(html)
+    assert advertised == 73600 and len(jobs) == 2
+    assert jobs[0].application_urls == ["https://boards.greenhouse.io/acme/jobs/123"]
+    assert jobs[0].location == "Remote; San Francisco, CA"
+    assert jobs[0].salary.minimum == 180000 and jobs[0].salary.period == "year"
+    assert jobs[1].application_urls == ["https://linkedin.com/jobs/view/456"]
+
+
+def test_detail_enrichment_uses_bounded_parallel_workers():
+    class ConcurrentProvider(Provider):
+        def __init__(self):
+            super().__init__(
+                Browser(),
+                [[f"https://linkedin.com/jobs/view/{value}" for value in range(4)]],
+            )
+            self.active = 0
+            self.most_active = 0
+
+        async def _navigate(self, page, url):
+            self.active += 1
+            self.most_active = max(self.most_active, self.active)
+            await asyncio.sleep(0.01)
+            self.active -= 1
+
+    provider = ConcurrentProvider()
+    result = asyncio.run(
+        provider.fetch(
+            "software engineer",
+            SearchCriteria("software engineer", max_pages=1, detail_workers=3),
+        )
+    )
+    assert len(result.jobs) == 4
+    assert provider.most_active == 3

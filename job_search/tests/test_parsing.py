@@ -17,6 +17,12 @@ URLS = {
     "indeed": "https://www.indeed.com/viewjob?jk=abc",
     "linkedin": "https://www.linkedin.com/jobs/view/senior-software-engineer-123",
     "simplify": "https://simplify.jobs/p/abcd-efgh/Senior-Software-Engineer",
+    "hiringcafe": "https://hiringcafe.com/job/senior-software-engineer-acme-seattle",
+    "jobright": "https://jobright.ai/jobs/info/6aa5a87e82e82a31997be437?visit=search",
+    "levels": "https://www.levels.fyi/jobs?jobId=130827934242874054",
+    "trueup": "https://www.trueup.io/jobs/senior-software-engineer-acme",
+    "yc": "https://www.ycombinator.com/companies/acme/jobs/abc-senior-software-engineer",
+    "builtin": "https://builtin.com/job/senior-software-engineer/11221046",
 }
 
 
@@ -101,6 +107,36 @@ def test_listing_links_ignore_other_hosts_and_navigation_and_tracking_duplicates
             '<a href="/c/acme">Acme</a>',
             '<div itemprop="jobLocation">Toronto, Canada</div>',
         ),
+        (
+            "hiringcafe",
+            '<a href="/company/acme">Acme</a>',
+            '<div class="location">Toronto, Canada</div>',
+        ),
+        (
+            "jobright",
+            '<a href="/company/acme">Acme</a>',
+            '<div data-testid="job-location">Toronto, Canada</div>',
+        ),
+        (
+            "levels",
+            '<a href="/companies/acme">Acme</a>',
+            '<div class="location">Toronto, Canada</div>',
+        ),
+        (
+            "trueup",
+            '<a href="/company/acme">Acme</a>',
+            '<div class="location">Toronto, Canada</div>',
+        ),
+        (
+            "yc",
+            '<a href="/companies/acme">Acme</a>',
+            '<div class="location">Toronto, Canada</div>',
+        ),
+        (
+            "builtin",
+            '<a href="/company/acme">Acme</a>',
+            '<div class="location">Toronto, Canada</div>',
+        ),
     ],
 )
 def test_board_specific_dom_fallback(site, company, location):
@@ -120,6 +156,21 @@ def test_recommendation_schema_is_not_the_requested_job():
 def test_internship_title_overrides_full_time():
     posting = parse_posting("linkedin", schema(title="Software Engineer Intern"), URLS["linkedin"])
     assert posting.internship is True
+
+
+def test_jobright_company_filing_history_is_not_role_sponsorship_evidence():
+    posting = parse_posting(
+        "jobright",
+        schema(
+            url=URLS["jobright"],
+            description=(
+                "Build distributed systems. Company H1B Sponsorship Acme has filed visas. "
+                "This does not guarantee sponsorship for this role."
+            ),
+        ),
+        URLS["jobright"],
+    )
+    assert posting.sponsors_visa is None
 
 
 @pytest.mark.parametrize(

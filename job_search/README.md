@@ -1,6 +1,7 @@
 # wagecuck-search
 
-An independent job-search package for Wellfound, Indeed, LinkedIn, and Simplify.
+An independent job-search package for Wellfound, Indeed, LinkedIn, Simplify,
+HiringCafe, Jobright, Levels.fyi, TrueUp, Y Combinator, and Built In.
 This directory can be copied and installed on its own. It does not import `wagecuck`,
 read application profiles, use application browser sessions, or share application storage.
 Its dependencies, entry point, configuration, output, and tests live here.
@@ -113,7 +114,7 @@ Only `--job-title` is required.
 | `--exclude-company "Acme"` | Repeat to exclude company names. |
 | `--posted-within-days 14` | Use the posted date, independently of the last-updated date. |
 | `--include-unknown` | Retain unknown optional filters and mark each unverified criterion in `note`. Known mismatches still fail. |
-| `--sites wellfound linkedin` | Select a subset; default is all four sites. |
+| `--sites wellfound linkedin` | Select a subset; default is all ten sites. |
 | `--max-pages 200` | Maximum search pages/batches per site; default 200. |
 | `--max-per-site 10000` | Maximum posting records/URLs to process per site, before filtering; default 10,000. |
 | `--timeout-seconds 30` | Timeout for each browser operation. |
@@ -140,6 +141,10 @@ will not match a posting that only says `Toronto`. Use location variants as need
    and supported page markup. Simplify bootstraps from its own public UI search request,
    then paginates that same broad query in batches of up to 250 records, without visiting
    every posting. Detail pages are read only when requested filters require missing metadata.
+   Levels.fyi reads its public result records in bulk and keeps the application URL attached
+   to that exact job ID, avoiding unrelated Apply links embedded elsewhere on the page.
+   The other adapters enrich detail pages with the bounded `--detail-workers` pool instead
+   of serially waiting on every posting.
    Public search credentials remain in memory and are never included in checkpoints or logs.
 3. Deduplicate before filtering so one copy can supply metadata missing from another.
    Canonical posting URLs ignore tracking parameters and changing title slugs.
@@ -283,13 +288,22 @@ Increase budgets when broad results contain too few matches.
 Sites may require login, rate-limit a session, return HTTP 403, or change their markup.
 The adapters report these conditions instead of claiming there were no jobs. They do not
 solve CAPTCHAs or reuse application sessions. A live check on 2026-09-16 successfully read
-Wellfound, LinkedIn, and Simplify; Indeed returned HTTP 403 from this environment.
+Wellfound, LinkedIn, and Simplify; Indeed returned HTTP 403 from this environment. A later
+live check successfully extracted current jobs from Jobright, Levels.fyi, Y Combinator, and
+Built In. HiringCafe and TrueUp returned HTTP 403 security challenges from this environment,
+which their adapters report as `blocked` instead of silently returning zero jobs.
 
 The page URLs used by these adapters can be inspected directly:
-[Wellfound](https://wellfound.com/role/software-engineer),
+[Simplify](https://simplify.jobs/jobs),
+[HiringCafe](https://hiring.cafe/jobs/software-engineer),
+[LinkedIn](https://www.linkedin.com/jobs/search/?keywords=software+engineer),
 [Indeed](https://www.indeed.com/jobs?q=software+engineer),
-[LinkedIn](https://www.linkedin.com/jobs/search/?keywords=software+engineer), and
-[Simplify](https://simplify.jobs/jobs).
+[Jobright](https://jobright.ai/jobs/software-engineer-jobs-in-united-states),
+[Levels.fyi](https://www.levels.fyi/jobs/title/software-engineer),
+[TrueUp](https://www.trueup.io/engineering),
+[Wellfound](https://wellfound.com/role/software-engineer),
+[Y Combinator](https://www.ycombinator.com/jobs?query=software%20engineer), and
+[Built In](https://builtin.com/jobs/dev-engineering?search=software%20engineer).
 
 ## Tests and Python API
 

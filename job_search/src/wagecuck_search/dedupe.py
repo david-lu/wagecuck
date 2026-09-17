@@ -28,6 +28,26 @@ def canonical_url(url: str) -> str:
         match = re.search(r"/p/([^/]+)", parts.path)
         if match:
             return f"https://simplify.jobs/p/{match[1]}"
+    if host in {"hiring.cafe", "hiringcafe.com"}:
+        match = re.search(r"/job/([^/]+)", parts.path)
+        if match:
+            return f"https://hiringcafe.com/job/{match[1]}"
+    if host == "jobright.ai":
+        match = re.search(r"/jobs/info/([a-fA-F0-9]+)", parts.path)
+        if match:
+            return f"https://jobright.ai/jobs/info/{match[1]}"
+    if host == "levels.fyi" and parts.path.startswith("/jobs"):
+        job_id = (query.get("jobId") or query.get("jobid") or [None])[0]
+        if job_id:
+            return f"https://levels.fyi/jobs?{urlencode({'jobId': job_id})}"
+    if host == "ycombinator.com":
+        match = re.search(r"(/companies/[^/]+/jobs/[^/]+)", parts.path)
+        if match:
+            return "https://ycombinator.com" + match[1]
+    if host == "builtin.com":
+        match = re.search(r"(/job/[^/]+/\d+)", parts.path)
+        if match:
+            return "https://builtin.com" + match[1]
     retained = {
         k: v
         for k, v in query.items()

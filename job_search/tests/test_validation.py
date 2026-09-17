@@ -138,6 +138,17 @@ def test_simplify_posting_redirect_is_extracted_from_published_next_data():
     assert applications == [url] and employers == ["https://acme.com"]
 
 
+def test_levels_ignores_unrelated_applications_in_listing_page_state():
+    html = (
+        '<a href="https://linkedin.com/jobs/view/current">Apply now</a>'
+        '<script id="__NEXT_DATA__" type="application/json">'
+        + json.dumps({"related_jobs": [{"apply_url": "https://other.example/apply"}]})
+        + "</script>"
+    )
+    applications, _ = extract_links(html, "https://www.levels.fyi/jobs?jobId=123")
+    assert applications == ["https://linkedin.com/jobs/view/current"]
+
+
 class Browser:
     def __init__(self, pages):
         self.documents = pages

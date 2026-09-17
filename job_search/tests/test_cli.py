@@ -45,7 +45,7 @@ def test_cli_outputs_machine_json_and_human_summary_even_for_blocked_sites(monke
     )
     captured = capsys.readouterr()
     report = json.loads(captured.out)
-    assert len(report["summary"]["sites"]) == 4
+    assert len(report["summary"]["sites"]) == 10
     assert "Total: 0 jobs; 0 duplicates removed" in captured.err
 
 

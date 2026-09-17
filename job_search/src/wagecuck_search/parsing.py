@@ -16,12 +16,24 @@ LINK_PATTERNS = {
     "indeed": r"/(?:viewjob|rc/clk|pagead/clk)\?[^#]*(?:jk|vjk)=",
     "linkedin": r"/jobs/view/[^/?]+",
     "simplify": r"/p/[a-zA-Z0-9-]+",
+    "hiringcafe": r"/job/[a-zA-Z0-9-]+",
+    "jobright": r"/jobs/info/[a-fA-F0-9]+",
+    "levels": r"/jobs(?:/title/[^/?#]+)?\?[^#]*\bjobId=\d+",
+    "trueup": r"/(?:job|jobs)/[a-zA-Z0-9-]+",
+    "yc": r"/companies/[^/?#]+/jobs/[^/?#]+",
+    "builtin": r"/job/[^/?#]+/\d+",
 }
 DOMAINS = {
-    "wellfound": "wellfound.com",
-    "indeed": "indeed.com",
-    "linkedin": "linkedin.com",
-    "simplify": "simplify.jobs",
+    "wellfound": ("wellfound.com",),
+    "indeed": ("indeed.com",),
+    "linkedin": ("linkedin.com",),
+    "simplify": ("simplify.jobs",),
+    "hiringcafe": ("hiring.cafe", "hiringcafe.com"),
+    "jobright": ("jobright.ai",),
+    "levels": ("levels.fyi",),
+    "trueup": ("trueup.io",),
+    "yc": ("ycombinator.com",),
+    "builtin": ("builtin.com",),
 }
 
 
@@ -35,7 +47,8 @@ def document(html: str):
 
 def posting_url(site: str, url: str) -> bool:
     host = urlsplit(url).hostname or ""
-    return (host == DOMAINS[site] or host.endswith("." + DOMAINS[site])) and bool(
+    accepted = DOMAINS[site]
+    return any(host == domain or host.endswith("." + domain) for domain in accepted) and bool(
         re.search(LINK_PATTERNS[site], url)
     )
 
@@ -223,6 +236,12 @@ def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
         "indeed": '[data-testid="inlineHeader-companyName"], [data-company-name="true"]',
         "wellfound": 'a[href^="/company/"]',
         "simplify": 'a[href^="/c/"]',
+        "hiringcafe": 'a[href*="/company/"], [class*="company"]',
+        "jobright": 'a[href*="/company/"], [data-testid*="company"], [class*="company"]',
+        "levels": 'a[href*="/companies/"], [class*="company"]',
+        "trueup": 'a[href*="/company/"], [class*="company"]',
+        "yc": 'a[href^="/companies/"]:not([href*="/jobs/"]), [class*="company"]',
+        "builtin": 'a[href*="/company/"], [data-id="company-title"], [class*="company"]',
     }
     company = text(company) or first_text(soup, company_selectors[site])
     if not company:
@@ -245,7 +264,7 @@ def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
             '.topcard__flavor--bullet, [data-testid="job-location"], '
             '[data-testid="inlineHeader-companyLocation"], '
             '[data-testid="jobsearch-JobInfoHeader-companyLocation"], '
-            '[itemprop="jobLocation"]',
+            '[itemprop="jobLocation"], [data-testid*="location"], [class*="location"]',
         )
     remote = data.get("jobLocationType") == "TELECOMMUTE"
     restrictions = location_from_schema(data.get("applicantLocationRequirements"))
@@ -273,6 +292,10 @@ def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
         visa_text = re.sub(
             r"Company (?:Does Not Provide|Provides?) H1B Sponsorship", "", description, flags=re.I
         )
+    elif site == "jobright":
+        # Jobright appends company-level historical filing data and explicitly says it
+        # is not a promise for the role. Keep only the job-specific text before that block.
+        visa_text = re.split(r"Company H-?1B Sponsorship", visa_text, flags=re.I)[0]
     return JobPosting(
         url=url,
         title=title,

@@ -148,6 +148,14 @@ def test_keywords_and_company_exclusions():
             "https://wellfound.com/jobs/123",
         ),
         ("https://simplify.jobs/p/abc-def/Senior-Engineer", "https://simplify.jobs/p/abc-def"),
+        (
+            "https://www.levels.fyi/jobs/title/software-engineer?jobId=123#details",
+            "https://levels.fyi/jobs?jobId=123",
+        ),
+        (
+            "https://jobright.ai/jobs/info/6aab412d4be87a72913a3ece?visit=search",
+            "https://jobright.ai/jobs/info/6aab412d4be87a72913a3ece",
+        ),
     ],
 )
 def test_tracking_and_slug_variants_are_same_url(left, right):
@@ -248,7 +256,7 @@ class FakeValidator:
         )
 
 
-def test_four_site_run_dedupes_before_filter_and_reports_every_stage():
+def test_default_site_run_dedupes_before_filter_and_reports_every_stage():
     criteria = SearchCriteria("Senior to Staff Software Engineer", sponsors_visa=True)
     providers = [
         FakeProvider(
@@ -276,7 +284,7 @@ def test_four_site_run_dedupes_before_filter_and_reports_every_stage():
     assert summary["deduplicated"] == 1
     assert summary["filtered_out"] == 1
     assert summary["returned"] == 2
-    assert len(summary["sites"]) == 4
+    assert len(summary["sites"]) == 10
     assert sum(v["returned"] for v in summary["sites"].values()) == 2
     assert summary["sites"]["indeed"]["deduplicated"] == 1
     assert summary["sites"]["indeed"]["matched_with_duplicates"] == 1

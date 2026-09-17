@@ -13,6 +13,12 @@ BOARD_DOMAINS = (
     "wellfound.com",
     "angel.co",
     "simplify.jobs",
+    "hiring.cafe",
+    "hiringcafe.com",
+    "jobright.ai",
+    "levels.fyi",
+    "trueup.io",
+    "ycombinator.com",
     "glassdoor.com",
     "ziprecruiter.com",
     "monster.com",
@@ -155,7 +161,10 @@ def extract_links(html, base_url):
             for child in value:
                 walk(child)
 
-    for script in soup.select('script[type="application/ld+json"], script#__NEXT_DATA__'):
+    scripts = 'script[type="application/ld+json"]'
+    if not on_domain(base_url, ("levels.fyi",)):
+        scripts += ", script#__NEXT_DATA__"
+    for script in soup.select(scripts):
         try:
             walk(json.loads(script.string or script.get_text()))
         except (TypeError, ValueError):

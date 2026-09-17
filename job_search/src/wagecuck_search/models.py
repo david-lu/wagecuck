@@ -4,7 +4,18 @@ import math
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
-SITES = ("wellfound", "indeed", "linkedin", "simplify")
+SITES = (
+    "wellfound",
+    "indeed",
+    "linkedin",
+    "simplify",
+    "hiringcafe",
+    "jobright",
+    "levels",
+    "trueup",
+    "yc",
+    "builtin",
+)
 LEVELS = ("intern", "junior", "mid", "senior", "staff", "principal", "lead", "manager")
 
 
