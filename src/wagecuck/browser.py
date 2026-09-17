@@ -19,6 +19,7 @@ from .controls.combobox import (
 )
 from .controls.native import match_option
 from .controls.registry import handler_for
+from .controls.upload import upload_state
 from .field_values import FieldValueError, normalize_field_value, render_field_value
 from .models import Action, ApplicationError, Code, Control, FormField, Snapshot
 
@@ -44,7 +45,16 @@ async def snapshot(page: Page) -> Snapshot:
             fields = await frame.locator(
                 "input:not([type=submit]):not([type=button]):not([type=reset]), textarea, select, [role=combobox]:not(input):not(select)"
             ).evaluate_all(PARSE)
-            result.fields.extend(FormField(frame=index, **field) for field in fields)
+            for raw in fields:
+                field = FormField(frame=index, **raw)
+                if field.kind == "file":
+                    state = await upload_state(frame.locator(f'[data-wagecuck-id="{field.id}"]'))
+                    if state["attached"]:
+                        field.filled = True
+                        field.invalid = state["invalid"]
+                    if state["error"] or state["busy"]:
+                        field.invalid = True
+                result.fields.append(field)
             controls = await frame.locator(
                 "button, a, input[type=submit], [role=button], [role=tab]"
             ).evaluate_all(CONTROL_SCRIPT)

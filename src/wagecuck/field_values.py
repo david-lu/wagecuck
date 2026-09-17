@@ -6,7 +6,9 @@ import re
 from datetime import UTC, date, datetime, time
 from decimal import Decimal, InvalidOperation
 
+from .field_roles import is_phone_field
 from .models import FormField
+from .phone_numbers import phone_candidates
 
 
 class FieldValueError(ValueError):
@@ -15,6 +17,8 @@ class FieldValueError(ValueError):
 
 def value_contract(field: FormField) -> str:
     """Return the semantic value type expected by a control."""
+    if is_phone_field(field):
+        return "tel"
     if field.kind == "range":
         return "number"
     if field.kind in (
@@ -93,7 +97,20 @@ def normalize_field_value(field: FormField, value: str | bool) -> str | bool:
         raise FieldValueError("The value is not an email address.")
     elif contract == "url" and not re.match(r"https?://[^\s]+$", string, re.IGNORECASE):
         raise FieldValueError("The value is not an HTTP(S) URL.")
+    if contract == "tel":
+        for candidate in phone_candidates(string):
+            try:
+                _validate_text_constraints(field, candidate)
+                return string
+            except FieldValueError:
+                continue
+        raise FieldValueError("No phone representation meets the control's constraints.")
     rendered = _render_canonical(field, string)
+    _validate_text_constraints(field, rendered)
+    return string
+
+
+def _validate_text_constraints(field: FormField, rendered: str) -> None:
     if field.min_length is not None and len(rendered) < field.min_length:
         raise FieldValueError("The value is shorter than the control's minimum length.")
     if field.max_length is not None and len(rendered) > field.max_length:
@@ -104,7 +121,6 @@ def normalize_field_value(field: FormField, value: str | bool) -> str | bool:
                 raise FieldValueError("The value does not match the control's required pattern.")
         except re.error:
             pass  # JavaScript regex syntax is not always compatible with Python.
-    return string
 
 
 def render_field_value(field: FormField, value: str | bool) -> str | bool:

@@ -22,13 +22,17 @@ Fill a job application and watch the browser:
 
 `--profile ryan` loads `profiles/ryan/profile.json`. You can also pass a JSON file path. The default mode fills supported steps, verifies the answers, stops before final submission, and closes the browser.
 
+Optional resume autofill helpers are skipped. Required attachments are uploaded first; the app waits for upload/autofill activity to settle, rereads the form, then fills mapped answers from your profile and verifies them. A stored attachment is recognized even if the site replaces its file input. Processing waits are bounded; `UPLOAD_TIMEOUT` means the site did not settle. The offline corpus probe reports `UPLOAD_UNVERIFIED` when its network block prevents an upload from completing.
+
+Filling runs in this order: **documents -> country selectors -> phone numbers -> remaining fields**. Country changes are allowed to settle and the form is rescanned for dependent fields. Phone entry tries national digits first, then the international form when validation rejects the first format; existing formatting is retained as a final fallback. The handlers use field metadata and widget state, without hostname-specific rules.
+
 To fill everything and **wait for you to review and submit**:
 
 ```powershell
 .venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --profile ryan --wait-for-user
 ```
 
-With a configured model, add `--agent-fill` to infer unresolved answers from the profile. Unsupported invented answers are recorded as `made_up: true`.
+With a configured model, add `--agent-fill` to infer unresolved answers from the profile. Unsupported invented answers are recorded as `made_up: true`. A profile value that is absent from a dropdown or selector goes to the model with the actual options. If inference cannot provide a usable choice, the fallback randomly selects an available option (or one option for a checkbox/radio group), excludes placeholders and disabled choices, and records the reason as made up.
 
 ```powershell
 .venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --profile ryan --wait-for-user --agent-fill

@@ -21,6 +21,7 @@ from .agent_types import (
     RequirementAssessment,
     Requirements,
 )
+from .choice_answers import random_unresolved_choices, validate_choice
 from .field_semantics import (
     ALIASES,
     AUTOCOMPLETE,
@@ -111,7 +112,13 @@ class WorkflowAgent:
                     value, source = facts[key], f"facts:{key}"
             if value is not None:
                 actions.append(Action(field=field, value=value, source=source))
-            elif not field.filled:
+            elif not field.filled or (
+                field.kind in ("select", "combobox", "checkbox", "radio")
+                and (
+                    fact_key(field) or key_for(field, profile) or screening_options(field, profile)
+                )
+            ):
+                # A preselected default cannot resolve a known profile/option mismatch.
                 unresolved.append(field)
 
         # A fallback must see the complete desired selection, including checked peers
@@ -130,6 +137,24 @@ class WorkflowAgent:
             if not (agent_fill and getattr(self.fallback, "infer", None)):
                 raise
             self.warnings.append({"stage": "requirements", "message": str(exc), "code": exc.code})
+
+        # Skip separate optional resume-import helpers only after requirement assessment.
+        # Required attachments still need uploading even when they trigger parsing.
+        optional_imports = {
+            (field.frame, field.id)
+            for field in fields
+            if field.kind == "file"
+            and not field.required
+            and re.search(r"auto.?fill|import (?:from )?(?:a )?resume", question(field.label))
+        }
+        actions = [
+            action
+            for action in actions
+            if (action.field.frame, action.field.id) not in optional_imports
+        ]
+        unresolved = [
+            field for field in unresolved if (field.frame, field.id) not in optional_imports
+        ]
 
         eligible = [
             field
@@ -187,7 +212,9 @@ class WorkflowAgent:
             if action.source.startswith("random:"):
                 action.answer_basis = "made_up"
                 action.made_up = True
-                action.inference_reason = "Random source choice requested by the profile."
+                action.inference_reason = (
+                    action.inference_reason or "Random source choice requested by the profile."
+                )
         return actions, unresolved
 
     def _validate_planned_values(self, fields, actions, unresolved) -> None:
@@ -196,8 +223,13 @@ class WorkflowAgent:
         for action in actions:
             if action.random_choice:
                 continue
+            # A validated profile mapping also supplies the semantic input type
+            # when a site renders its phone field as an otherwise anonymous text box.
+            if action.source in ("facts:phone", "agent:phone") and action.field.kind == "text":
+                action.field = action.field.model_copy(update={"fact_key": "phone"})
             try:
                 action.value = normalize_field_value(action.field, action.value)
+                validate_choice(action)
             except FieldValueError as exc:
                 rejected.append(action)
                 self.warnings.append(
@@ -209,11 +241,16 @@ class WorkflowAgent:
                     }
                 )
         for action in rejected:
-            actions.remove(action)
+            if action in actions:
+                actions.remove(action)
             field = action.field
-            candidates = group_members(field, fields) if field.kind == "radio" else [field]
+            candidates = (
+                group_members(field, fields) if field.kind in ("radio", "checkbox") else [field]
+            )
+            # Inference needs the entire desired selection, including prefilled peers.
+            actions[:] = [planned for planned in actions if planned.field not in candidates]
             for candidate in candidates:
-                if not candidate.filled and candidate not in unresolved:
+                if candidate not in unresolved:
                     unresolved.append(candidate)
 
     async def _infer_unmapped(self, unresolved, actions, facts) -> None:
@@ -251,6 +288,11 @@ class WorkflowAgent:
         inferred, resolved, warnings = apply_inferred_answers(candidates, answers, grounding)
         actions.extend(inferred)
         self.warnings.extend(warnings)
+        unresolved[:] = [
+            field for field in unresolved if f"{field.frame}:{field.id}" not in resolved
+        ]
+        generated, resolved = random_unresolved_choices(unresolved, actions)
+        actions.extend(generated)
         unresolved[:] = [
             field for field in unresolved if f"{field.frame}:{field.id}" not in resolved
         ]

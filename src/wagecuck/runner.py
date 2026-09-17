@@ -369,7 +369,13 @@ class ApplicationRunner:
                     "made_up": action.made_up,
                     "source_keys": action.source_keys,
                     "inference_reason": action.inference_reason,
-                    "status": "filled" if outcome.verified else "failed",
+                    "status": (
+                        "filled"
+                        if outcome.verified
+                        else "deferred"
+                        if outcome.code == Code.DEFERRED
+                        else "failed"
+                    ),
                     "code": outcome.code,
                 }
                 result.answer_log.append(record)
@@ -399,7 +405,7 @@ class ApplicationRunner:
                 raise ApplicationError(code, f"Application stopped: {code.value}.")
             # Replaced nodes and changed options/requirements need a fresh plan;
             # normal successful filling does not count as a structural change.
-            if form_changed(snap, after):
+            if execution.needs_replan or form_changed(snap, after):
                 continue
             report = execution_report(
                 execution, self.agent.describe(snap.fields, actions, unresolved)
@@ -411,7 +417,8 @@ class ApplicationRunner:
             failed = [
                 outcome
                 for outcome in execution.fields
-                if field_id(outcome.action.field) in active_ids and not outcome.verified
+                if (field_id(outcome.action.field) in active_ids or outcome.action.upload_error)
+                and not outcome.verified
             ]
             if failed:
                 raise ApplicationError(

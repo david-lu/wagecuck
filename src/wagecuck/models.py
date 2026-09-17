@@ -30,6 +30,9 @@ class Code(StrEnum):
     REQUIRED_ANSWER_MISSING = "REQUIRED_ANSWER_MISSING"
     FIELD_FILL_FAILED = "FIELD_FILL_FAILED"
     VALIDATION_FAILED = "VALIDATION_FAILED"
+    UPLOAD_UNVERIFIED = "UPLOAD_UNVERIFIED"
+    UPLOAD_TIMEOUT = "UPLOAD_TIMEOUT"
+    DEFERRED = "DEFERRED"
     AGENT_FAILED = "AGENT_FAILED"
     STEP_LIMIT = "STEP_LIMIT"
     NO_PROGRESS = "NO_PROGRESS"
@@ -401,6 +404,9 @@ class Action(BaseModel):
     field: FormField
     value: str | bool
     source: str
+    # Per-run upload attempt state survives replanning; never persisted as profile data.
+    upload_attempted: bool = Field(default=False, exclude=True)
+    upload_error: Code | None = Field(default=None, exclude=True)
     choice_labels: list[str] = Field(default_factory=list)
     random_choice: bool = False
     answer_basis: Literal["profile", "inferred", "made_up"] = "profile"

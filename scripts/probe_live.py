@@ -65,7 +65,7 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
             field_id(outcome.action.field): outcome.action for outcome in execution.fields
         }
         after = execution.snapshot
-        if not form_changed(snap, after) or seen[signature] >= 2:
+        if (not execution.needs_replan and not form_changed(snap, after)) or seen[signature] >= 2:
             break
         snap = after
     report = execution_report(execution, list(analysis.values()))
@@ -79,6 +79,13 @@ def probe_code(report):
     """Classify the recorded verification result without promoting a failed pass."""
     if not report["field_count"]:
         return "FORM_NOT_RELOADED"
+    upload_codes = {
+        row["code"] for row in report.get("control_outcomes", []) if row.get("kind") == "file"
+    }
+    upload_codes.update(report.get("upload_error_codes", []))
+    for code in ("UPLOAD_TIMEOUT", "UPLOAD_UNVERIFIED"):
+        if code in upload_codes:
+            return code
     if report["filled_count"] < report["mapped_count"] or not report["completed_values_retained"]:
         return "FIELD_FILL_FAILED"
     if report["required_answers_missing"]:

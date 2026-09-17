@@ -68,7 +68,7 @@
   return elements.filter(el => {
     // Career-board search/filter widgets are not application fields.
     if (el.type === 'search' || el.closest('[role="search"]') || /^search(?:\b|[.])/i.test(label(el))) return false;
-    if (el.disabled || (el.readOnly && el.getAttribute('role') !== 'combobox') || el.type === 'hidden' || el.closest('[aria-hidden="true"]')) return false;
+    if (el.matches(':disabled') || el.closest('[aria-disabled="true"]') || (el.readOnly && el.getAttribute('role') !== 'combobox') || el.type === 'hidden' || el.closest('[aria-hidden="true"]')) return false;
     if (el.type === 'file') return !el.closest('[hidden], [aria-hidden="true"]');
     return visible(el);
   }).map(el => {
@@ -113,7 +113,7 @@
       group, group_id: groupIdentity(el, kind, localHeading ? container(el) : groupEl), fact_key: el.getAttribute('data-wagecuck-fact') || '',
       context, required_evidence: required ? 'DOM required marker or constraint' : /optional|not required/i.test(lab + ' ' + described) ? 'DOM optional marker' : '',
       requirement_status: required ? 'required' : /optional|not required/i.test(lab + ' ' + described) ? 'optional' : 'unknown',
-      options: el.tagName === 'SELECT' ? [...el.options].filter(o => !o.disabled && o.value !== '').map(o => ({label: text(o), value: o.value})) : [],
+      options: el.tagName === 'SELECT' ? [...el.options].filter(o => !o.matches(':disabled') && !o.closest('[hidden], [aria-hidden="true"], [aria-disabled="true"]') && o.value !== '').map(o => ({label: text(o), value: o.value})) : [],
       filled: kind === 'file' ? !!el.files?.length : ['checkbox', 'radio'].includes(kind) ? el.checked : !!(el.value || renderedSelection),
       invalid: !!(el.getAttribute('aria-invalid') === 'true' || (el.willValidate && !el.validity.valid))
     };

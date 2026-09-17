@@ -43,7 +43,7 @@ def execution_report(execution: ExecutionResult, analysis: list[dict]) -> dict:
     by_id = {field_id(field): field for field in fields}
     for question in questions:
         controls = [by_id[key] for key in question["control_ids"]]
-        if question["code"] != "UNRESOLVED" and group_invalid(controls):
+        if question["code"] in SATISFIED_CODES and group_invalid(controls):
             question["code"] = Code.VALIDATION_FAILED.value
     question_results = [
         QuestionExecution(row["question"], row["required"], row["code"], tuple(row["control_ids"]))
@@ -55,9 +55,15 @@ def execution_report(execution: ExecutionResult, analysis: list[dict]) -> dict:
     retained = all(row["verified"] for row in outcomes)
     # Page-level validation errors have no reliable field association, so they
     # also prevent a pass even if each native input currently looks valid.
-    pass_required = not failures and not execution.snapshot.errors
+    upload_errors = list(
+        dict.fromkeys(
+            row.action.upload_error.value for row in execution.fields if row.action.upload_error
+        )
+    )
+    pass_required = not failures and not execution.snapshot.errors and not upload_errors
     return {
         "field_count": len(fields),
+        "upload_error_codes": upload_errors,
         "question_count": len(questions),
         "mapped_count": len(outcomes),
         "filled_count": sum(row["verified"] for row in outcomes),

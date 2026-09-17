@@ -76,7 +76,13 @@ async def test_expanded_negative_disability_option_needs_history_fact(profile):
 
 async def test_exact_answer_overrides_semantic_declaration(profile):
     profile.answers["Disability status"] = "I do not wish to answer"
-    field = FormField(id="d", frame=0, kind="select", label="Disability status")
+    field = FormField(
+        id="d",
+        frame=0,
+        kind="select",
+        label="Disability status",
+        options=[Option(label="I do not wish to answer", value="decline")],
+    )
     actions, _ = await WorkflowAgent().plan([field], profile)
     assert actions[0].value == "I do not wish to answer"
 
@@ -93,7 +99,11 @@ async def test_demographic_declarations_fill_choice_controls(profile):
                 label=label,
                 required=True,
             )
-            for value, label in (("man", "Man"), ("nonbinary", "Non-binary"), ("decline", "Prefer not to say"))
+            for value, label in (
+                ("man", "Man"),
+                ("nonbinary", "Non-binary"),
+                ("decline", "Prefer not to say"),
+            )
         ],
         FormField(
             id="orientation",
@@ -156,7 +166,11 @@ async def test_demographic_radio_can_use_shared_local_context_without_a_group(pr
             label=label,
             required=True,
         )
-        for value, label in (("man", "Man"), ("nonbinary", "Non-binary"), ("decline", "Prefer not to say"))
+        for value, label in (
+            ("man", "Man"),
+            ("nonbinary", "Non-binary"),
+            ("decline", "Prefer not to say"),
+        )
     ]
     actions, unresolved = await WorkflowAgent().plan(fields, profile)
     assert not unresolved

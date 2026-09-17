@@ -53,7 +53,14 @@ Cite the exact fact_keys used as evidence or context; made_up answers may have a
 Give a short reason explaining the inference or what was invented. A high-level reason is
 enough; do not repeat personal contact values in the reason. Return one answer per field.
 For select/combobox fields with options, return an exact provided option label or value.
-For checkbox/radio fields return a JSON boolean. For each radio group select exactly one
+For every choice question, inspect the actual options against the profile. A mapped profile
+value may be absent from the offered choices. Consider equivalent wording and a meaningful
+Not Applicable/Other/decline option before concluding no option applies. Never invent an option.
+If no available choice is supported by the profile or a reasonable inference, omit the whole
+choice question (all checkbox/radio peers). The application will then randomly choose an
+available fallback and log it as made_up. This exception overrides inventing a choice answer.
+For checkbox/radio fields return a JSON boolean. Return an answer for every checkbox peer,
+including false for options that must be cleared. For each radio group select exactly one
 option, returning true for the selected field and false for its peers. A required checkbox
 group does not mean every option must be checked. Treat controls sharing logical_question and
 group_options as one question. Obey each value_contract: numbers contain only a numeric value;

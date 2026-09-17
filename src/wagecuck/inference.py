@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 
 from .browser import normalize
+from .choice_answers import available_options
 from .field_values import FieldValueError, normalize_field_value
 from .logical_fields import group_members, logical_groups, logical_key
 from .models import Action
@@ -63,7 +64,7 @@ def apply_inferred_answers(fields, answers, facts):
         elif not isinstance(value, str) or not value.strip():
             error = "This field needs a nonempty text answer."
         elif field.kind in ("select", "combobox") and field.options:
-            matches = [o for o in field.options if value in (o.label, o.value)]
+            matches = [o for o in available_options(field) if value in (o.label, o.value)]
             if len(matches) != 1 or not matches[0].value:
                 error = "Answer does not identify one available option."
             else:

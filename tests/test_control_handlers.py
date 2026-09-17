@@ -151,7 +151,8 @@ async def test_country_preflight_returns_mismatch_without_waiting_for_selected_o
     field = (await snapshot(page)).fields[0]
     action = Action(field=field, value="Canada", source="facts:country")
     assert not await combobox_matches(page, locator(page, field), action, "Canada")
-    assert await page.evaluate("window.opens || 0") == (1 if initial else 0)
+    # Readback uses owned selected-state metadata without opening the popup.
+    assert await page.evaluate("window.opens || 0") == 0
     assert await page.locator("#owned").is_hidden()
 
 
