@@ -5,7 +5,7 @@ import json
 import os
 import re
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urljoin
 
 import httpx
 from dotenv import load_dotenv
@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from .application_links import web_url
 from .dedupe import canonical_url
 from .models import JobPosting, Salary, SearchCriteria, SiteResult
-from .parsing import document, job_links, parse_posting
+from .parsing import document, job_links, parse_posting, posting_url, salary_from_text
 from .workers import map_bounded
 
 
@@ -116,6 +116,131 @@ def levels_search_data(html: str) -> tuple[list[JobPosting], int | None]:
     return postings, total if isinstance(total, int) and total >= 0 else None
 
 
+def rolesweep_search_data(html: str, base_url: str) -> list[JobPosting]:
+    """Parse complete RoleSweep result cards without visiting every detail page."""
+    jobs = []
+    for anchor in document(html).select("a[href]"):
+        url = urljoin(base_url, anchor.get("href", ""))
+        title_node = anchor.select_one("h2")
+        if not title_node or not posting_url("rolesweep", url):
+            continue
+        title = title_node.get_text(" ", strip=True)
+        info = next(
+            (
+                node.get_text(" ", strip=True)
+                for node in anchor.select("div")
+                if " · " in node.get_text(" ", strip=True)
+                and len(node.get_text(" ", strip=True)) < 300
+            ),
+            "",
+        )
+        company, separator, location = info.partition(" · ")
+        if not title or not separator or not company or not location:
+            continue
+        description = " ".join(
+            node.get_text(" ", strip=True) for node in anchor.select("p")
+        )
+        labels = {node.get_text(" ", strip=True).casefold() for node in anchor.select("span")}
+        mode = next((value for value in ("remote", "hybrid", "on-site") if value in labels), None)
+        employment = next(
+            (value for value in ("full-time", "part-time", "contract", "temporary") if value in labels),
+            None,
+        )
+        jobs.append(
+            JobPosting(
+                url=url,
+                title=title,
+                company=company,
+                location=location,
+                source="rolesweep",
+                salary=salary_from_text(anchor.get_text(" ", strip=True)),
+                description=description,
+                internship=(
+                    True if re.search(r"\b(?:intern|internship|co[ -]?op)\b", title, re.I) else None
+                ),
+                workplace={"on-site": "onsite"}.get(mode, mode),
+                employment_type=employment.replace("-", "_") if employment else None,
+            )
+        )
+    return jobs
+
+
+def remote_rocketship_search_data(html: str, base_url: str) -> list[JobPosting]:
+    """Parse Remote Rocketship cards, including their published native Apply URLs."""
+    soup = document(html)
+    jobs = []
+    seen = set()
+    for anchor in soup.select("a[href]"):
+        url = urljoin(base_url, anchor.get("href", ""))
+        key = canonical_url(url)
+        if key in seen or not posting_url("remote_rocketship", url):
+            continue
+        title = anchor.get_text(" ", strip=True)
+        card = anchor.find_parent("div", attrs={"role": "button"})
+        if not title or title.casefold() == "view job" or card is None:
+            continue
+        company_node = card.select_one('h4 a[href*="/company/"]')
+        company = company_node.get_text(" ", strip=True) if company_node else ""
+        if not company:
+            continue
+        text_value = card.get_text(" ", strip=True)
+        paragraphs = [node.get_text(" ", strip=True) for node in card.select("p")]
+        location = next((value for value in paragraphs if re.search(r"\bRemote\b", value, re.I)), "Remote")
+        description = max(
+            (
+                value
+                for value in paragraphs
+                if not re.search(r"\b(?:minutes?|hours?|days?) ago\b", value, re.I)
+                and value != location
+            ),
+            key=len,
+            default="",
+        )
+        application_urls = [
+            urljoin(base_url, node["href"])
+            for node in card.select("a[href]")
+            if node.get_text(" ", strip=True).casefold() == "apply"
+        ]
+        employer_urls = [
+            urljoin(base_url, node["href"])
+            for node in card.select("a[href]")
+            if node.get_text(" ", strip=True).casefold() == "website"
+        ]
+        employment = next(
+            (
+                normalized
+                for label, normalized in (
+                    ("Full Time", "full_time"),
+                    ("Part Time", "part_time"),
+                    ("Contract", "contract"),
+                    ("Temporary", "temporary"),
+                )
+                if label.casefold() in text_value.casefold()
+            ),
+            None,
+        )
+        jobs.append(
+            JobPosting(
+                url=url,
+                title=title,
+                company=company,
+                location=location,
+                source="remote_rocketship",
+                salary=salary_from_text(text_value),
+                description=description,
+                internship=(
+                    True if re.search(r"\b(?:intern|internship|co[ -]?op)\b", title, re.I) else None
+                ),
+                workplace="remote",
+                employment_type=employment,
+                application_urls=list(dict.fromkeys(application_urls)),
+                employer_urls=list(dict.fromkeys(employer_urls)),
+            )
+        )
+        seen.add(key)
+    return jobs
+
+
 class SiteAccessError(RuntimeError):
     pass
 
@@ -213,7 +338,7 @@ class BrowserProvider:
 
                     async def enrich(url):
                         seed = seeds.get(url)
-                        if self.site == "levels" and seed:
+                        if self.site in ("levels", "rolesweep", "remote_rocketship") and seed:
                             return "job", seed, None
                         detail = await context.new_page()
                         try:
@@ -315,6 +440,14 @@ class BrowserProvider:
         html = await self._listing_html(page)
         if self.site == "levels":
             jobs, self._advertised_total = levels_search_data(html)
+            seeds = {job.url: job for job in jobs}
+            return html, list(seeds), seeds
+        if self.site == "rolesweep":
+            jobs = rolesweep_search_data(html, page.url)
+            seeds = {job.url: job for job in jobs}
+            return html, list(seeds), seeds
+        if self.site == "remote_rocketship":
+            jobs = remote_rocketship_search_data(html, page.url)
             seeds = {job.url: job for job in jobs}
             return html, list(seeds), seeds
         return html, job_links(self.site, html, page.url), {}

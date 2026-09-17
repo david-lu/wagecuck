@@ -14,9 +14,9 @@ The [senior/staff software engineer job list](results/senior-staff-2026-09-16.cs
 contains 1,710 postings with validated employer or ATS application URLs.
 See [run details and coverage](results/README.md) and the
 [per-site summary](results/senior-staff-2026-09-16-summary.csv).
-These exports are kept outside the ignored `runs/` directory so Git can track them.
-Inside `runs/`, each run keeps user-facing results at the top level and puts
-checkpoints, journals, criteria, progress logs, and diagnostics in `.artifacts/`.
+These exports are kept outside the ignored `.artifacts/` directory so Git can track them.
+Final CSV and JSON exports belong in `results/`; checkpoints, journals, criteria,
+progress logs, diagnostics, and historical runs belong in `.artifacts/`.
 
 ## Install and run
 
@@ -26,7 +26,7 @@ From this directory, with Python 3.11 or newer:
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -e ".[dev]"
 .venv\Scripts\python.exe -m playwright install chromium
-.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --output runs/senior-staff.json
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --output results/senior-staff.json
 ```
 
 An installed Chrome or Edge can also be used with `--browser-channel chrome` or
@@ -47,7 +47,7 @@ native URL validation, and post-generation filtering:
 .venv\Scripts\wagecuck-search.exe `
   --job-title "software engineer" `
   --seniority senior staff `
-  --stages-output-dir runs/senior-staff `
+  --stages-output-dir results/senior-staff `
   --location-prompt "remote, in the Los Angeles area, or in OC" `
   --min-salary 180000 `
   --include-unknown
@@ -95,7 +95,7 @@ output paths must differ, so the validated source list is preserved.
 For remote senior/staff jobs in Canada, with a salary range reaching CAD 180,000/year:
 
 ```powershell
-.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --location Canada --workplace remote --min-salary 180000 --salary-currency CAD --salary-period year --no-internship --sponsors-visa --output runs/canada.json
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --location Canada --workplace remote --min-salary 180000 --salary-currency CAD --salary-period year --no-internship --sponsors-visa --output results/canada.json
 ```
 
 ## Inputs
@@ -127,9 +127,9 @@ Only `--job-title` is required.
 | `--validation-timeout-seconds 60` | Deadline per matched job for resolving and validating its employer application URL. |
 | `--validation-workers 8` | Concurrent HTTP-validation workers (1–64); default 8. Browser fallback is capped at 8. |
 | `--detail-workers 4` | Concurrent detail-enrichment workers for batch discovery (1–8); default 4. |
-| `--discovery-output runs/01-search.checkpoint.json` | Save public candidates before validation, for later reuse. This is not a verified result file. |
-| `--resume-discovery runs/01-search.checkpoint.json` | Reuse a discovery checkpoint with the same title/filters/sites and rerun native-URL validation. |
-| `--output runs/results.json` | Save the same JSON report printed to stdout. |
+| `--discovery-output .artifacts/01-search.checkpoint.json` | Save public candidates before validation, for later reuse. This is not a verified result file. |
+| `--resume-discovery .artifacts/01-search.checkpoint.json` | Reuse a discovery checkpoint with the same title/filters/sites and rerun native-URL validation. |
+| `--output results/results.json` | Save the same JSON report printed to stdout. |
 
 Unknown requested fields fail filters by default. A missing sponsorship statement does
 not mean no sponsorship; a bare `$` does not establish USD; remote does not mean worldwide.
@@ -203,14 +203,14 @@ TheirStack, BackchannelJobs, and Hacker News support batch discovery; page board
 or blocked. Higher budgets cannot make a blocked board accessible.
 
 ```powershell
-.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --max-per-site 10000 --discovery-output runs/01-search.checkpoint.json --output runs/03-filter.json
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --max-per-site 10000 --discovery-output .artifacts/01-search.checkpoint.json --output results/03-filter.json
 ```
 
 Progress on stderr separates discovered candidates from completed URL checks. Discovery is
 saved before validation starts. To retry validation after an interruption or network problem:
 
 ```powershell
-.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --resume-discovery runs/01-search.checkpoint.json --output runs/03-filter.json
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --sites simplify --resume-discovery .artifacts/01-search.checkpoint.json --output results/03-filter.json
 ```
 
 Resume avoids rediscovery and rechecks every matching native URL; it does not reuse old validation

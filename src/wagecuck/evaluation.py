@@ -145,7 +145,9 @@ async def run_cases(
     return [results[index] for index in range(len(cases))]
 
 
-def default_report_path(prefix: str, *, directory: Path = Path("runs/reports")) -> Path:
+def default_report_path(
+    prefix: str, *, directory: Path = Path(".artifacts/application/reports")
+) -> Path:
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     return directory / f"{prefix}-{stamp}-{uuid4().hex[:12]}.json"
 

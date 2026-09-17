@@ -83,7 +83,8 @@ CapSolver is used for supported CAPTCHAs in submit mode. The adapter supports di
 
 ## Results
 
-Each run prints JSON and saves `result.json`, `events.jsonl`, and field analysis under `runs/<run_id>/`.
+Each run prints JSON and saves `result.json`, `events.jsonl`, and field analysis under
+`.artifacts/application/runs/<run_id>/`.
 
 - `succeeded`: the page confirmed receipt; `success: true`.
 - `ready` / `inspected`: filling or inspection completed; nothing was submitted automatically.
@@ -127,7 +128,7 @@ Use `--pool --concurrency 4` to reuse up to four browser workers during both nav
 
 Each job gets a fresh browser context, planner, and model client; cookies and profile state are not shared. Results stay in corpus order. Browsers close when the evaluation ends. Without `--pool`, each job launches its own browser, subject to the same concurrency limit.
 
-Add `--agent-provider openai --agent-fill` for model assistance. Each evaluation writes uniquely named reports under `runs/reports/` and prints the final path. Use `--output runs/reports/my-evaluation.json` to choose a filename. Give separate invocations different output filenames. The corpus probe blocks browser networking before filling and does not click Next or Submit. A required-field pass means the discovered required questions are satisfied by verified values in the loaded form step; it does not prove server acceptance or later-step compatibility.
+Add `--agent-provider openai --agent-fill` for model assistance. Each evaluation writes uniquely named reports under `.artifacts/application/reports/` and prints the final path. Use `--output .artifacts/application/reports/my-evaluation.json` to choose a filename. Give separate invocations different output filenames. The corpus probe blocks browser networking before filling and does not click Next or Submit. A required-field pass means the discovered required questions are satisfied by verified values in the loaded form step; it does not prove server acceptance or later-step compatibility.
 
 `--split validation` evaluates the held-out corpus and saves aggregate results only.
 

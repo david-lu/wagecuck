@@ -155,23 +155,32 @@ def test_browser_recycling_waits_for_batches_and_preserves_completed_results(fai
 
 
 def test_bulk_pagination_collects_5000_without_a_detail_visit(monkeypatch):
+    real_sleep = asyncio.sleep
+
     async def no_delay(value):
         pass
 
     monkeypatch.setattr("wagecuck_search.simplify.asyncio.sleep", no_delay)
     disposed = []
     requests = []
+    active = 0
+    max_active = 0
 
     class Request:
-        async def post(self, url, headers, data, timeout):
-            params = data["searches"][0]
+        async def post(self, url, headers, json):
+            nonlocal active, max_active
+            active += 1
+            max_active = max(max_active, active)
+            await real_sleep(0)
+            active -= 1
+            params = json["searches"][0]
             requests.append(params)
             start = (params["page"] - 1) * params["per_page"]
 
             class Response:
-                status = 200
+                status_code = 200
 
-                async def json(self):
+                def json(self):
                     return {
                         "results": [
                             {
@@ -191,7 +200,7 @@ def test_bulk_pagination_collects_5000_without_a_detail_visit(monkeypatch):
                         ]
                     }
 
-                async def dispose(self):
+                async def aclose(self):
                     disposed.append(params["page"])
 
             return Response()
@@ -212,6 +221,7 @@ def test_bulk_pagination_collects_5000_without_a_detail_visit(monkeypatch):
     assert result.pages == 20 and result.detail_visits == 0
     assert not result.limited
     assert len(disposed) == 20
+    assert max_active == 8
     assert all(p["q"] == "software engineer" and p["per_page"] == 250 for p in requests)
 
 

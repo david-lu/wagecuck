@@ -310,8 +310,8 @@ class RunOptions(BaseModel):
     action_timeout_ms: int = Field(default=7000, ge=100, le=60000)
     navigation_timeout_ms: int = Field(default=30000, ge=100, le=120000)
     confirmation_timeout_seconds: float = Field(default=12, gt=0, le=120)
-    artifacts_dir: Path = Path("runs")
-    database: Path = Path("runs/applications.sqlite3")
+    artifacts_dir: Path = Path(".artifacts/application/runs")
+    database: Path = Path(".artifacts/application/applications.sqlite3")
     storage_state: Path | None = None
     capture_sensitive_artifacts: bool = False
 

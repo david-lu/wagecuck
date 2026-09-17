@@ -1,10 +1,13 @@
 """Read the public search response the Simplify job-board UI itself requests."""
 
 import asyncio
+import math
 from dataclasses import replace
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 from uuid import UUID
+
+import httpx
 
 from .matching import matches
 from .models import JobPosting, Salary, SiteResult
@@ -119,9 +122,13 @@ class SimplifyProvider(BrowserProvider):
                     for k, v in observed.request.headers.items()
                     if k in ("content-type", "x-typesense-api-key", "origin")
                 }
-                await self._collect(
-                    context.request, observed.url, headers, template, criteria, result
-                )
+                limits = httpx.Limits(max_connections=8, max_keepalive_connections=8)
+                async with httpx.AsyncClient(
+                    follow_redirects=True,
+                    limits=limits,
+                    timeout=criteria.timeout_seconds,
+                ) as client:
+                    await self._collect(client, observed.url, headers, template, criteria, result)
                 await page.close()
                 # The broad result set is retained. Only missing requested metadata needs
                 # detail enrichment; native-URL validation happens after local filtering.
@@ -172,56 +179,79 @@ class SimplifyProvider(BrowserProvider):
                 await context.close()
         return self._finish(result) if result.status == "ok" else result
 
-    async def _collect(self, request, url, headers, template, criteria, result):
+    async def _collect(self, client, url, headers, template, criteria, result):
         seen = set()
         page_size = min(250, criteria.max_per_site)
-        for page_number in range(1, criteria.max_pages + 1):
+
+        async def fetch_page(page_number):
             body = {
                 "searches": [
                     {**template, "q": template["q"], "page": page_number, "per_page": page_size}
                 ]
             }
-            response = await request.post(
-                url, headers=headers, data=body, timeout=criteria.timeout_seconds * 1000
-            )
+            response = await client.post(url, headers=headers, json=body)
             try:
-                if response.status != 200:
-                    raise SiteAccessError(f"Search returned HTTP {response.status}")
-                payload = await response.json()
+                if response.status_code != 200:
+                    raise SiteAccessError(f"Search returned HTTP {response.status_code}")
+                payload = response.json()
             finally:
-                await response.dispose()
+                await response.aclose()
             rows = payload.get("results")
             if not rows or "error" in rows[0]:
                 raise SiteAccessError("Public search rejected pagination or changed format")
-            found = rows[0].get("found")
-            if isinstance(found, int):
-                result.advertised_total = found
-            seeds = search_postings(payload)
-            if rows[0].get("hits") and not seeds:
-                raise SiteAccessError("Search returned records but their posting schema changed")
-            result.pages += 1
-            fresh = [job for key, job in seeds.items() if key not in seen]
-            seen.update(seeds)
-            result.discovered = len(seen)
-            remaining = criteria.max_per_site - len(result.jobs)
-            result.jobs.extend(fresh[:remaining])
-            self._progress(result)
-            if not fresh:
-                if seeds:
-                    result.limited = True
-                    result.errors.append(
-                        "Search pagination repeated; stopped without claiming exhaustion"
-                    )
-                break
-            exhausted = (
-                not rows[0].get("hits")
-                or len(rows[0]["hits"]) < page_size
-                or isinstance(found, int)
-                and page_number * page_size >= found
+            return page_number, payload
+
+        # This public search is read-only and each page is independent. Fetching a small
+        # batch at once avoids multiplying a slow API response by hundreds of pages.
+        next_page = 1
+        request_limit = min(criteria.max_pages, math.ceil(criteria.max_per_site / page_size))
+        stop = False
+        while next_page <= request_limit and not stop:
+            batch_end = min(next_page + 7, request_limit)
+            pages = await asyncio.gather(
+                *(fetch_page(page_number) for page_number in range(next_page, batch_end + 1))
             )
-            if exhausted:
-                break
-            if len(result.jobs) >= criteria.max_per_site or page_number == criteria.max_pages:
-                result.limited = True
-                break
-            await asyncio.sleep(0.25)
+            for page_number, payload in pages:
+                if page_number > request_limit:
+                    break
+                rows = payload["results"]
+                found = rows[0].get("found")
+                if isinstance(found, int):
+                    result.advertised_total = found
+                    request_limit = min(request_limit, max(1, math.ceil(found / page_size)))
+                seeds = search_postings(payload)
+                if rows[0].get("hits") and not seeds:
+                    raise SiteAccessError(
+                        "Search returned records but their posting schema changed"
+                    )
+                result.pages += 1
+                fresh = [job for key, job in seeds.items() if key not in seen]
+                seen.update(seeds)
+                result.discovered = len(seen)
+                remaining = criteria.max_per_site - len(result.jobs)
+                result.jobs.extend(fresh[:remaining])
+                self._progress(result)
+                if not fresh:
+                    if seeds:
+                        result.limited = True
+                        result.errors.append(
+                            "Search pagination repeated; stopped without claiming exhaustion"
+                        )
+                    stop = True
+                    break
+                exhausted = (
+                    not rows[0].get("hits")
+                    or len(rows[0]["hits"]) < page_size
+                    or isinstance(found, int)
+                    and page_number * page_size >= found
+                )
+                if exhausted:
+                    stop = True
+                    break
+                if len(result.jobs) >= criteria.max_per_site or page_number == criteria.max_pages:
+                    result.limited = True
+                    stop = True
+                    break
+            next_page = batch_end + 1
+            if next_page <= request_limit:
+                await asyncio.sleep(0.25)

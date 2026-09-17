@@ -25,5 +25,6 @@ details, validation timestamp, and source links. This was a completed run with
 partial source coverage, not an exhaustive inventory of these sites.
 
 These files are curated exports for version control. Intermediate discovery,
-validation journals, browser diagnostics, and temporary scripts remain in
-dot-prefixed `.artifacts` folders under the ignored `runs/` directory, or in `.tmp/`.
+validation journals, browser diagnostics, and historical runs remain under the
+ignored `job_search/.artifacts/` directory. Reusable run harnesses live in
+`job_search/scripts/`.

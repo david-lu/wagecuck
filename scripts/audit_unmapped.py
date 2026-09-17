@@ -109,16 +109,22 @@ async def audit(report, profile, snapshot_runs):
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
-    parser.add_argument("--report", type=Path, default=Path("runs/reports/dry-run-training.json"))
     parser.add_argument(
-        "--output", type=Path, default=Path("runs/reports/unmapped-field-audit.json")
+        "--report",
+        type=Path,
+        default=Path(".artifacts/application/reports/dry-run-training.json"),
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(".artifacts/application/reports/unmapped-field-audit.json"),
     )
     args = parser.parse_args()
     original = json.loads(args.report.read_text(encoding="utf-8"))
     snapshot_runs = {}
     for path in (
-        Path("runs/reports/live-report.json"),
-        Path("runs/reports/expanded-live-report.json"),
+        Path(".artifacts/application/reports/live-report.json"),
+        Path(".artifacts/application/reports/expanded-live-report.json"),
     ):
         if path.exists():
             snapshot_runs.update(

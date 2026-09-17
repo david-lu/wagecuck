@@ -1,8 +1,6 @@
 import asyncio
 import csv
 import json
-from pathlib import Path
-from uuid import uuid4
 
 import httpx
 import pytest
@@ -44,12 +42,6 @@ class FakeLocationAgent:
                  "reason": "fixture decision"} for row in rows]
 
 
-def output_dir():
-    path = Path(__file__).resolve().parents[1] / ".test-output" / str(uuid4())
-    path.mkdir(parents=True)
-    return path
-
-
 def test_unique_locations_counts_duplicates_and_preserves_workplace():
     rows = unique_locations([
         job("https://a.example/1", "SF CA"),
@@ -61,14 +53,14 @@ def test_unique_locations_counts_duplicates_and_preserves_workplace():
     assert len({row["location_id"] for row in rows}) == 2
 
 
-def test_agent_fills_location_csv_and_filter_joins_to_every_job():
+def test_agent_fills_location_csv_and_filter_joins_to_every_job(tmp_path):
     jobs = [
         job("https://a.example/1", "SF CA"),
         job("https://a.example/2", "San Francisco, California"),
         job("https://a.example/3", "New York, NY, USA"),
     ]
     agent = FakeLocationAgent({"SF CA", "San Francisco, California"})
-    directory = output_dir()
+    directory = tmp_path
     output = directory / "filtered.csv"
     locations = directory / "filtered.locations.csv"
     report = asyncio.run(filter_jobs(
@@ -144,8 +136,8 @@ def test_openai_agent_sends_one_request_and_checks_all_ids():
     assert {row["canonical_location"] for row in result} == {"San Francisco, CA, USA"}
 
 
-def test_stage_csv_round_trip_preserves_validation_and_private_stage_fields():
-    source = output_dir() / "stage.csv"
+def test_stage_csv_round_trip_preserves_validation_and_private_stage_fields(tmp_path):
+    source = tmp_path / "stage.csv"
     value = job("https://ats.example/1", "Los Angeles, CA, USA") | {
         "url_validated_at": "2026-09-16T00:00:00+00:00",
         "application_url_type": "ats",

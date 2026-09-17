@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import html as html_module
+import json
 import re
 import time
 from dataclasses import dataclass
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
+
+import httpx
 
 from .application_links import (
     APPLY_LABEL,
@@ -17,6 +21,7 @@ from .application_links import (
     unwrap,
     web_url,
 )
+from .ats_apis import AtsApiVerifier
 from .matching import normalized, parse_date
 from .models import JobPosting, utc_now
 from .parsing import document, structured_jobs, text
@@ -48,6 +53,15 @@ def company_key(value):
 def same_company(expected, actual):
     expected, actual = company_key(expected), company_key(actual)
     return bool(expected) and f" {expected} " in f" {actual} "
+
+
+def http_host_capacity(url, workers):
+    """Keep employer traffic gentle while pooling shared redirect and ATS platforms."""
+    if host(url) == "simplify.jobs" and urlsplit(url).path.startswith("/jobs/click/"):
+        return min(workers, 8)
+    if on_domain(url, ATS_DOMAINS):
+        return min(workers, 8)
+    return 2
 
 
 def destination_problem(job, html, url, status, employer_urls):
@@ -134,43 +148,134 @@ class BrowserValidator:
         self.browser, self.criteria = browser, criteria
         self.browser_factory = browser_factory
         self.http_hosts = {}
+        self.http_context = None
+        self.http_context_lock = asyncio.Lock()
+        self.http_client = None
+        if browser_factory:
+            limits = httpx.Limits(
+                max_connections=criteria.validation_workers,
+                max_keepalive_connections=criteria.validation_workers,
+            )
+            self.http_client = httpx.AsyncClient(
+                follow_redirects=False,
+                limits=limits,
+                timeout=criteria.timeout_seconds,
+            )
+        self.ats_verifier = AtsApiVerifier(self.http_client) if self.http_client else None
+
+    async def _shared_http_context(self):
+        if self.http_context is None:
+            async with self.http_context_lock:
+                if self.http_context is None:
+                    self.http_context = await self.browser.new_context()
+                    self.http_context.set_default_timeout(
+                        self.criteria.timeout_seconds * 1000
+                    )
+        return self.http_context
+
+    async def _close_http_context(self):
+        if self.http_context is not None:
+            await self.http_context.close()
+            self.http_context = None
 
     async def recycle(self):
         """Release browser processes between batches, when this validator owns them."""
         if self.browser_factory:
+            await self._close_http_context()
             await self.browser.close()
             self.browser = await self.browser_factory()
 
     async def close(self):
+        await self._close_http_context()
+        if self.http_client is not None:
+            await self.http_client.aclose()
         await self.browser.close()
 
     async def _http_document(self, request, candidate):
         # A board's outbound redirect must release its host slot before waiting
         # on an unrelated employer. Otherwise two slow employers stall the board.
         seen = set()
+        retries = {}
         while web_url(candidate) and candidate not in seen and len(seen) < 10:
             seen.add(candidate)
-            limiter = self.http_hosts.setdefault(host(candidate), asyncio.Semaphore(2))
+            limiter = self.http_hosts.setdefault(
+                host(candidate),
+                asyncio.Semaphore(http_host_capacity(candidate, self.criteria.validation_workers)),
+            )
             async with limiter:
-                response = await request.get(
-                    candidate, timeout=self.criteria.timeout_seconds * 1000, max_redirects=0
-                )
-                try:
-                    final, status = response.url, response.status
-                    if status in (301, 302, 303, 307, 308):
-                        location = response.headers.get("location")
-                        if not location:
-                            return await response.text(), final, status
-                        candidate = urljoin(final, location)
-                    else:
-                        return await response.text(), final, status
-                finally:
-                    await response.dispose()
+                if self.http_client is not None:
+                    response = await self.http_client.get(candidate)
+                    final, status, html = (
+                        str(response.url),
+                        response.status_code,
+                        response.text,
+                    )
+                    location = response.headers.get("location")
+                    retry_after = response.headers.get("retry-after")
+                    await response.aclose()
+                else:
+                    response = await request.get(
+                        candidate, timeout=self.criteria.timeout_seconds * 1000, max_redirects=0
+                    )
+                    try:
+                        final, status = response.url, response.status
+                        location = getattr(response, "headers", {}).get("location")
+                        retry_after = getattr(response, "headers", {}).get("retry-after")
+                        html = (
+                            ""
+                            if status in (301, 302, 303, 307, 308) and location
+                            else await response.text()
+                        )
+                    finally:
+                        await response.dispose()
+                if status == 429 and retries.get(candidate, 0) < 3:
+                    retries[candidate] = retries.get(candidate, 0) + 1
+                    seen.discard(candidate)
+                    try:
+                        delay = min(10.0, max(0.5, float(retry_after)))
+                    except (TypeError, ValueError):
+                        delay = 0.5 * 2 ** (retries[candidate] - 1)
+                    await asyncio.sleep(delay)
+                    continue
+                if status in (301, 302, 303, 307, 308):
+                    if not location:
+                        return html, final, status
+                    candidate = urljoin(final, location)
+                else:
+                    return html, final, status
         raise ValueError("Invalid or looping application redirect")
 
     async def _http_load(self, context, candidate, job, employer_urls):
         """Use server HTML when it provides enough evidence; render only when necessary."""
-        request = getattr(context, "request", None)
+        if self.ats_verifier and on_domain(candidate, ATS_DOMAINS):
+            try:
+                posting = await self.ats_verifier.verify(candidate)
+                if posting is not None:
+                    if not posting.url:
+                        return "<h1>Job not found</h1>", candidate, 404, False
+                    # Lever and Ashby namespace a posting beneath the employer's board but
+                    # omit the company name from their public response. The exact board URL
+                    # and posting id establish that provenance; the API still supplies title.
+                    company = posting.company or job.company
+                    structured = json.dumps(
+                        {
+                            "@context": "https://schema.org",
+                            "@type": "JobPosting",
+                            "title": posting.title,
+                            "hiringOrganization": {"name": company},
+                            "directApply": True,
+                        }
+                    )
+                    html = (
+                        f"<title>{html_module.escape(company)}</title>"
+                        f"<h1>{html_module.escape(posting.title)}</h1>"
+                        f'<script type="application/ld+json">{structured}</script>'
+                    )
+                    return html, posting.url, 200, False
+            except Exception:
+                # An ATS API outage must not discard a job that its hosted page can verify.
+                pass
+        request = self.http_client or getattr(context, "request", None)
         if request is None:
             return None
         try:
@@ -233,12 +338,19 @@ class BrowserValidator:
 
     async def _validate(self, job, *, http_only=False, plan=None):
         context = None
+        shared_context = False
         started = time.monotonic()
         budget = plan.remaining_seconds if plan else self.criteria.validation_timeout_seconds
         try:
             async with asyncio.timeout(budget):
-                context = await self.browser.new_context()
-                context.set_default_timeout(self.criteria.timeout_seconds * 1000)
+                if http_only and self.http_client is not None:
+                    context = None
+                elif http_only:
+                    context = await self._shared_http_context()
+                    shared_context = True
+                else:
+                    context = await self.browser.new_context()
+                    context.set_default_timeout(self.criteria.timeout_seconds * 1000)
                 page = None
                 # Establish employer provenance before trying a custom careers-domain link.
                 sources = [(s["url"], 0) for s in job.sources]
@@ -359,5 +471,5 @@ class BrowserValidator:
                 reason=f"Application URL validation failed ({type(exc).__name__})"
             )
         finally:
-            if context:
+            if context and not shared_context:
                 await context.close()

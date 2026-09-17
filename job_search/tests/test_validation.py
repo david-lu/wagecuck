@@ -12,11 +12,22 @@ from wagecuck_search.validation import (
     ValidationPlan,
     ValidationResult,
     destination_problem,
+    http_host_capacity,
 )
 
 SOURCE = "https://linkedin.com/jobs/view/123"
 NATIVE = "https://careers.acme.com/jobs/senior-engineer"
 ATS = "https://boards.greenhouse.io/acme/jobs/123"
+
+
+def test_shared_redirect_and_ats_hosts_use_a_bounded_worker_pool():
+    click = "https://simplify.jobs/jobs/click/eba93cba-69a6-44f0-8558-bff28dcb36f1"
+    assert http_host_capacity(click, 12) == 8
+    assert http_host_capacity(click, 32) == 8
+    assert http_host_capacity(ATS, 12) == 8
+    assert http_host_capacity(ATS, 32) == 8
+    assert http_host_capacity("https://simplify.jobs/p/posting", 32) == 2
+    assert http_host_capacity("https://jobs.example.com/role", 32) == 2
 
 
 def posting(**changes):

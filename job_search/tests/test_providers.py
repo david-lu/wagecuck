@@ -10,6 +10,8 @@ from wagecuck_search.providers import (
     hn_jobs,
     levels_search_data,
     provider_for,
+    remote_rocketship_search_data,
+    rolesweep_search_data,
     search_url,
     theirstack_jobs,
 )
@@ -264,6 +266,50 @@ def test_levels_bulk_records_keep_only_their_own_application_url():
     assert jobs[0].location == "Remote; San Francisco, CA"
     assert jobs[0].salary.minimum == 180000 and jobs[0].salary.period == "year"
     assert jobs[1].application_urls == ["https://linkedin.com/jobs/view/456"]
+
+
+def test_rolesweep_result_cards_are_complete_search_seeds():
+    html = """
+    <a class="block" href="/jobs/62ecdf1c3aef8fa14372316733eb1a53-software-engineer">
+      <h2>Staff Software Engineer</h2><span>Seen 2h ago</span>
+      <div>Acme · San Francisco, CA</div>
+      <p>Build distributed systems.</p><span>hybrid</span><span>full-time</span>
+      <span>USD 180k - 240k per year</span>
+    </a>
+    """
+    job = rolesweep_search_data(html, "https://rolesweep.com/jobs")[0]
+    assert (job.title, job.company, job.location) == (
+        "Staff Software Engineer",
+        "Acme",
+        "San Francisco, CA",
+    )
+    assert job.workplace == "hybrid" and job.employment_type == "full_time"
+    assert job.salary.maximum == 240000
+
+
+def test_remote_rocketship_result_cards_keep_current_native_apply_url():
+    html = """
+    <div role="button">
+      <h3><a href="/us/company/acme/jobs/frontend-engineer-us-remote/">Frontend Engineer</a></h3>
+      <h4><a href="/company/acme/">Acme</a></h4>
+      <p>Build accessible React interfaces.</p><p>United States - Remote</p>
+      <p>USD 150k - 210k per year</p><p>Full Time</p>
+      <a href="https://jobs.ashbyhq.com/acme/current">Apply</a>
+      <a href="https://acme.example">Website</a>
+      <a href="/us/company/acme/jobs/frontend-engineer-us-remote/">View Job</a>
+    </div>
+    """
+    job = remote_rocketship_search_data(
+        html, "https://www.remoterocketship.com/jobs/software-engineer/"
+    )[0]
+    assert (job.title, job.company, job.location) == (
+        "Frontend Engineer",
+        "Acme",
+        "United States - Remote",
+    )
+    assert job.application_urls == ["https://jobs.ashbyhq.com/acme/current"]
+    assert job.employer_urls == ["https://acme.example"]
+    assert job.salary.maximum == 210000
 
 
 def test_detail_enrichment_uses_bounded_parallel_workers():

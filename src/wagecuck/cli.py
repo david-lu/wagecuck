@@ -68,8 +68,14 @@ def main(argv=None):
         help="Delay Playwright operations by this many milliseconds for easier viewing (default: 0)",
     )
     run.add_argument("--timeout", type=float, default=120)
-    run.add_argument("--artifacts", type=Path, default=Path("runs"))
-    run.add_argument("--database", type=Path, default=Path("runs/applications.sqlite3"))
+    run.add_argument(
+        "--artifacts", type=Path, default=Path(".artifacts/application/runs")
+    )
+    run.add_argument(
+        "--database",
+        type=Path,
+        default=Path(".artifacts/application/applications.sqlite3"),
+    )
     run.add_argument("--storage-state", type=Path)
     run.add_argument(
         "--sensitive-artifacts",

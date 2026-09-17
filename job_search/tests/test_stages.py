@@ -1,7 +1,5 @@
 import asyncio
 import json
-from pathlib import Path
-from uuid import uuid4
 
 from wagecuck_search.export import read_jobs
 from wagecuck_search.models import JobPosting, SearchCriteria, SiteResult
@@ -37,8 +35,8 @@ class Agent:
                 for row in rows]
 
 
-def test_run_stages_writes_search_validation_filter_and_location_csvs():
-    output = Path(__file__).resolve().parents[1] / ".test-output" / str(uuid4())
+def test_run_stages_writes_search_validation_filter_and_location_csvs(tmp_path):
+    output = tmp_path / "stages"
     summary = asyncio.run(run_stages(
         SearchCriteria("software engineer", sites=("simplify",)),
         output,
