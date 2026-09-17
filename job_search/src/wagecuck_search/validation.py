@@ -191,13 +191,49 @@ class BrowserValidator:
             await self.http_client.aclose()
         await self.browser.close()
 
-    async def _http_document(self, request, candidate):
+    async def _ats_document(self, candidate, job):
+        if not self.ats_verifier or not on_domain(candidate, ATS_DOMAINS):
+            return None
+        try:
+            posting = await self.ats_verifier.verify(candidate)
+        except Exception:
+            # An ATS API outage must not discard a job that its hosted page can verify.
+            return None
+        if posting is None:
+            return None
+        if not posting.url:
+            return "<h1>Job not found</h1>", candidate, 404
+        # Lever and Ashby namespace a posting beneath the employer's board but omit
+        # the company name from their public response. The exact board URL and posting
+        # id establish that provenance; the API still supplies the role title.
+        company = posting.company or job.company
+        structured = json.dumps(
+            {
+                "@context": "https://schema.org",
+                "@type": "JobPosting",
+                "title": posting.title,
+                "hiringOrganization": {"name": company},
+                "directApply": True,
+            }
+        )
+        html = (
+            f"<title>{html_module.escape(company)}</title>"
+            f"<h1>{html_module.escape(posting.title)}</h1>"
+            f'<script type="application/ld+json">{structured}</script>'
+        )
+        return html, posting.url, 200
+
+    async def _http_document(self, request, candidate, job=None):
         # A board's outbound redirect must release its host slot before waiting
         # on an unrelated employer. Otherwise two slow employers stall the board.
         seen = set()
         retries = {}
         while web_url(candidate) and candidate not in seen and len(seen) < 10:
             seen.add(candidate)
+            if job is not None:
+                api_document = await self._ats_document(candidate, job)
+                if api_document is not None:
+                    return api_document
             limiter = self.http_hosts.setdefault(
                 host(candidate),
                 asyncio.Semaphore(http_host_capacity(candidate, self.criteria.validation_workers)),
@@ -247,39 +283,11 @@ class BrowserValidator:
 
     async def _http_load(self, context, candidate, job, employer_urls):
         """Use server HTML when it provides enough evidence; render only when necessary."""
-        if self.ats_verifier and on_domain(candidate, ATS_DOMAINS):
-            try:
-                posting = await self.ats_verifier.verify(candidate)
-                if posting is not None:
-                    if not posting.url:
-                        return "<h1>Job not found</h1>", candidate, 404, False
-                    # Lever and Ashby namespace a posting beneath the employer's board but
-                    # omit the company name from their public response. The exact board URL
-                    # and posting id establish that provenance; the API still supplies title.
-                    company = posting.company or job.company
-                    structured = json.dumps(
-                        {
-                            "@context": "https://schema.org",
-                            "@type": "JobPosting",
-                            "title": posting.title,
-                            "hiringOrganization": {"name": company},
-                            "directApply": True,
-                        }
-                    )
-                    html = (
-                        f"<title>{html_module.escape(company)}</title>"
-                        f"<h1>{html_module.escape(posting.title)}</h1>"
-                        f'<script type="application/ld+json">{structured}</script>'
-                    )
-                    return html, posting.url, 200, False
-            except Exception:
-                # An ATS API outage must not discard a job that its hosted page can verify.
-                pass
         request = self.http_client or getattr(context, "request", None)
         if request is None:
             return None
         try:
-            html, final, status = await self._http_document(request, candidate)
+            html, final, status = await self._http_document(request, candidate, job)
             if status in (404, 410, 429):
                 return html, final, status, False
             if status < 200 or status >= 300 or access_problem(html, final, status):

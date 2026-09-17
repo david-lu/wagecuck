@@ -83,6 +83,8 @@ async def filter_jobs(jobs, criteria, *, location_prompt=None, location_map_path
                         "location_prompt": location_prompt,
                         "raw_unique_locations": len(location_rows),
                         "unique_locations": len(canonical),
-                        "agent_location_calls": 1 if location_rows else 0,
+                        "agent_location_calls": (
+                            getattr(agent, "request_count", 1) if location_rows else 0
+                        ),
                         "agent_model": getattr(agent, "model", None) if location_rows else None,
                         "elapsed_seconds": round(perf_counter() - started, 4)}}

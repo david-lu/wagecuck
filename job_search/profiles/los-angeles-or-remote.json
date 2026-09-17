@@ -1,0 +1,16 @@
+{
+  "name": "software-frontend-creative-technologist-los-angeles-or-remote",
+  "job_titles": [
+    "software engineer",
+    "frontend engineer",
+    "creative technologist"
+  ],
+  "search_queries": [
+    "software engineer",
+    "creative technologist"
+  ],
+  "output_directory": "results/software-frontend-creative-technologist-2026-09-17",
+  "filters": {
+    "location_prompt": "Los Angeles metropolitan area or remote"
+  }
+}

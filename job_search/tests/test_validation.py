@@ -310,6 +310,44 @@ def test_slow_redirect_destinations_do_not_hold_the_source_host_slots():
     asyncio.run(scenario())
 
 
+def test_redirect_to_supported_ats_uses_api_without_loading_ats_page():
+    tracking = "https://simplify.jobs/jobs/click/123"
+    requested = []
+    api_calls = []
+
+    class Response:
+        url = tracking
+        status = 302
+        headers = {"location": ATS}
+
+        async def text(self):
+            return ""
+
+        async def dispose(self):
+            pass
+
+    class Request:
+        async def get(self, url, **kwargs):
+            requested.append(url)
+            return Response()
+
+    class Verifier:
+        async def verify(self, url):
+            api_calls.append(url)
+            return SimpleNamespace(url=url, title="Senior Software Engineer", company="Acme")
+
+    async def scenario():
+        validator = BrowserValidator(None, SearchCriteria("software engineer"))
+        validator.ats_verifier = Verifier()
+        html, final, status = await validator._http_document(Request(), tracking, posting())
+        assert (final, status) == (ATS, 200)
+        assert "Senior Software Engineer" in html
+
+    asyncio.run(scenario())
+    assert requested == [tracking]
+    assert api_calls == [ATS]
+
+
 @pytest.mark.parametrize("location", ["/redirect", "javascript:alert(1)"])
 def test_redirect_loops_and_non_web_destinations_are_bounded(location):
     class Request:

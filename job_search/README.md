@@ -32,6 +32,13 @@ python -m venv .venv
 An installed Chrome or Edge can also be used with `--browser-channel chrome` or
 `--browser-channel msedge`. `--show-browser` makes the search browser visible.
 `python -m wagecuck_search` is equivalent to the console command.
+
+Reusable searches can be stored as user-owned JSON profiles under `profiles/`.
+The current Los Angeles-or-remote run uses
+[`profiles/los-angeles-or-remote.json`](profiles/los-angeles-or-remote.json); its
+titles, broad queries, result directory, sources, and post-generation filters are
+configuration rather than runner code.
+
 No model API key is required for search or URL validation. TheirStack is a paid
 API source and is enabled when `THEIRSTACK_API_KEY` is present in the environment
 or current directory's `.env`; its API charges one credit per returned job. Without

@@ -134,6 +134,41 @@ def test_openai_agent_sends_one_request_and_checks_all_ids():
     assert len(requests) == 1
     assert len(result) == 2
     assert {row["canonical_location"] for row in result} == {"San Francisco, CA, USA"}
+    assert agent.request_count == 1
+
+
+def test_openai_agent_batches_large_unique_location_tables():
+    source = unique_locations([
+        job("https://a.example/1", "Los Angeles, CA"),
+        job("https://a.example/2", "Pasadena, CA"),
+        job("https://a.example/3", "Remote", "remote"),
+    ])
+    requests = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        supplied = json.loads(body["input"])["locations"]
+        requests.append([row["location_id"] for row in supplied])
+        result = {"locations": [{
+            "location_id": row["location_id"],
+            "canonical_location": row["location"],
+            "matches": True,
+            "reason": "fixture",
+        } for row in supplied]}
+        return httpx.Response(200, json={"status": "completed", "output": [{
+            "type": "message", "content": [{"type": "output_text", "text": json.dumps(result)}]
+        }]})
+
+    agent = OpenAILocationAgent(
+        api_key="test",
+        transport=httpx.MockTransport(handler),
+        batch_size=2,
+        concurrency=2,
+    )
+    result = asyncio.run(agent.classify(source, "Los Angeles or remote"))
+    assert len(result) == 3
+    assert sorted(map(len, requests)) == [1, 2]
+    assert agent.request_count == 2
 
 
 def test_stage_csv_round_trip_preserves_validation_and_private_stage_fields(tmp_path):

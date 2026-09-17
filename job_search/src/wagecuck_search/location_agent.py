@@ -47,10 +47,12 @@ def write_location_input(path, jobs):
 
 
 class OpenAILocationAgent:
-    """One structured model call for the entire unique-location table."""
+    """Structured, bounded batches over the unique-location table."""
 
-    def __init__(self, model=None, endpoint=None, api_key=None, timeout=180, transport=None):
+    def __init__(self, model=None, endpoint=None, api_key=None, timeout=180, transport=None,
+                 batch_size=500, concurrency=4):
         load_dotenv(Path.cwd() / ".env", override=False, interpolate=False)
+        load_dotenv(Path.cwd().parent / ".env", override=False, interpolate=False)
         self.model = model or os.environ.get("WAGECUCK_SEARCH_AGENT_MODEL", "gpt-5-mini")
         self.endpoint = (endpoint or os.environ.get(
             "WAGECUCK_SEARCH_AGENT_ENDPOINT", "https://api.openai.com/v1"
@@ -60,15 +62,16 @@ class OpenAILocationAgent:
             raise ValueError("Location filtering requires OPENAI_API_KEY in the environment or .env")
         if timeout <= 0:
             raise ValueError("agent timeout must be positive")
+        if batch_size <= 0 or concurrency <= 0:
+            raise ValueError("batch_size and concurrency must be positive")
         self.timeout = timeout
         self.transport = transport
+        self.batch_size = batch_size
+        self.concurrency = concurrency
+        self.request_count = 0
 
-    async def classify(self, rows, prompt):
-        if not prompt or not prompt.strip():
-            raise ValueError("location prompt cannot be empty")
+    async def _classify_batch(self, client, rows, prompt):
         ids = [row["location_id"] for row in rows]
-        if len(ids) != len(set(ids)):
-            raise ValueError("location IDs must be unique")
         schema = {
             "type": "object",
             "properties": {"locations": {"type": "array", "minItems": len(rows),
@@ -103,10 +106,9 @@ Keep each reason short and factual."""
             "text": {"format": {"type": "json_schema", "name": "location_filter",
                                   "strict": True, "schema": schema}},
         }
-        async with httpx.AsyncClient(timeout=self.timeout, trust_env=False,
-                                     transport=self.transport) as client:
-            response = await client.post(self.endpoint + "/responses",
-                headers={"Authorization": f"Bearer {self.api_key}"}, json=body)
+        self.request_count += 1
+        response = await client.post(self.endpoint + "/responses",
+            headers={"Authorization": f"Bearer {self.api_key}"}, json=body)
         if response.status_code >= 400:
             category = "authentication" if response.status_code in (401, 403) else (
                 "rate_limited" if response.status_code == 429 else "provider_error")
@@ -129,6 +131,24 @@ Keep each reason short and factual."""
         if set(by_id) != set(ids):
             raise RuntimeError("Location agent omitted one or more locations")
         return [{**row, **by_id[row["location_id"]]} for row in rows]
+
+    async def classify(self, rows, prompt):
+        if not prompt or not prompt.strip():
+            raise ValueError("location prompt cannot be empty")
+        ids = [row["location_id"] for row in rows]
+        if len(ids) != len(set(ids)):
+            raise ValueError("location IDs must be unique")
+        batches = [rows[offset:offset + self.batch_size]
+                   for offset in range(0, len(rows), self.batch_size)]
+        limiter = asyncio.Semaphore(self.concurrency)
+        async with httpx.AsyncClient(timeout=self.timeout, trust_env=False,
+                                     transport=self.transport) as client:
+            async def one(batch):
+                async with limiter:
+                    return await self._classify_batch(client, batch, prompt)
+
+            completed = await asyncio.gather(*(one(batch) for batch in batches))
+        return [row for batch in completed for row in batch]
 
 
 async def classify_locations(jobs, prompt, path, agent=None):

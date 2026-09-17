@@ -1,5 +1,6 @@
 """Resumable two-query discovery and one-pass validation for three requested titles."""
 
+import argparse
 import asyncio
 import csv
 import json
@@ -14,9 +15,12 @@ from playwright.async_api import async_playwright
 from wagecuck_search.checkpoint import save_discovery
 from wagecuck_search.dedupe import canonical_url, deduplicate
 from wagecuck_search.export import read_jobs, write_jobs
+from wagecuck_search.location_agent import OpenAILocationAgent
 from wagecuck_search.matching import matches
-from wagecuck_search.models import SITES, SearchCriteria, utc_now
+from wagecuck_search.models import SearchCriteria, utc_now
 from wagecuck_search.pipeline import _fetch, build_report
+from wagecuck_search.postfilter import filter_jobs
+from wagecuck_search.profiles import SearchProfile
 from wagecuck_search.providers import provider_for
 from wagecuck_search.stages import save_stage, validate_jobs
 from wagecuck_search.validation import BrowserValidator, ValidationResult
@@ -24,13 +28,24 @@ from wagecuck_search.validation import BrowserValidator, ValidationResult
 sys.stdout.reconfigure(encoding="utf-8")
 
 BASE = Path(__file__).resolve().parents[1]
-OUTPUT = BASE / "results" / "software-frontend-creative-technologist-2026-09-17"
+argument_parser = argparse.ArgumentParser(description=__doc__)
+argument_parser.add_argument(
+    "--profile",
+    type=Path,
+    default=BASE / "profiles" / "los-angeles-or-remote.json",
+)
+arguments = argument_parser.parse_args()
+profile_path = arguments.profile
+if not profile_path.is_absolute() and not profile_path.exists():
+    profile_path = BASE / profile_path
+PROFILE = SearchProfile.load(profile_path)
+OUTPUT = BASE / PROFILE.output_directory
 ARTIFACTS = OUTPUT / ".artifacts"
 OUTPUT.mkdir(parents=True, exist_ok=True)
 ARTIFACTS.mkdir(exist_ok=True)
 
-REQUESTED_TITLES = ("software engineer", "frontend engineer", "creative technologist")
-SEARCH_QUERIES = ("software engineer", "creative technologist")
+REQUESTED_TITLES = PROFILE.job_titles
+SEARCH_QUERIES = PROFILE.search_queries
 SEARCH_CSV = OUTPUT / "01-search.csv"
 CANDIDATE_CSV = ARTIFACTS / "title-matched.lossless.csv"
 VALIDATION_CSV = OUTPUT / "02-validation.csv"
@@ -59,7 +74,7 @@ def title_matches(job):
 
 def aggregate_sources(query_reports, removed):
     combined = {}
-    for site in SITES:
+    for site in PROFILE.sites:
         entries = [report["summary"]["sites"][site] for report in query_reports.values()]
         statuses = list(dict.fromkeys(entry["status"] for entry in entries))
         combined[site] = {
@@ -164,7 +179,7 @@ async def discover_titles():
             for query in SEARCH_QUERIES:
                 criteria = SearchCriteria(
                     query,
-                    sites=SITES,
+                    sites=PROFILE.sites,
                     max_pages=1000,
                     max_per_site=100000,
                     timeout_seconds=30,
@@ -235,7 +250,7 @@ async def discover_titles():
 async def validate_candidates(candidates, search_summary):
     criteria = SearchCriteria(
         "software engineer",
-        sites=SITES,
+        sites=PROFILE.sites,
         timeout_seconds=30,
         validation_timeout_seconds=45,
         validation_workers=64,
@@ -255,25 +270,29 @@ async def validate_candidates(candidates, search_summary):
         finally:
             await validator.close()
     save_stage(VALIDATION_CSV, report)
-    write_jobs(FINAL_CSV, report["jobs"])
+    location_agent = OpenAILocationAgent() if PROFILE.location_prompt else None
+    filtered = await filter_jobs(
+        report["jobs"],
+        PROFILE.filter_criteria(),
+        location_prompt=PROFILE.location_prompt,
+        location_map_path=FINAL_CSV.with_suffix(".locations.csv"),
+        agent=location_agent,
+        max_salary=PROFILE.max_salary,
+    )
+    save_stage(FINAL_CSV, filtered)
     final_title_counts = {
-        title: sum(matches_from_output(job, title) for job in report["jobs"])
+        title: sum(matches_from_output(job, title) for job in filtered["jobs"])
         for title in REQUESTED_TITLES
     }
-    final_summary = {
-        "stage": "filter",
-        "input": len(report["jobs"]),
-        "returned": len(report["jobs"]),
-        "deduplicated": 0,
-        "filter_reasons": {},
+    final_summary = filtered["summary"] | {
         "requested_titles": REQUESTED_TITLES,
         "title_matches": final_title_counts,
-        "note": "No location, salary, or other post-generation filters were requested.",
+        "search_profile": PROFILE.name,
     }
     (OUTPUT / "03-filter.summary.json").write_text(
         json.dumps(final_summary, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    write_source_summary(OUTPUT / "source-summary.csv", search_summary["sites"], report["jobs"])
+    write_source_summary(OUTPUT / "source-summary.csv", search_summary["sites"], filtered["jobs"])
     combined = {
         "output_directory": str(OUTPUT),
         "search": {key: value for key, value in search_summary.items() if key not in ("sites", "queries")},
@@ -289,6 +308,7 @@ async def validate_candidates(candidates, search_summary):
             "search_unique": search_summary["unique_search_results"],
             "title_candidates": len(candidates),
             "validated": len(report["jobs"]),
+            "location_filtered": len(filtered["jobs"]),
             "validation_rejected": report["summary"]["validation_rejected"],
             "deduplicated": search_summary["deduplicated"]
             + report["summary"]["application_url_deduplicated"],

@@ -85,8 +85,9 @@ def deduplicate(jobs: list[JobPosting]) -> tuple[list[JobPosting], dict[str, int
     for index, job in enumerate(jobs):
         keys = [("url", canonical_url(s["url"])) for s in job.sources]
         keys.append(("url", canonical_url(job.url)))
-        if identity(job):
-            keys.append(("identity", identity(job)))
+        job_identity = identity(job)
+        if job_identity is not None:
+            keys.append(("identity", job_identity))
         for key in keys:
             if key in seen:
                 a, b = root(index), root(seen[key])

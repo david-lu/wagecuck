@@ -7,5 +7,7 @@ belong in `job_search/results/`.
 - `full_run.py` runs the broad senior/staff software-engineer search and writes its
   working data beneath `.artifacts/runs/`.
 - `find_three_titles.py` runs the resumable software-engineer, frontend-engineer,
-  and creative-technologist search. It writes final stage exports to `results/`
-  and keeps its validation journal in that result set's hidden `.artifacts/` folder.
+  and creative-technologist search from a user-owned JSON search profile. Pass
+  `--profile profiles/los-angeles-or-remote.json` to select the current profile.
+  It writes final stage exports to `results/` and keeps its validation journal in
+  that result set's hidden `.artifacts/` folder.
