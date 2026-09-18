@@ -1,0 +1,21 @@
+{
+  "cloud_platforms": {
+    "terms": {
+      "AWS": [
+        "Amazon Web Services"
+      ],
+      "GCP": [
+        "Google Cloud",
+        "Google Cloud Platform"
+      ],
+      "Azure": [
+        "Microsoft Azure"
+      ]
+    }
+  },
+  "teams": {
+    "selectors": [
+      "[data-testid=job-department]"
+    ]
+  }
+}

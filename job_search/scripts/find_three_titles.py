@@ -18,6 +18,7 @@ from wagecuck_search.export import read_jobs, write_filtered_job_rows, write_job
 from wagecuck_search.location_agent import OpenAILocationAgent
 from wagecuck_search.matching import matches
 from wagecuck_search.models import SearchCriteria, utc_now
+from wagecuck_search.partial_filter import OpenAIPartialFieldAgent
 from wagecuck_search.pipeline import _fetch, build_report
 from wagecuck_search.postfilter import filter_jobs
 from wagecuck_search.profiles import SearchProfile
@@ -127,6 +128,8 @@ class CachedValidator:
             for line in path.read_text(encoding="utf-8").splitlines():
                 try:
                     value = json.loads(line)
+                    if value.get("partial_field_fingerprint") != validator.partial_field_fingerprint:
+                        continue
                     self.cached[value["key"]] = ValidationResult(**value["result"])
                 except (ValueError, KeyError, TypeError):
                     continue
@@ -136,7 +139,10 @@ class CachedValidator:
         self.cached[key] = result
         with self.path.open("a", encoding="utf-8") as stream:
             stream.write(
-                json.dumps({"key": key, "result": asdict(result)}, ensure_ascii=False) + "\n"
+                json.dumps({
+                    "key": key, "result": asdict(result),
+                    "partial_field_fingerprint": self.validator.partial_field_fingerprint,
+                }, ensure_ascii=False) + "\n"
             )
 
     @staticmethod
@@ -191,6 +197,7 @@ async def discover_titles():
                 criteria = SearchCriteria(
                     query,
                     sites=PROFILE.sites,
+                    partial_fields=PROFILE.partial_fields,
                     max_pages=1000,
                     max_per_site=100000,
                     timeout_seconds=30,
@@ -264,6 +271,8 @@ async def filter_then_validate(candidates, search_summary):
         location_prompt=PROFILE.location_prompt,
         location_map_path=ARTIFACTS / "02-filter.locations.csv",
         agent=location_agent,
+        partial_agent=OpenAIPartialFieldAgent() if PROFILE.filter_criteria().partial_filters else None,
+        partial_map_dir=ARTIFACTS / "02-filter.partial-fields",
         max_salary=PROFILE.max_salary,
         progress=emit,
     )
@@ -288,6 +297,7 @@ async def validate_filtered(filtered_jobs, search_summary, filter_summary):
     criteria = SearchCriteria(
         "software engineer",
         sites=PROFILE.sites,
+        partial_fields=PROFILE.partial_fields,
         timeout_seconds=30,
         validation_timeout_seconds=45,
         validation_workers=64,

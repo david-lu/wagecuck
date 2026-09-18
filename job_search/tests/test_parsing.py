@@ -13,6 +13,7 @@ from wagecuck_search.parsing import (
 from wagecuck_search.providers import access_problem
 
 URLS = {
+    "a16z": "https://jobs.a16z.com/jobs/acme/123--senior-software-engineer",
     "wellfound": "https://wellfound.com/jobs/123-senior-software-engineer",
     "indeed": "https://www.indeed.com/viewjob?jk=abc",
     "linkedin": "https://www.linkedin.com/jobs/view/senior-software-engineer-123",

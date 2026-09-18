@@ -35,6 +35,7 @@ BOARD_DOMAINS = (
     "backchanneljobs.com",
     "news.ycombinator.com",
     "hn.algolia.com",
+    "jobs.a16z.com",
     "theorg.com",
     "talent.com",
     "jooble.org",

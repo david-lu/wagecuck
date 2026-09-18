@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import isfinite
 from pathlib import Path
 
@@ -23,6 +23,7 @@ FILTER_KEYS = {
     "exclude_companies",
     "posted_within_days",
     "include_unknown",
+    "partial_filters",
 }
 
 
@@ -45,6 +46,7 @@ class SearchProfile:
     location_prompt: str | None
     criteria_options: dict
     max_salary: float | None
+    partial_fields: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, path):
@@ -68,6 +70,11 @@ class SearchProfile:
         filters = payload.get("filters") or {}
         if not isinstance(filters, dict):
             raise ValueError("filters must be a JSON object")
+        filters = dict(filters)
+        if "partial_fields" in filters:
+            if "partial_filters" in filters:
+                raise ValueError("Use one partial-field filter mapping")
+            filters["partial_filters"] = filters.pop("partial_fields")
         unknown = set(filters) - FILTER_KEYS - {"location_prompt", "max_salary"}
         if unknown:
             raise ValueError(f"unsupported profile filters: {', '.join(sorted(unknown))}")
@@ -75,7 +82,8 @@ class SearchProfile:
         max_salary = filters.get("max_salary")
         criteria_options = {key: value for key, value in filters.items() if key in FILTER_KEYS}
         # Reuse the public criteria validation for profile values.
-        SearchCriteria(job_titles[0], sites=sites, **criteria_options)
+        partial_fields = payload.get("partial_fields", {})
+        SearchCriteria(job_titles[0], sites=sites, partial_fields=partial_fields, **criteria_options)
         if max_salary is not None:
             maximum = float(max_salary)
             minimum = criteria_options.get("min_salary")
@@ -92,7 +100,11 @@ class SearchProfile:
             location_prompt=location_prompt,
             criteria_options=criteria_options,
             max_salary=max_salary,
+            partial_fields=partial_fields,
         )
 
     def filter_criteria(self):
-        return SearchCriteria(self.job_titles[0], sites=self.sites, **self.criteria_options)
+        return SearchCriteria(
+            self.job_titles[0], sites=self.sites, partial_fields=self.partial_fields,
+            **self.criteria_options
+        )

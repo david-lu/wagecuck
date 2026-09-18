@@ -78,6 +78,7 @@ def test_employer_and_employer_branded_ats_are_valid(url, employers, kind):
         "https://indeed.com/viewjob?jk=123",
         "https://simplify.jobs/p/abc",
         "https://wellfound.com/jobs/123",
+        "https://jobs.a16z.com/jobs/acme/123--software-engineer",
         "https://www.facebook.com/jobs/123",
         "https://www.glassdoor.com/job/123",
     ],

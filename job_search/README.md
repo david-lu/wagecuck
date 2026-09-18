@@ -1,9 +1,9 @@
 # wagecuck-search
 
-An independent job-search package with 19 source adapters: Wellfound, Indeed,
+An independent job-search package with 20 source adapters: Wellfound, Indeed,
 LinkedIn, Simplify, HiringCafe, Jobright, Levels.fyi, TrueUp, Y Combinator,
 Built In, TheirStack, JobShifu, MyGreenhouse, RoleSweep, Google Jobs,
-VentureLoop, Remote Rocketship, BackchannelJobs, and Hacker News Who Is Hiring.
+VentureLoop, Remote Rocketship, BackchannelJobs, Hacker News Who Is Hiring, and a16z portfolio jobs.
 This directory can be copied and installed on its own. It does not import `wagecuck`,
 read application profiles, use application browser sessions, or share application storage.
 Its dependencies, entry point, configuration, output, and tests live here.
@@ -43,7 +43,7 @@ No model API key is required for search or URL validation. TheirStack is a paid
 API source and is enabled when `THEIRSTACK_API_KEY` is present in the environment
 or current directory's `.env`; its API charges one credit per returned job. Without
 that key, the source reports `blocked` and consumes no credits. Natural-language
-post-filtering uses the location agent described below.
+post-filtering uses the vocabulary classifier described below.
 
 ## Three-stage runs
 
@@ -65,8 +65,8 @@ This writes:
 | File | Contents |
 | --- | --- |
 | `01-search.csv` / `01-search.json` | Broad, deduplicated search results before URL validation or user filters |
-| `02-filter.csv` / `02-filter.json` | Search results after joining location decisions and applying local filters |
-| `03-validation.csv` / `03-validation.json` | Filtered jobs whose URLs resolve to live employer or ATS application pages |
+| `02-filter.csv` / `02-filter.json` | Search results after joining partial-field decisions and applying local filters |
+| `03-validation.csv` / `03-validation.json` | Live employer/ATS destinations, enriched with partial fields from the validated page |
 
 The filter CSV preserves the search CSV's columns and retained values exactly; it
 only removes nonmatching rows. Unique-location decisions and rejection diagnostics
@@ -111,6 +111,79 @@ For remote senior/staff jobs in Canada, with a salary range reaching CAD 180,000
 .venv\Scripts\wagecuck-search.exe --job-title "software engineer" --seniority senior staff --location Canada --workplace remote --min-salary 180000 --salary-currency CAD --salary-period year --no-internship --sponsors-visa --output results/canada.json
 ```
 
+## Partial fields: locations, languages, frameworks, and custom attributes
+
+Jobs carry a `partial_fields` object of named lists. CSVs display each custom field,
+`programming_languages`, and `frameworks` as comma-separated columns. The
+`partial_fields_json` column preserves exact lists, including locations such as
+`["Los Angeles, CA", "Remote; Canada"]`. The original `location` column remains
+compatible with existing CSVs; a comma between a city and state is not an item separator.
+
+Languages and frameworks are extracted automatically from available descriptions during
+search and again from the verified employer/ATS page during validation. Validation's
+API shortcut also retains descriptions. Extraction records mentions, including
+nice-to-have technologies; it does not assert that every item is required. Missing
+evidence stays empty. Duplicate jobs retain the union of their partial fields.
+
+Define any additional field with canonical terms and aliases, CSS selectors, or both.
+See [examples/partial-fields.json](examples/partial-fields.json), which adds cloud
+platforms and teams. CSS selectors apply when page HTML is available; term matching
+also works on descriptions from search APIs. Names must be lowercase identifiers and
+cannot overwrite existing job columns. Defining a built-in field replaces its term list.
+
+```powershell
+.venv\Scripts\wagecuck-search.exe --job-title "software engineer" --sites a16z --partial-fields examples/partial-fields.json --stages-output-dir results/with-partial-fields
+```
+
+Filter the enriched validation output:
+
+```powershell
+.venv\Scripts\wagecuck-search.exe --post-filter-input results/with-partial-fields/03-validation.csv --post-filter-output results/with-partial-fields/04-filter.csv --partial-filter "programming_languages=Python or TypeScript" --partial-filter "frameworks=React or Next.js"
+```
+
+For each requested field, the filter uniquifies its items, asks the model for one
+boolean per unique item, and joins those decisions back to every job. Matching is
+**any item within a field, all requested fields across a job**. For example, a job
+with `Python,Java` and `React` passes the command above. Empty fields fail unless
+`--include-unknown` is set. `--partial-filter "location=Los Angeles or remote"`
+uses the same mechanism; existing `--location-prompt` remains supported.
+
+Classification requires `OPENAI_API_KEY` and uses the existing agent model,
+bounded batches, and concurrency limit. Reviewable decisions, counts, and reasons
+are saved in `.artifacts/04-filter.partial-fields/<field>.csv`. Decisions are
+cached by field, item/context, and prompt. Timeout batches are marked
+`Unclassified`, kept under the existing timeout policy, and retried next run.
+Changing a filter prompt invalidates its cached decisions.
+
+The stages remain search -> filter -> validation. To use fields discovered only
+during validation, run filtering on `03-validation.csv` as shown above. Existing
+CSV files are not automatically enriched. For the saved three-title search,
+`.venv\Scripts\python.exe scripts/find_three_titles.py --validation-only` refreshes
+validation fields; older validation cache entries are refreshed automatically.
+
+In a saved search profile, top-level `partial_fields` holds extraction definitions,
+and `filters.partial_fields` maps field names to natural-language predicates:
+
+```json
+{
+  "partial_fields": {
+    "cloud_platforms": {
+      "terms": {"AWS": ["Amazon Web Services"], "GCP": ["Google Cloud"]}
+    }
+  },
+  "filters": {
+    "partial_fields": {
+      "programming_languages": "Python or TypeScript",
+      "cloud_platforms": "AWS"
+    }
+  }
+}
+```
+
+This is a profile fragment; retain the profile's titles, queries, and output directory.
+Python providers can directly populate `JobPosting(partial_fields={"teams": ["Platform"]}, ...)`,
+and validators can return additional values in `ValidationResult.partial_fields`.
+
 ## Inputs
 
 Only `--job-title` is required.
@@ -127,12 +200,14 @@ Only `--job-title` is required.
 | `--internship` / `--no-internship` | Require or exclude internships. Omitted means either. |
 | `--sponsors-visa` / `--no-sponsors-visa` | Require an explicit positive or negative job-level sponsorship statement. Omitted means either. |
 | `--employment-type full_time` | Also part_time, contract, temporary. |
+| `--partial-fields examples/partial-fields.json` | Custom term/alias or CSS extraction definitions for search and validation. |
+| `--partial-filter "frameworks=React or Next.js"` | Filter unique items, then join booleans to jobs; repeat for different fields. Staged/post-filter runs only. |
 | `--keyword Python` | Repeat for required title/description terms; all must match. |
 | `--exclude-keyword clearance` | Repeat to reject title/description terms; any match excludes. |
 | `--exclude-company "Acme"` | Repeat to exclude company names. |
 | `--posted-within-days 14` | Use the posted date, independently of the last-updated date. |
 | `--include-unknown` | Retain unknown optional filters and mark each unverified criterion in `note`. Known mismatches still fail. |
-| `--sites wellfound linkedin` | Select a subset; default is all 19 sites. |
+| `--sites wellfound linkedin` | Select a subset; default is all 20 sites. |
 | `--max-pages 200` | Maximum search pages/batches per site; default 200. |
 | `--max-per-site 10000` | Maximum posting records/URLs to process per site, before filtering; default 10,000. |
 | `--timeout-seconds 30` | Timeout for each browser operation. |
@@ -322,6 +397,11 @@ The new sources are grouped by the requested coverage waves:
 | 1 | Simplify, HiringCafe, TheirStack, JobShifu, TrueUp, Jobright, MyGreenhouse, RoleSweep | Public page/API search where available. TheirStack reads `THEIRSTACK_API_KEY`; JobShifu and MyGreenhouse explicitly report their account gate. |
 | 2 | LinkedIn, Indeed, Google Jobs, VentureLoop, Wellfound, YC, Built In, Remote Rocketship, BackchannelJobs, HN | Public page/feed search where available. VentureLoop reports its anonymous preview count but does not emit hidden-company records; Google reports its verification challenge. |
 
+The a16z portfolio board is enabled by default as source `a16z` (also selectable with
+`--sites a16z`). It searches by title, follows Show more jobs, reads posting details,
+and carries employer Apply links into the existing native-URL validation stage.
+Search profiles that omit an explicit sites list include it automatically.
+
 The existing Levels.fyi adapter remains enabled as an additional source. On 2026-09-17,
 a bounded live smoke check extracted records from RoleSweep, Remote Rocketship,
 BackchannelJobs, and the current Hacker News thread. VentureLoop reported 6,330 broad
@@ -347,8 +427,9 @@ The page URLs used by these adapters can be inspected directly:
 [Google Jobs](https://www.google.com/search?q=software+engineer+jobs),
 [VentureLoop](https://ventureloop.com/jobs?query=software%20engineer),
 [Remote Rocketship](https://www.remoterocketship.com/jobs/software-engineer/),
-[BackchannelJobs](https://www.backchanneljobs.com/), and
-[Hacker News Who Is Hiring](https://news.ycombinator.com/ask).
+[BackchannelJobs](https://www.backchanneljobs.com/),
+[Hacker News Who Is Hiring](https://news.ycombinator.com/ask), and
+[a16z portfolio jobs](https://jobs.a16z.com/jobs).
 
 ## Tests and Python API
 

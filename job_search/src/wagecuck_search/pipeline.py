@@ -7,6 +7,7 @@ from .application_links import BOARD_DOMAINS, on_domain, web_url
 from .dedupe import canonical_url, deduplicate
 from .matching import broad_query, matches
 from .models import SearchCriteria, SiteResult, utc_now
+from .partial_fields import enrich_job, merge_fields
 from .workers import map_bounded
 
 
@@ -15,6 +16,8 @@ async def search(
     filter_candidates=True, deduplicate_candidates=True,
 ) -> dict:
     """Discover, deduplicate, filter, and validate employer application destinations."""
+    if filter_candidates and criteria.partial_filters:
+        raise ValueError("Partial-field predicates require run_stages() or filter_jobs()")
     started = utc_now()
     query = broad_query(criteria.job_title)
     results = await _fetch(criteria, query, providers, progress) if providers is not None else None
@@ -228,6 +231,9 @@ async def _validated_report(
                 }
             )
             continue
+        posting["partial_fields"] = merge_fields(
+            posting.get("partial_fields"), check.partial_fields
+        )
         posting["url"] = check.url
         posting["url_validated_at"] = check.checked_at or utc_now().isoformat()
         posting["application_url_type"] = check.kind
@@ -242,6 +248,9 @@ async def _validated_report(
         key = canonical_url(posting["url"])
         if key in seen:
             target = seen[key]
+            target["partial_fields"] = merge_fields(
+                target.get("partial_fields"), posting.get("partial_fields")
+            )
             for origin in posting["sources"]:
                 if origin not in target["sources"]:
                     target["sources"].append(origin)
@@ -272,9 +281,12 @@ async def _fetch(criteria, query, providers, progress=None):
                 raise ValueError(f"No provider configured for {site}")
             selected[site].progress = progress
             # Providers should preserve partial results on their own internal deadline.
-            return await asyncio.wait_for(
+            result = await asyncio.wait_for(
                 selected[site].fetch(query, criteria), timeout=criteria.site_timeout_seconds + 10
             )
+            for job in result.jobs:
+                enrich_job(job, criteria.partial_fields)
+            return result
         except Exception as exc:
             return SiteResult(site, status="error", errors=[f"{type(exc).__name__}: {exc}"])
 

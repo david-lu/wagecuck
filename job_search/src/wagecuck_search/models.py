@@ -24,6 +24,7 @@ SITES = (
     "remote_rocketship",
     "backchannel",
     "hn",
+    "a16z",
 )
 LEVELS = ("intern", "junior", "mid", "senior", "staff", "principal", "lead", "manager")
 
@@ -58,8 +59,11 @@ class JobPosting:
     sources: list[dict[str, str]] = field(default_factory=list)
     application_urls: list[str] = field(default_factory=list)
     employer_urls: list[str] = field(default_factory=list)
+    partial_fields: dict[str, list[str]] = field(default_factory=dict)
 
     def __post_init__(self):
+        from .partial_fields import normalize_fields
+        self.partial_fields = normalize_fields(self.partial_fields)
         if not self.sources:
             self.sources = [{"site": self.source, "url": self.url}]
 
@@ -99,8 +103,18 @@ class SearchCriteria:
     validation_timeout_seconds: float = 60
     validation_workers: int = 8
     detail_workers: int = 4
+    partial_fields: dict = field(default_factory=dict)
+    partial_filters: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
+        from .partial_fields import definitions, validate_name
+        definitions(self.partial_fields)
+        if not isinstance(self.partial_filters, dict):
+            raise ValueError("partial_filters must map field names to filter prompts")
+        for name, prompt in self.partial_filters.items():
+            validate_name(name)
+            if not isinstance(prompt, str) or not prompt.strip():
+                raise ValueError("Partial field filter prompts must be nonempty strings")
         self.job_title = self.job_title.strip()
         if not self.job_title or not any(c.isalnum() for c in self.job_title):
             raise ValueError("job_title must contain a job title")

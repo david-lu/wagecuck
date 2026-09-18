@@ -14,6 +14,7 @@ import httpx
 from dotenv import load_dotenv
 
 from .export import write_table
+from .partial_fields import field_values
 
 LOCATION_COLUMNS = [
     "filter_prompt", "location_id", "raw_location", "workplace", "job_count",
@@ -39,8 +40,8 @@ def location_id(location, workplace):
 
 
 def unique_locations(jobs):
-    counts = Counter((job.get("location", "").strip(), (job.get("workplace") or "").strip())
-                     for job in jobs)
+    counts = Counter((value, (job.get("workplace") or "").strip())
+                     for job in jobs for value in field_values(job, "location"))
     return [{
         "filter_prompt": "",
         "location_id": location_id(location, workplace),
@@ -61,6 +62,26 @@ def write_location_input(path, jobs):
 
 class OpenAILocationAgent:
     """Structured, bounded batches over the unique-location table."""
+
+    agent_label = "Location agent"
+    result_key = "locations"
+    id_key = "location_id"
+    raw_key = "raw_location"
+    canonical_key = "canonical_location"
+    value_key = "location"
+    context_key = "workplace"
+    request_key = "location_request"
+    schema_name = "location_filter"
+    instructions = """You classify job locations against a user's natural-language location request.
+Return exactly one result for every supplied location_id and preserve every ID exactly.
+Interpret ordinary geographic language intelligently: abbreviations, misspellings, metro areas,
+counties, nearby cities, and remote eligibility. OC means Orange County, California when the
+context does not identify a different Orange County. 'Los Angeles area' means the commonly
+understood LA metro/commuting area. A remote job matches a remote request; country-limited remote
+jobs only match when that country is allowed. Multiple listed locations match if any listed option
+matches. Canonicalize equivalent places consistently (for example SF CA and San Francisco,
+California). Use the supplied workplace field as evidence. Do not infer missing remote eligibility.
+Keep each reason short and factual."""
 
     def __init__(self, model=None, endpoint=None, api_key=None, timeout=60, transport=None,
                  batch_size=100, concurrency=8):
@@ -84,40 +105,32 @@ class OpenAILocationAgent:
         self.request_count = 0
 
     async def _classify_batch(self, client, rows, prompt):
-        ids = [row["location_id"] for row in rows]
+        ids = [row[self.id_key] for row in rows]
         schema = {
             "type": "object",
-            "properties": {"locations": {"type": "array", "minItems": len(rows),
+            "properties": {self.result_key: {"type": "array", "minItems": len(rows),
                 "maxItems": len(rows), "items": {"type": "object", "properties": {
-                    "location_id": {"type": "string", "enum": ids},
-                    "canonical_location": {"type": "string"},
+                    self.id_key: {"type": "string", "enum": ids},
+                    self.canonical_key: {"type": "string"},
                     "matches": {"type": "boolean"},
                     "reason": {"type": "string"},
-                }, "required": ["location_id", "canonical_location", "matches", "reason"],
+                }, "required": [self.id_key, self.canonical_key, "matches", "reason"],
                     "additionalProperties": False}}},
-            "required": ["locations"], "additionalProperties": False,
+            "required": [self.result_key], "additionalProperties": False,
         }
-        compact = [{"location_id": row["location_id"],
-                    "location": row["raw_location"],
-                    "workplace": row["workplace"]} for row in rows]
-        instructions = """You classify job locations against a user's natural-language location request.
-Return exactly one result for every supplied location_id and preserve every ID exactly.
-Interpret ordinary geographic language intelligently: abbreviations, misspellings, metro areas,
-counties, nearby cities, and remote eligibility. OC means Orange County, California when the
-context does not identify a different Orange County. 'Los Angeles area' means the commonly
-understood LA metro/commuting area. A remote job matches a remote request; country-limited remote
-jobs only match when that country is allowed. Multiple listed locations match if any listed option
-matches. Canonicalize equivalent places consistently (for example SF CA and San Francisco,
-California). Use the supplied workplace field as evidence. Do not infer missing remote eligibility.
-Keep each reason short and factual."""
+        compact = [{self.id_key: row[self.id_key],
+                    self.value_key: row[self.raw_key],
+                    self.context_key: row[self.context_key]} for row in rows]
+        instructions = self.instructions
         body = {
             "model": self.model, "store": False,
             "max_output_tokens": min(64000, max(8000, len(rows) * 160)),
             "reasoning": {"effort": "low"},
             "instructions": instructions,
-            "input": json.dumps({"location_request": prompt, "locations": compact},
+            "input": json.dumps({self.request_key: prompt, self.result_key: compact,
+                                 "field_name": rows[0].get("field_name", "location")},
                                 ensure_ascii=False),
-            "text": {"format": {"type": "json_schema", "name": "location_filter",
+            "text": {"format": {"type": "json_schema", "name": self.schema_name,
                                   "strict": True, "schema": schema}},
         }
         response = None
@@ -169,7 +182,7 @@ Keep each reason short and factual."""
                 "Location agent did not return one structured result"
             )
         try:
-            result = json.loads(texts[0])["locations"]
+            result = json.loads(texts[0])[self.result_key]
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise InvalidLocationResponse(
                 "Location agent returned malformed structured data"
@@ -179,7 +192,7 @@ Keep each reason short and factual."""
         by_id = {}
         for item in result:
             try:
-                key = item["location_id"]
+                key = item[self.id_key]
             except (KeyError, TypeError) as exc:
                 raise InvalidLocationResponse(
                     "Location agent returned a location without an ID"
@@ -188,15 +201,23 @@ Keep each reason short and factual."""
                 raise InvalidLocationResponse(
                     "Location agent returned an unknown or duplicate location ID"
                 )
-            by_id[key] = item
+            if (
+                not isinstance(item.get("matches"), bool)
+                or not isinstance(item.get(self.canonical_key), str)
+                or not isinstance(item.get("reason"), str)
+            ):
+                raise InvalidLocationResponse("Agent decisions require a boolean and text evidence")
+            by_id[key] = {name: item[name] for name in (
+                self.id_key, self.canonical_key, "matches", "reason"
+            )}
         if set(by_id) != set(ids):
             raise InvalidLocationResponse("Location agent omitted one or more locations")
-        return [{**row, **by_id[row["location_id"]]} for row in rows]
+        return [{**row, **by_id[row[self.id_key]]} for row in rows]
 
     async def classify(self, rows, prompt, on_batch=None):
         if not prompt or not prompt.strip():
             raise ValueError("location prompt cannot be empty")
-        ids = [row["location_id"] for row in rows]
+        ids = [row[self.id_key] for row in rows]
         if len(ids) != len(set(ids)):
             raise ValueError("location IDs must be unique")
         batches = [rows[offset:offset + self.batch_size]
@@ -212,9 +233,9 @@ Keep each reason short and factual."""
                 except LocationBatchTimeout:
                     result = [{
                         **row,
-                        "canonical_location": row["raw_location"],
+                        self.canonical_key: row[self.raw_key],
                         "matches": True,
-                        "reason": "Unclassified: location agent timed out; kept by policy",
+                        "reason": f"Unclassified: {self.agent_label.lower()} timed out; kept by policy",
                     } for row in batch]
                 except (IncompleteLocationResponse, InvalidLocationResponse):
                     if len(batch) <= 1:

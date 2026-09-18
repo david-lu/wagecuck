@@ -30,6 +30,9 @@ def search_url(site: str, query: str, page: int = 0) -> str:
         )
     if site == "simplify":
         return "https://simplify.jobs/jobs"
+    if site == "a16z":
+        # Further pages load through the board's Show more jobs control.
+        return "https://jobs.a16z.com/jobs?" + urlencode({"titlePrefix": query})
     slug = quote(re.sub(r"\s+", "-", query.strip().lower()))
     if site == "hiringcafe":
         return f"https://hiring.cafe/jobs/{slug}?page={page + 1}"
@@ -347,7 +350,10 @@ class BrowserProvider:
                             await detail.wait_for_selector(
                                 'h1, script[type="application/ld+json"]', state="attached"
                             )
-                            job = parse_posting(self.site, await detail.content(), url)
+                            job = parse_posting(
+                                self.site, await detail.content(), url,
+                                partial_fields=criteria.partial_fields,
+                            )
                             if seed:
                                 job = self._enrich_seed(seed, job)
                             return "job", job or seed, (
@@ -475,6 +481,7 @@ class BrowserProvider:
             "yc": 'a[href*="/companies/"][href*="/jobs/"]',
             "builtin": 'a[href*="/job/"]',
             "rolesweep": 'a[href^="/jobs/"]',
+            "a16z": 'article h2 a[href^="/jobs/"]',
             "remote_rocketship": 'a[href*="/company/"][href*="/jobs/"]',
         }
         try:
@@ -831,6 +838,10 @@ class UnavailableProvider:
 
 
 def provider_for(site: str, browser):
+    if site == "a16z":
+        from .a16z import A16zProvider
+
+        return A16zProvider(site, browser)
     if site == "simplify":
         from .simplify import SimplifyProvider
 

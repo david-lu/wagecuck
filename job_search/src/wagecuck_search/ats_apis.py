@@ -11,6 +11,7 @@ class AtsPosting:
     url: str
     title: str
     company: str | None = None
+    description: str = ""
 
 
 def api_target(url):
@@ -103,11 +104,17 @@ class AtsApiVerifier:
                 url,
                 str(payload.get("title", "")),
                 str(payload.get("company_name", "")) or None,
+                str(payload.get("content") or ""),
             )
         if kind == "lever":
             return AtsPosting(
                 str(payload.get("applyUrl") or url),
                 str(payload.get("text", "")),
+                description="\n".join([
+                    str(payload.get("description") or payload.get("descriptionPlain") or ""),
+                    *(str(section.get("content") or "") for section in payload.get("lists", [])),
+                    str(payload.get("additional") or ""),
+                ]),
             )
         if kind == "smartrecruiters":
             company = payload.get("company") or {}
@@ -115,6 +122,11 @@ class AtsApiVerifier:
                 str(payload.get("applyUrl") or url),
                 str(payload.get("name", "")),
                 str(company.get("name", "")) or None,
+                "\n".join(
+                    str(section.get("text") or "")
+                    for section in (payload.get("jobAd") or {}).get("sections", {}).values()
+                    if isinstance(section, dict)
+                ),
             )
 
         # Ashby exposes one public document per job board. Match the exact hosted
@@ -130,5 +142,8 @@ class AtsApiVerifier:
                 return AtsPosting(
                     str(posting.get("applyUrl") or url),
                     str(posting.get("title", "")),
+                    description=str(
+                        posting.get("descriptionHtml") or posting.get("descriptionPlain") or ""
+                    ),
                 )
         return AtsPosting("", "")

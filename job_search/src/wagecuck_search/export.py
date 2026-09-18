@@ -8,19 +8,25 @@ from dataclasses import asdict, fields
 from pathlib import Path
 
 from .models import JobPosting, Salary
+from .partial_fields import all_fields, comma_separated, items, normalize_fields, validate_name
 
 FIELDS = [
-    "url", "title", "company", "location", "salary_minimum", "salary_maximum",
+    "url", "title", "company", "location", "programming_languages", "frameworks",
+    "salary_minimum", "salary_maximum",
     "salary_currency", "salary_period", "salary_text", "last_updated", "posted_at",
     "internship", "sponsors_visa", "workplace", "employment_type", "experience_levels",
     "note", "url_validated_at", "application_url_type", "source_sites", "source_urls",
     "description", "valid_through", "source", "sources_json", "application_urls_json",
-    "employer_urls_json",
+    "employer_urls_json", "partial_fields_json",
 ]
 
 
 def csv_row(job):
     result = {key: job.get(key, "") for key in FIELDS}
+    partial = all_fields(job)
+    result.update({name: comma_separated(values) for name, values in partial.items()
+                   if name != "location"})
+    result["partial_fields_json"] = json.dumps(partial, ensure_ascii=False)
     for key in ("minimum", "maximum", "currency", "period", "text"):
         result["salary_" + key] = (job.get("salary") or {}).get(key, "")
     result["experience_levels"] = " | ".join(job.get("experience_levels") or [])
@@ -45,7 +51,9 @@ def write_table(path, columns, rows):
 
 
 def write_jobs(path, jobs):
-    write_table(path, FIELDS, (csv_row(j) for j in jobs))
+    jobs = list(jobs)
+    extra = sorted({name for job in jobs for name in all_fields(job)} - set(FIELDS))
+    write_table(path, [*FIELDS, *extra], (csv_row(j) for j in jobs))
 
 
 def write_filtered_job_rows(source, destination, accepted_urls):
@@ -130,6 +138,19 @@ def read_jobs(path):
                     urls = [v.strip() for v in row.get("source_urls", "").split("|") if v.strip()]
                     job["sources"] = [{"site": sites[min(i, len(sites) - 1)], "url": url}
                                       for i, url in enumerate(urls)] if sites else []
+                partial = normalize_fields(json.loads(row.get("partial_fields_json") or "{}"))
+                # Visible CSV columns are editable; the JSON carries atomic locations
+                # and distinguishes a comma within one item from an item separator.
+                names = set(partial) | {"programming_languages", "frameworks"} | (set(row) - set(FIELDS))
+                for name in names:
+                    try:
+                        validate_name(name)
+                    except ValueError:
+                        continue
+                    if name != "location" and name in row:
+                        partial[name] = items(row[name])
+                if partial:
+                    job["partial_fields"] = partial
                 jobs.append(job)
             except (ValueError, TypeError, KeyError) as exc:
                 raise ValueError(f"Invalid job CSV row {number}: {exc}") from exc

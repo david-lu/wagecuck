@@ -9,6 +9,7 @@ from pathlib import Path
 from .checkpoint import restore_discovery, save_discovery
 from .location_agent import OpenAILocationAgent
 from .models import LEVELS, SITES, SearchCriteria
+from .partial_filter import OpenAIPartialFieldAgent
 from .pipeline import search
 from .stages import filter_csv, run_stages
 
@@ -77,6 +78,14 @@ def parser() -> argparse.ArgumentParser:
         help="Natural-language location request evaluated once over unique locations by an agent",
     )
     command.add_argument("--max-salary", type=float)
+    command.add_argument(
+        "--partial-fields", type=Path,
+        help="JSON file of additional partial-field extraction definitions",
+    )
+    command.add_argument(
+        "--partial-filter", action="append", default=[],
+        help='Filter unique items once, then join to jobs: FIELD=natural-language request',
+    )
     command.add_argument("--agent-model")
     command.add_argument("--agent-endpoint")
     command.add_argument(
@@ -104,6 +113,22 @@ def main(argv=None) -> int:
     agent_model = args.pop("agent_model")
     agent_endpoint = args.pop("agent_endpoint")
     agent_timeout = args.pop("agent_timeout")
+    definitions_path = args.pop("partial_fields")
+    partial_filters = args.pop("partial_filter")
+    args["partial_fields"] = {}
+    args["partial_filters"] = {}
+    try:
+        if definitions_path:
+            args["partial_fields"] = json.loads(definitions_path.read_text(encoding="utf-8"))
+        for entry in partial_filters:
+            name, separator, prompt = entry.partition("=")
+            if not separator or name in args["partial_filters"]:
+                raise ValueError("Use one --partial-filter FIELD=prompt per field")
+            args["partial_filters"][name] = prompt
+    except (OSError, ValueError) as exc:
+        command.error(str(exc))
+    if partial_filters and not (filter_input or stages_output):
+        command.error("--partial-filter requires a staged or post-filter run")
     if bool(filter_input) != bool(filter_output):
         command.error("--post-filter-input and --post-filter-output must be used together")
     if filter_input and stages_output:
@@ -130,10 +155,24 @@ def main(argv=None) -> int:
         except ValueError as exc:
             command.error(str(exc))
 
+    partial_agent = None
+    if criteria.partial_filters:
+        try:
+            partial_agent = OpenAIPartialFieldAgent(
+                model=agent_model, endpoint=agent_endpoint, timeout=agent_timeout
+            )
+        except ValueError as exc:
+            command.error(str(exc))
+
     def filter_progress(event):
         phase = event["phase"]
         if phase == "filter_started":
             message = f"[filter] loaded {event['input']} rows"
+        elif phase == "filter_partial_field":
+            message = (
+                f"[filter:{event['field']}] {event['unique_values']} unique items; "
+                f"{event['cached']} cached, {event['pending']} pending"
+            )
         elif phase == "filter_locations":
             message = (
                 f"[filter] {event['unique_locations']} unique locations; "
@@ -166,6 +205,7 @@ def main(argv=None) -> int:
                 criteria,
                 location_prompt=effective_location_prompt,
                 agent=agent,
+                partial_agent=partial_agent,
                 max_salary=max_salary,
                 progress=filter_progress,
             ))
@@ -180,6 +220,7 @@ def main(argv=None) -> int:
                 stages_output,
                 location_prompt=effective_location_prompt,
                 agent=agent,
+                partial_agent=partial_agent,
                 max_salary=max_salary,
                 progress=filter_progress,
             ))

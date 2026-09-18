@@ -5,7 +5,7 @@ import html as html_module
 import json
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlsplit
 
 import httpx
@@ -25,6 +25,7 @@ from .ats_apis import AtsApiVerifier
 from .matching import normalized, parse_date
 from .models import JobPosting, utc_now
 from .parsing import document, structured_jobs, text
+from .partial_fields import extract_page_fields, extraction_fingerprint
 from .providers import access_problem
 
 
@@ -34,6 +35,7 @@ class ValidationResult:
     kind: str | None = None
     reason: str | None = None
     checked_at: str | None = None
+    partial_fields: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass
@@ -146,6 +148,7 @@ def destination_problem(job, html, url, status, employer_urls):
 class BrowserValidator:
     def __init__(self, browser, criteria, *, browser_factory=None):
         self.browser, self.criteria = browser, criteria
+        self.partial_field_fingerprint = extraction_fingerprint(criteria.partial_fields)
         self.browser_factory = browser_factory
         self.http_hosts = {}
         self.http_context = None
@@ -214,6 +217,7 @@ class BrowserValidator:
                 "title": posting.title,
                 "hiringOrganization": {"name": company},
                 "directApply": True,
+                "description": getattr(posting, "description", ""),
             }
         )
         html = (
@@ -437,7 +441,10 @@ class BrowserValidator:
                             )
                             if reason is None:
                                 return ValidationResult(
-                                    final, kind, checked_at=utc_now().isoformat()
+                                    final, kind, checked_at=utc_now().isoformat(),
+                                    partial_fields=extract_page_fields(
+                                        html, job.title, self.criteria.partial_fields
+                                    ),
                                 )
                         pending.extend((v, depth + 1) for v in applications if v not in visited)
                         if not applications and not loaded:

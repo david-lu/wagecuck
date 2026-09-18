@@ -10,8 +10,10 @@ from bs4 import BeautifulSoup
 from .application_links import extract_links
 from .dedupe import canonical_url
 from .models import JobPosting, Salary
+from .partial_fields import extract_page_fields
 
 LINK_PATTERNS = {
+    "a16z": r"/jobs/[^/?#]+/[^/?#]+--[^/?#]+(?:[/?#]|$)",
     "wellfound": r"/jobs/\d+",
     "indeed": r"/(?:viewjob|rc/clk|pagead/clk)\?[^#]*(?:jk|vjk)=",
     "linkedin": r"/jobs/view/[^/?]+",
@@ -26,6 +28,7 @@ LINK_PATTERNS = {
     "remote_rocketship": r"/(?:[a-z]{2}/)?company/[^/?#]+/jobs/[^/?#]+",
 }
 DOMAINS = {
+    "a16z": ("jobs.a16z.com",),
     "wellfound": ("wellfound.com",),
     "indeed": ("indeed.com",),
     "linkedin": ("linkedin.com",),
@@ -215,7 +218,7 @@ def first_text(soup, selectors: str) -> str:
     return node.get_text(" ", strip=True) if node else ""
 
 
-def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
+def parse_posting(site: str, html: str, url: str, *, partial_fields=None) -> JobPosting | None:
     application_urls, employer_urls = extract_links(html, url)
     if site == "remote_rocketship":
         # Its detail payload embeds a carousel of complete related-job records after
@@ -234,12 +237,29 @@ def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
     )
     if data is None:
         data = next((v for v in jobs if not v.get("url")), {})
+    details = {}
+    if site == "a16z":
+        for term in soup.select("main header dl dt"):
+            definition = term.find_next_sibling("dd")
+            if definition:
+                details[term.get_text(" ", strip=True).casefold()] = definition.get_text(
+                    " ", strip=True
+                )
+        data = dict(data)
+        data.setdefault("jobLocation", details.get("location", ""))
+        data.setdefault("employmentType", details.get("job type", ""))
+        if workplace(details.get("work arrangement", "")) == "remote":
+            data.setdefault("jobLocationType", "TELECOMMUTE")
+        posted = soup.select_one("main article time[datetime]")
+        if posted:
+            data.setdefault("datePosted", posted["datetime"])
     title = text(data.get("title")) or first_text(soup, "h1")
     if not title:
         return None
     company = data.get("hiringOrganization", {})
     company = company.get("name", "") if isinstance(company, dict) else company
     company_selectors = {
+        "a16z": 'main header a[href^="/jobs/"]',
         "linkedin": ".topcard__org-name-link, .topcard__flavor a",
         "indeed": '[data-testid="inlineHeader-companyName"], [data-company-name="true"]',
         "wellfound": 'a[href^="/company/"]',
@@ -259,7 +279,7 @@ def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
     description = text(data.get("description")) or first_text(
         soup,
         '#jobDescriptionText, .show-more-less-html__markup, [itemprop="description"], '
-        '[class*="jobDescription"], [data-testid="job-description"]',
+        '[class*="jobDescription"], [data-testid="job-description"], .prose-job',
     )
     # Metadata before the related-jobs section is useful for explicit visa/workplace labels.
     for node in soup.select("script, style, nav, footer"):
@@ -280,7 +300,11 @@ def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
     restrictions = location_from_schema(data.get("applicantLocationRequirements"))
     if remote:
         location = "; ".join(filter(None, ["Remote", restrictions or location]))
-    work_mode = "remote" if remote else workplace(location)
+    work_mode = (
+        "remote"
+        if remote
+        else workplace(details.get("work arrangement", "")) or workplace(location)
+    )
     if work_mode is None:
         policy = re.search(r"Remote Work Policy\s+(.{0,80})", visible, re.I)
         if policy:
@@ -312,9 +336,14 @@ def parse_posting(site: str, html: str, url: str) -> JobPosting | None:
         company=company,
         location=location or "Unknown",
         source=site,
+        partial_fields=extract_page_fields(html, title, partial_fields),
         application_urls=application_urls,
         employer_urls=employer_urls,
-        salary=salary_from_schema(data.get("baseSalary")) or salary_from_text(description),
+        salary=(
+            salary_from_schema(data.get("baseSalary"))
+            or salary_from_text(details.get("compensation", ""))
+            or salary_from_text(description)
+        ),
         last_updated=data.get("dateModified"),
         posted_at=data.get("datePosted"),
         valid_through=data.get("validThrough"),

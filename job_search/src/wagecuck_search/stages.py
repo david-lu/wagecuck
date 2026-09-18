@@ -10,6 +10,7 @@ from .export import posting, read_jobs, write_filtered_job_rows, write_jobs, wri
 from .location_agent import LOCATION_COLUMNS
 from .matching import broad_query
 from .models import SiteResult, utc_now
+from .partial_filter import PARTIAL_COLUMNS
 from .pipeline import _fetch, build_report, search
 from .postfilter import filter_jobs
 
@@ -18,7 +19,7 @@ def save_stage(path, report):
     path = Path(path)
     write_jobs(path, report["jobs"])
     public_report = {key: value for key, value in report.items()
-                     if key not in ("locations", "rejections")}
+                     if key not in ("locations", "rejections", "partial_field_values")}
     report_path = path.with_suffix(".json")
     report_temporary = report_path.with_name(report_path.name + ".tmp")
     report_temporary.write_text(
@@ -32,6 +33,10 @@ def save_stage(path, report):
     artifacts = path.parent / ".artifacts"
     if "locations" in report:
         write_table(artifacts / f"{path.stem}.locations.csv", LOCATION_COLUMNS, report["locations"])
+    for name, rows in report.get("partial_field_values", {}).items():
+        write_table(
+            artifacts / f"{path.stem}.partial-fields" / f"{name}.csv", PARTIAL_COLUMNS, rows
+        )
     if "rejections" in report:
         write_table(artifacts / f"{path.stem}.rejections.csv",
                     ["url", "title", "reason"], report["rejections"])
@@ -91,6 +96,10 @@ async def filter_csv(source, output, criteria, **kwargs):
     if kwargs.get("location_prompt") and kwargs.get("location_map_path") is None:
         output = Path(output)
         kwargs["location_map_path"] = output.parent / ".artifacts" / f"{output.stem}.locations.csv"
+    output = Path(output)
+    kwargs.setdefault(
+        "partial_map_dir", output.parent / ".artifacts" / f"{output.stem}.partial-fields"
+    )
     report = await filter_jobs(read_jobs(source), criteria, **kwargs)
     save_stage(output, report)
     write_filtered_job_rows(source, output, (job["url"] for job in report["jobs"]))
@@ -103,7 +112,7 @@ def require_distinct(source, output):
 
 
 async def run_stages(criteria, directory, *, providers=None, validator=None, progress=None,
-                     location_prompt=None, agent=None, max_salary=None):
+                     location_prompt=None, agent=None, max_salary=None, partial_agent=None):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     outputs = [directory / name for name in ("01-search.csv", "02-filter.csv", "03-validation.csv")]
@@ -116,6 +125,8 @@ async def run_stages(criteria, directory, *, providers=None, validator=None, pro
         location_prompt=location_prompt,
         location_map_path=directory / ".artifacts" / "02-filter.locations.csv",
         agent=agent,
+        partial_agent=partial_agent,
+        partial_map_dir=directory / ".artifacts" / "02-filter.partial-fields",
         max_salary=max_salary,
         progress=progress,
     )

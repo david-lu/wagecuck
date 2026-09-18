@@ -35,7 +35,10 @@ def save_discovery(path, criteria, results):
 
 
 def restore_discovery(payload, criteria):
-    if payload.get("version") != 1 or payload.get("filters") != filters(criteria):
+    saved_filters = dict(payload.get("filters") or {})
+    saved_filters.setdefault("partial_fields", {})
+    saved_filters.setdefault("partial_filters", {})
+    if payload.get("version") != 1 or saved_filters != filters(criteria):
         raise ValueError(
             "Discovery checkpoint must use the same title, filters, and selected sites"
         )
