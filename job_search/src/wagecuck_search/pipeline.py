@@ -232,15 +232,15 @@ async def _validated_report(
                 }
             )
             continue
-        posting["array_fields"] = merge_fields(
-            posting.get("array_fields"), check.array_fields
-        )
+        # The verified page replaces prior values for each field it extracts,
+        # including empty values; board snippets are not additional page evidence.
+        posting["array_fields"] = {**posting.get("array_fields", {}), **check.array_fields}
         posting["fields"] = {**posting.get("fields", {}), **check.fields}
         for name in check.fields:
             posting.get("field_types", {}).pop(name, None)
         posting["field_types"] = job_field_types(posting)
         if not filter_candidates:
-            posting["description"] = check.description or original.description
+            posting["description"] = check.description
         posting["url"] = check.url
         posting["url_validated_at"] = check.checked_at or utc_now().isoformat()
         posting["application_url_type"] = check.kind
@@ -296,7 +296,7 @@ async def _fetch(criteria, query, providers, progress=None):
                 selected[site].fetch(query, criteria), timeout=criteria.site_timeout_seconds + 10
             )
             for job in result.jobs:
-                enrich_job(job, criteria.array_fields)
+                enrich_job(job)
             return result
         except Exception as exc:
             return SiteResult(site, status="error", errors=[f"{type(exc).__name__}: {exc}"])

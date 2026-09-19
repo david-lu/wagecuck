@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from .checkpoint import SavedProvider
-from .export import posting, read_jobs, write_filtered_job_rows, write_jobs, write_table
+from .export import posting, public_job, read_jobs, write_filtered_job_rows, write_jobs, write_table
 from .field_filling import fill_fields
 from .field_filter import FIELD_VALUE_COLUMNS
 from .job_fields import extraction_definitions, normalize_field_types, validate_filter_types
@@ -23,6 +23,7 @@ def save_report(path, report):
     write_jobs(path, report["jobs"], extra_columns=report.get("field_definitions", {}))
     public_report = {key: value for key, value in report.items()
                      if key not in ("locations", "rejections", "field_values")}
+    public_report["jobs"] = [public_job(job) for job in report.get("jobs", [])]
     report_path = path.with_suffix(".json")
     report_temporary = report_path.with_name(report_path.name + ".tmp")
     report_temporary.write_text(

@@ -54,14 +54,12 @@ def parser(action):
     command.add_argument("--agent-endpoint")
     command.add_argument("--agent-timeout", type=float, default=60)
     if action in ("search", "validate", "fill-fields"):
-        command.add_argument("--fields", "--validation-fields", type=Path,
+        command.add_argument("--fields", "--validation-fields", "--array-fields", "--partial-fields", type=Path,
                              required=action == "fill-fields",
                              help="JSON of typed fields with generation prompts")
         command.add_argument("--field-workers", type=int, default=4)
     if action in ("search", "validate"):
         command.add_argument("--timeout-seconds", type=float, default=30)
-        command.add_argument("--array-fields", "--partial-fields", type=Path,
-                             help="Optional deterministic extraction definitions")
         command.add_argument("--show-browser", action="store_true")
         command.add_argument("--browser-channel", choices=("chrome", "msedge"))
     if action == "validate":
@@ -168,7 +166,7 @@ def main(action, argv):
                 progress=progress, agent=field_agent, workers=args.field_workers,
             )
         options = dict(
-            array_fields=read_json(args.array_fields), timeout_seconds=args.timeout_seconds,
+            timeout_seconds=args.timeout_seconds,
             show_browser=args.show_browser, browser_channel=args.browser_channel,
         )
         if action == "search":

@@ -255,3 +255,11 @@ def test_block_detection_does_not_mistake_job_description_for_challenge():
         )
         is None
     )
+
+
+
+def test_board_parsing_does_not_generate_custom_fields():
+    html = schema(description="Build Python services using Django and TypeScript on AWS.")
+    posting = parse_posting("simplify", html, URLS["simplify"])
+    assert set(posting.array_fields) == {"location"}
+    assert "Python" in posting.description

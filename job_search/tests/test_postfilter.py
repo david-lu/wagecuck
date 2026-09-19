@@ -324,7 +324,7 @@ def test_stage_csv_round_trip_preserves_validation_and_private_stage_fields(tmp_
     }
     write_jobs(source, [value])
     restored = read_jobs(source)[0]
-    assert restored["description"] == value["description"]
+    assert "description" not in restored
     assert restored["url_validated_at"] == value["url_validated_at"]
     assert restored["application_urls"] == value["application_urls"]
     assert restored["sources"] == value["sources"]

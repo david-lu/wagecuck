@@ -11,14 +11,20 @@ from .job_fields import job_field_types, normalize_field_types, normalize_scalar
 from .models import JobPosting, Salary
 
 FIELDS = [
-    "url", "title", "company", "location", "programming_languages", "frameworks",
+    "url", "title", "company", "location",
     "salary_minimum", "salary_maximum",
     "salary_currency", "salary_period", "salary_text", "last_updated", "posted_at",
     "internship", "sponsors_visa", "workplace", "employment_type", "experience_levels",
     "note", "url_validated_at", "application_url_type", "source_sites", "source_urls",
-    "description", "valid_through", "source", "sources_json", "application_urls_json",
+    "valid_through", "source", "sources_json", "application_urls_json",
     "employer_urls_json", "array_fields_json", "fields_json", "field_types_json", "enrichment_json",
 ]
+INTERNAL_FIELDS = {"description"}
+
+
+def public_job(job):
+    """Remove evidence used internally by parsers and agents from saved reports."""
+    return {key: value for key, value in job.items() if key not in INTERNAL_FIELDS}
 
 
 def csv_row(job):
@@ -172,7 +178,9 @@ def read_jobs(path, *, array_columns=(), field_types=None):
                         continue
                     if name != "location" and name in row:
                         arrays[name] = items(row[name])
-                scalar_names = (set(row) - set(FIELDS) - {"partial_fields_json"} - names) | set(scalars)
+                scalar_names = (
+                    set(row) - set(FIELDS) - INTERNAL_FIELDS - {"partial_fields_json"} - names
+                ) | set(scalars)
                 for name in scalar_names:
                     validate_name(name)
                     if name in row:

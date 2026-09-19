@@ -45,9 +45,13 @@ wagecuck-search search --query "software engineer" --output jobs.csv
 For a small search, add `--sites a16z --max-pages 1 --max-per-site 6`. Use
 `--show-browser` to see navigation, or `--browser-channel chrome` to use installed
 Chrome. Search deduplicates discovered jobs but does not validate application
-destinations. `--array-fields examples/array-fields.json` adds deterministic
-extraction rules; `--fields examples/validation-fields.json` generates fields from
-the descriptions available during discovery.
+destinations or automatically infer technology fields from search snippets.
+The default search and preliminary outputs have no language/framework fields.
+The validation script sends the actual employer/ATS page description and each
+requested field's type and prompt to the agent. There is no keyword-based
+technology extractor. Filtering only selects rows and preserves existing fields.
+Explicitly requesting `--fields FILE` on search generates fields from discovery
+descriptions; omit it to defer enrichment until page validation.
 
 ## Python scripts
 
@@ -142,8 +146,7 @@ Reusable predicates can also live in a JSON file:
 {
   "role": {"prompt": "Is this frontend or full_stack?", "mode": "any"},
   "languages": {"prompt": "Is this C, C++, Go, Rust, or another systems language?", "mode": "none"},
-  "is_backend": {"prompt": "Is this false?", "mode": "any"},
-  "minimum_experience": [">=0", "<=10"]
+  "is_backend": {"prompt": "Is this false?", "mode": "any"}
 }
 ```
 
@@ -186,28 +189,33 @@ Generate fields from existing CSV descriptions and metadata without browsing:
 wagecuck-search fill-fields input.csv --output enriched.csv --fields examples/validation-fields.json
 ```
 
-Field definitions support arbitrary names and prompts, for both scalar and
-array fields:
+Every added field requires a type and a nonempty prompt. The agent receives all
+requested definitions with the job evidence and returns typed values with evidence;
+no additional fields are created by keyword lists. This works for arbitrary scalar
+and array fields:
 
 ```json
 {
-  "languages": {"type": "array_field", "prompt": "Which programming languages are relevant to this role?"},
-  "frameworks": {"type": "array_field", "prompt": "Which frameworks are used in this role?"},
+  "languages": {"type": "array_field", "prompt": "Programming languages required for the job"},
+  "frameworks": {"type": "array_field", "prompt": "Software frameworks required for the job"},
   "role": {
     "type": "string_field",
     "options": ["backend", "frontend", "full_stack"],
     "prompt": "Classify the role from its primary responsibilities."
   },
-  "is_backend": {"type": "boolean_field", "prompt": "Does this role involve material backend development?"},
-  "minimum_experience": {"type": "number_field", "prompt": "Minimum required years of experience, or null if unspecified."}
+  "is_backend": {"type": "boolean_field", "prompt": "Does this role involve material backend development?"}
 }
 ```
 
 Supported types are `array_field`, `string_field`, `number_field`, and `boolean_field`.
 Constrain a `string_field` to an enum by supplying `options`.
 Unknown scalar answers are null; unknown lists are empty. Populated values include
-evidence in `enrichment_json`. Failed generation is logged and retried on the next
-run. Generated names cannot replace core job identity columns.
+their definitions (including prompts) and evidence in `enrichment_json`.
+The parsed job description is internal evidence for the agent and is not exported
+as a CSV column or included in the adjacent public JSON report.
+The old `--array-fields` flag aliases `--fields` and now requires the same
+type/prompt format; terms/selectors definitions are rejected. Failed generation
+is logged and retried on the next run. Generated names cannot replace core job identity columns.
 
 Filling uses four concurrent workers by default, capped at eight
 (`--field-workers`). URL validation has its own bounded pool

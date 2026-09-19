@@ -1,0 +1,22 @@
+{
+  "stage": "filter",
+  "input": 10308,
+  "returned": 2006,
+  "filtered_out": 8302,
+  "filter_reasons": {
+    "location": 8286,
+    "salary": 54,
+    "expired": 2
+  },
+  "field_filters": {},
+  "location_prompt": "Remote or in the Los Angeles metropolitan area. Unknown location and unknown remote status do not establish a match.",
+  "raw_unique_locations": 3037,
+  "unique_locations": 1899,
+  "unclassified_locations": 0,
+  "agent_location_calls": 31,
+  "agent_model": "gpt-5.4-mini",
+  "agent_field_calls": 0,
+  "field_filter_model": null,
+  "elapsed_seconds": 91.5644,
+  "partial": false
+}

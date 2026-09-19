@@ -12,6 +12,7 @@ from wagecuck_search.array_fields import (
     extract_page_fields,
     field_values,
     items,
+    page_evidence,
     unique_values,
 )
 from wagecuck_search.ats_apis import AtsApiVerifier
@@ -19,9 +20,10 @@ from wagecuck_search.checkpoint import SavedProvider
 from wagecuck_search.cli import parser
 from wagecuck_search.dedupe import deduplicate
 from wagecuck_search.export import read_jobs, write_jobs, write_table
+from wagecuck_search.field_filling import OpenAIFieldAgent
 from wagecuck_search.field_filter import OpenAIFieldFilterAgent, classify_values
 from wagecuck_search.models import JobPosting, SearchCriteria, SiteResult
-from wagecuck_search.operations import discover, filter_csv, validate_jobs
+from wagecuck_search.operations import discover, filter_csv, validate_csv, validate_jobs
 from wagecuck_search.postfilter import filter_jobs
 from wagecuck_search.profiles import SearchProfile
 from wagecuck_search.validation import BrowserValidator, ValidationResult
@@ -46,21 +48,15 @@ class Decisions:
                  "reason": "Fixture predicate"} for row in rows]
 
 
-def test_extraction_scopes_descriptions_and_supports_custom_fields():
+def test_page_evidence_scopes_descriptions_for_agent_filling():
     html = """<nav>Java and PHP</nav><script>React JavaScript</script>
     <main><h1>Software Engineer</h1><div class=prose-job>
-    Develop using Python, Python, TypeScript, C++, C#, React.js, Next.js and Django.
-    Deploy to Amazon Web Services.
-    </div><span class=team>Platform, Developer Experience</span></main>"""
-    fields = extract_page_fields(html, "Software Engineer", {
-        "clouds": {"terms": {"AWS": ["Amazon Web Services"]}},
-        "teams": {"selectors": [".team"]},
-    })
-    assert fields["programming_languages"] == ["Python", "TypeScript", "C++", "C#"]
-    assert {"React", "Next.js", "Django"} <= set(fields["frameworks"])
-    assert fields["clouds"] == ["AWS"]
-    assert fields["teams"] == ["Platform", "Developer Experience"]
-    assert "Java" not in fields["programming_languages"]
+    Develop using Python and Django on Amazon Web Services.
+    </div></main>"""
+    evidence = page_evidence(html, "Software Engineer")
+    assert "Python and Django" in evidence["description"]
+    assert "Java" not in evidence["description"]
+    assert extract_page_fields(html, "Software Engineer") == {}
 
 
 def test_schema_extraction_ignores_other_postings_and_retains_geographic_atoms():
@@ -72,10 +68,8 @@ def test_schema_extraction_ignores_other_postings_and_retains_geographic_atoms()
         {"@type": "JobPosting", "title": "Other role", "description": "Java and Spring Boot"},
     ]
     html = '<script type="application/ld+json">' + json.dumps(payload) + "</script>"
-    fields = extract_page_fields(html, "Software Engineer")
-    assert fields["programming_languages"] == ["Python"]
-    assert fields["frameworks"] == ["FastAPI"]
-    assert fields["location"] == ["Remote; Canada"]
+    assert extract_page_fields(html, "Software Engineer") == {"location": ["Remote; Canada"]}
+    assert page_evidence(html, "Software Engineer")["description"] == payload[0]["description"]
 
 
 def test_comma_lists_round_trip_compound_locations_and_custom_csv_columns(tmp_path):
@@ -108,18 +102,15 @@ def test_legacy_location_is_not_split_at_city_state_comma():
     assert next(row for row in rows if row["raw_value"] == "Python")["job_count"] == 2
 
 
-def test_search_enriches_all_providers_and_merges_fields_on_deduplication():
+def test_search_does_not_generate_fields_from_technology_mentions():
     first = job(description="Develop in Python with Django on AWS.")
     second = job(description="Build TypeScript services with Next.js.")
-    criteria = SearchCriteria("software engineer", sites=("simplify",),
-                              array_fields={"clouds": {"terms": {"AWS": []}}})
-    result = asyncio.run(discover(criteria, [
-        SavedProvider(SiteResult("simplify", [first, second]))
-    ]))
+    result = asyncio.run(discover(
+        SearchCriteria("software engineer", sites=("simplify",)),
+        [SavedProvider(SiteResult("simplify", [first, second]))],
+    ))
     fields = result["jobs"][0]["array_fields"]
-    assert fields["programming_languages"] == ["Python", "TypeScript"]
-    assert fields["frameworks"] == ["Django", "Next.js"]
-    assert fields["clouds"] == ["AWS"]
+    assert fields == {"location": ["Los Angeles, CA"]}
     assert len(result["jobs"]) == 1
     assert deduplicate([first, second])[0][0].array_fields == fields
 
@@ -209,16 +200,14 @@ def test_validation_enrichment_survives_native_url_deduplication():
     assert report["jobs"][0]["array_fields"]["clouds"] == ["AWS"]
 
 
-def test_ats_fast_path_keeps_description_for_validation_enrichment():
+def test_ats_fast_path_keeps_description_without_generating_unrequested_fields():
     async def run():
         native = "https://boards.greenhouse.io/acme/jobs/123"
         async with httpx.AsyncClient(transport=httpx.MockTransport(lambda req: httpx.Response(
             200, json={"title": "Software Engineer", "company_name": "Acme",
                        "content": "<p>Develop Python services using FastAPI on AWS.</p>"}
         ))) as client:
-            validator = BrowserValidator(None, SearchCriteria(
-                "software engineer", array_fields={"clouds": {"terms": {"AWS": []}}}
-            ))
+            validator = BrowserValidator(None, SearchCriteria("software engineer"))
             validator.ats_verifier = AtsApiVerifier(client)
             validator.http_client = client
             record = job()
@@ -227,27 +216,27 @@ def test_ats_fast_path_keeps_description_for_validation_enrichment():
             result = await validator.prepare(record)
             assert isinstance(result, ValidationResult)
             assert result.url == native and result.kind == "ats"
-            fields = result.array_fields
-            assert fields["programming_languages"] == ["Python"]
-            assert fields["frameworks"] == ["FastAPI"] and fields["clouds"] == ["AWS"]
+            assert result.description == "Develop Python services using FastAPI on AWS."
+            assert result.array_fields == {}
     asyncio.run(run())
 
 
-def test_profile_and_cli_expose_arbitrary_extraction_and_predicates(tmp_path):
-    config = {"clouds": {"terms": {"AWS": ["Amazon Web Services"]}}}
+def test_profile_filters_work_and_keyword_extraction_requires_migration(tmp_path):
     payload = {
         "name": "example", "job_titles": ["software engineer"],
         "search_queries": ["software engineer"], "output_directory": "results/example",
-        "array_fields": config,
         "filters": {"array_fields": {"frameworks": "React or Next.js"}},
     }
     path = tmp_path / "profile.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     profile = SearchProfile.load(path)
-    assert profile.filter_criteria().array_fields == config
     assert profile.filter_criteria().array_filters == {"frameworks": "React or Next.js"}
-    args = parser().parse_args(["--array-fields", str(path), "--array-filter", "clouds=AWS"])
+    args = parser().parse_args(["--array-filter", "clouds=AWS"])
     assert args.array_filter == ["clouds=AWS"]
+    payload["array_fields"] = {"clouds": {"terms": {"AWS": []}}}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="type and prompt"):
+        SearchProfile.load(path)
 
 
 @pytest.mark.parametrize("name", ["url", "../outside", "Salary", "salary_minimum", "source_urls"])
@@ -263,18 +252,12 @@ def test_extraction_does_not_change_existing_explicit_fields():
                    array_fields={"clouds": ["AWS"], "programming_languages": ["Python"]})
     enriched = enrich_job(original)
     assert enriched.array_fields["clouds"] == ["AWS"]
-    assert enriched.array_fields["programming_languages"] == ["Python", "TypeScript"]
+    assert enriched.array_fields["programming_languages"] == ["Python"]
 
 
-def test_language_aliases_do_not_match_parts_of_framework_names():
-    from wagecuck_search.array_fields import extract_fields
-
-    assert extract_fields("Build with Next.js, Node.js and Objective-C.")["programming_languages"] == [
-        "Objective-C"
-    ]
-    assert extract_fields("Programming skills: JS, C, C++, and R.")["programming_languages"] == [
-        "JavaScript", "C++", "R", "C"
-    ]
+def test_keyword_extraction_cannot_bypass_prompt_based_generation():
+    with pytest.raises(ValueError, match="type and prompt"):
+        SearchCriteria("engineer", array_fields={"frameworks": {"terms": {"React": []}}})
 
 
 def test_schema_extraction_uses_same_title_normalization_as_validation():
@@ -285,9 +268,8 @@ def test_schema_extraction_uses_same_title_normalization_as_validation():
         "applicantLocationRequirements": {"@type": "Country", "name": "Canada"},
     }
     html = '<script type="application/ld+json">' + json.dumps(payload) + "</script>"
-    fields = extract_page_fields(html, "Senior Frontend Engineer")
-    assert fields["programming_languages"] == ["TypeScript"]
-    assert fields["location"] == ["Remote; Canada"]
+    assert extract_page_fields(html, "Senior Frontend Engineer") == {"location": ["Remote; Canada"]}
+    assert page_evidence(html, "Senior Frontend Engineer")["description"] == payload["description"]
 
 
 def test_generic_location_filter_preserves_country_and_city_context(tmp_path):
@@ -349,11 +331,19 @@ def test_timeouts_are_visible_and_retried_on_resume(tmp_path):
     assert third[0]["job_count"] == 1
 
 
-def test_changed_extraction_rules_change_validation_cache_fingerprint():
-    from wagecuck_search.array_fields import extraction_fingerprint
+def test_keyword_extraction_validation_cache_is_not_reused(tmp_path):
+    from wagecuck_search.validation_cache import CachedValidator
 
-    assert extraction_fingerprint() == extraction_fingerprint({})
-    assert extraction_fingerprint() != extraction_fingerprint({"clouds": {"terms": {"AWS": []}}})
+    record = job()
+    path = tmp_path / "validation.jsonl"
+    path.write_text(json.dumps({
+        "key": CachedValidator.key(record), "array_field_fingerprint": "old-keyword-extraction",
+        "result": asdict(ValidationResult(
+            record.url, "ats", array_fields={"programming_languages": ["Wrong"]},
+        )),
+    }) + "\n", encoding="utf-8")
+    validator = BrowserValidator(None, SearchCriteria("engineer"))
+    assert CachedValidator(validator, path).cached == {}
 
 
 def test_direct_search_does_not_silently_ignore_array_filters():
@@ -361,3 +351,66 @@ def test_direct_search_does_not_silently_ignore_array_filters():
 
     with pytest.raises(ValueError, match="filter_csv"):
         asyncio.run(search(SearchCriteria("engineer", array_filters={"frameworks": "React"})))
+
+
+
+@pytest.mark.parametrize("stale_fields", [
+    {},
+    {"languages": ["TypeScript"], "frameworks": ["React"]},
+])
+@pytest.mark.parametrize("page_description,expected_languages,expected_frameworks", [
+    ("Python and FastAPI required. Java preferred; React is not required.", ["Python"], ["FastAPI"]),
+    ("Design reliable software systems.", [], []),
+])
+def test_native_page_and_field_prompts_reach_agent_and_replace_stale_values(
+    tmp_path, stale_fields, page_description, expected_languages, expected_frameworks
+):
+    definitions = {
+        "languages": {"type": "array_field", "prompt": "Programming languages required for the job"},
+        "frameworks": {"type": "array_field", "prompt": "Software frameworks required for the job"},
+    }
+    calls = []
+    def respond(request):
+        body = json.loads(request.content)
+        payload = json.loads(body["input"])
+        calls.append(payload)
+        assert payload["field_definitions"] == definitions
+        assert payload["job_evidence"]["description"] == page_description
+        assert not set(definitions) & set(payload["job_evidence"]["array_fields"])
+        result = {
+            "languages": {"value": expected_languages, "evidence": page_description},
+            "frameworks": {"value": expected_frameworks, "evidence": page_description},
+        }
+        return httpx.Response(200, json={"status": "completed", "output": [{
+            "type": "message", "content": [{"type": "output_text", "text": json.dumps(result)}],
+        }]})
+
+    async def run():
+        native = "https://boards.greenhouse.io/acme/jobs/123"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda req: httpx.Response(
+            200, json={"title": "Software Engineer", "company_name": "Acme",
+                       "content": f"<p>{page_description}</p>"}
+        ))) as client:
+            criteria = SearchCriteria("software engineer")
+            validator = BrowserValidator(None, criteria)
+            validator.ats_verifier = AtsApiVerifier(client)
+            validator.http_client = client
+            record = job(description="Build TypeScript and React applications.",
+                         array_fields=stale_fields)
+            record.url = native
+            record.sources = [{"site": "simplify", "url": native}]
+            source, output = tmp_path / "source.csv", tmp_path / "validated.csv"
+            write_jobs(source, [asdict(record)])
+            agent = OpenAIFieldAgent(api_key="test", transport=httpx.MockTransport(respond))
+            report = await validate_csv(
+                source, output, criteria, validator=validator,
+                field_definitions=definitions, field_agent=agent,
+            )
+            assert len(calls) == 1
+            assert report["summary"]["field_filling"]["failed"] == 0
+            validated = read_jobs(output)[0]
+            assert validated["array_fields"]["languages"] == expected_languages
+            assert validated["array_fields"]["frameworks"] == expected_frameworks
+            assert "programming_languages" not in validated["array_fields"]
+            assert validated["enrichment"]["field_definitions"] == definitions
+    asyncio.run(run())

@@ -137,11 +137,11 @@ def extraction_definitions(value):
     result = {}
     for name, definition in value.items():
         validate_name(name)
-        if name == "location":
-            raise ValueError("Use array-field location extraction for locations")
         if not isinstance(definition, dict) or set(definition) - {"type", "prompt", "options"}:
             raise ValueError(f"{name}: use type, prompt, and optional string options")
         kind = field_type_name(definition.get("type"))
+        if name == "location" and kind != "array_field":
+            raise ValueError("location is an array_field")
         if not isinstance(definition.get("prompt"), str) or not definition["prompt"].strip():
             raise ValueError(f"{name}: a nonempty extraction prompt is required")
         options = definition.get("options")

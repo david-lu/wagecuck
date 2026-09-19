@@ -7,6 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from wagecuck_search.checkpoint import SavedProvider
 from wagecuck_search.cli import main
 from wagecuck_search.export import read_jobs, write_jobs, write_table
 from wagecuck_search.field_filling import OpenAIFieldAgent, fill_fields, validate_result
@@ -23,7 +24,7 @@ from wagecuck_search.postfilter import filter_jobs
 from wagecuck_search.validation import ValidationResult
 
 DEFINITIONS = {
-    "languages": {"type": "array_field", "prompt": "List the relevant languages"},
+    "languages": {"type": "array_field", "prompt": "Programming languages required for the job"},
     "frameworks": {"type": "array_field", "prompt": "List the relevant frameworks"},
     "role": {"type": "string_field", "options": ["backend", "frontend", "full_stack"],
              "prompt": "Classify the engineering responsibilities"},
@@ -214,12 +215,14 @@ def test_validation_and_field_filling_can_be_composed_on_any_job_csv(tmp_path):
     assert report["jobs"][0]["fields"]["external_tag"] == "keep"
     agent = FillingAgent()
     asyncio.run(fill_fields_csv(validated, filled, DEFINITIONS, agent=agent))
-    assert agent.jobs[0]["description"].startswith("Actual page:")
+    assert agent.jobs[0].get("description", "") == ""
+    combined_agent = FillingAgent()
     combined = asyncio.run(validate_csv(
         source, tmp_path / "combined.csv", validator=Validator(),
-        field_definitions=DEFINITIONS, field_agent=FillingAgent(),
+        field_definitions=DEFINITIONS, field_agent=combined_agent,
     ))
     assert combined["jobs"][0]["fields"]["role"] == "frontend"
+    assert combined_agent.jobs[0]["description"].startswith("Actual page:")
 
 
 def test_independent_operations_can_filter_before_and_after_enrichment(tmp_path):
@@ -281,7 +284,10 @@ def test_example_definitions_and_filters_are_reusable_configuration():
     definitions = extraction_definitions(json.loads((base / "validation-fields.json").read_text()))
     criteria = SearchCriteria("engineer", field_filters=json.loads((base / "web-filters.json").read_text()))
     assert definitions["role"]["options"] == ["backend", "frontend", "full_stack"]
-    assert definitions["languages"]["type"] == "array_field"
+    assert definitions["languages"] == {
+        "type": "array_field", "prompt": "Programming languages required for the job",
+    }
+    assert "minimum_experience" not in definitions
     assert criteria.field_filters["languages"]["mode"] == "all"
 
 
@@ -305,6 +311,10 @@ def test_csv_commands_are_exposed_by_main_cli(action):
     {"role": {"type": "string_field", "prompt": "Classify", "options": []}},
     {"url": {"type": "string_field", "prompt": "Overwrite identity"}},
     {"test": {"type": "boolean_field", "prompt": ""}},
+    {"test": {"type": "array_field"}},
+    {"test": {"type": "string_field", "prompt": "  "}},
+    {"test": {"terms": {"Python": []}}},
+    {"test": {"selectors": [".skills"]}},
 ])
 def test_bad_extraction_definitions_fail_before_navigation(definition):
     with pytest.raises(ValueError):
@@ -372,24 +382,23 @@ def test_validation_retains_description_when_board_title_omits_native_qualifier(
     html = '<title>Web</title><h1>' + record["title"] + '</h1><script type="application/ld+json">' + json.dumps(record) + '</script>'
     assert destination_problem(job(), html, "https://jobs.ashbyhq.com/web/1", 200, [])[0] is None
     assert "authentication services" in page_evidence(html, "Software Engineer")["description"]
-    assert extract_page_fields(html, "Software Engineer")["programming_languages"] == ["TypeScript"]
+    assert extract_page_fields(html, "Software Engineer") == {}
 
 
-def test_javascript_boot_notice_and_research_abbreviation_are_not_technologies():
-    from wagecuck_search.array_fields import extract_fields, extract_page_fields
+def test_javascript_boot_notice_is_excluded_from_agent_evidence():
+    from wagecuck_search.array_fields import page_evidence
     html = "<noscript>You need to enable JavaScript to run this app.</noscript><h1>Engineer</h1>"
-    assert extract_page_fields(html, "Engineer")["programming_languages"] == []
-    assert "R" not in extract_fields("Engineer on our R&D team using TypeScript.")["programming_languages"]
+    assert "JavaScript" not in page_evidence(html, "Engineer")["description"]
 
 
 def test_ambiguous_qualified_titles_do_not_combine_other_jobs():
-    from wagecuck_search.array_fields import extract_page_fields
+    from wagecuck_search.array_fields import page_evidence
     records = [
         {"@type": "JobPosting", "title": "Software Engineer, Backend", "description": "Python"},
         {"@type": "JobPosting", "title": "Software Engineer, Frontend", "description": "TypeScript"},
     ]
     html = '<script type="application/ld+json">' + json.dumps(records) + '</script>'
-    assert extract_page_fields(html, "Software Engineer")["programming_languages"] == []
+    assert page_evidence(html, "Software Engineer")["description"] == ""
 
 
 def test_unclassified_generic_filter_values_do_not_satisfy_all_or_none():
@@ -401,3 +410,125 @@ def test_unclassified_generic_filter_values_do_not_satisfy_all_or_none():
     for mode in ("any", "all", "none"):
         strict = SearchCriteria("jobs", field_filters={"languages": {"prompt": "Web?", "mode": mode}})
         assert not asyncio.run(filter_jobs(records, strict, filter_agent=TimeoutDecisions()))["jobs"]
+
+
+
+def test_search_and_preliminary_do_not_add_technology_fields(tmp_path):
+    search_path = tmp_path / "search.csv"
+    preliminary_path = tmp_path / "preliminary.csv"
+    report = asyncio.run(discover(
+        SearchCriteria("software engineer", sites=("simplify",)),
+        [SavedProvider(SiteResult("simplify", [job()]))],
+    ))
+    save_report(search_path, report)
+    filtered = asyncio.run(filter_csv(
+        search_path, preliminary_path,
+        SearchCriteria("software engineer", field_filters={
+            "salary.minimum": ">=180000",
+        }),
+    ))
+    assert len(filtered["jobs"]) == 1
+    technology_fields = {"languages", "programming_languages", "frameworks"}
+    for path in (search_path, preliminary_path):
+        with path.open(encoding="utf-8-sig", newline="") as stream:
+            assert technology_fields.isdisjoint(csv.DictReader(stream).fieldnames)
+        saved = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+        for record in [*saved["jobs"], *read_jobs(path)]:
+            for container in ("array_fields", "fields", "field_types"):
+                assert technology_fields.isdisjoint(record.get(container, {}))
+            assert "description" not in record
+    assert "TypeScript" in report["jobs"][0]["description"]
+
+
+def test_validation_does_not_use_board_snippet_when_page_text_is_missing(tmp_path):
+    class Validator:
+        async def validate(self, record):
+            return ValidationResult("https://jobs.ashbyhq.com/acme/1", "ats")
+
+    source, output = tmp_path / "source.csv", tmp_path / "validated.csv"
+    write_jobs(source, [asdict(job())])
+    agent = FillingAgent()
+    report = asyncio.run(validate_csv(
+        source, output, validator=Validator(),
+        field_definitions=DEFINITIONS, field_agent=agent,
+    ))
+    assert report["jobs"][0]["description"] == ""
+    assert agent.jobs[0]["description"] == ""
+    assert read_jobs(output)[0].get("description", "") == ""
+
+
+def test_description_is_internal_agent_evidence_not_an_output_field(tmp_path):
+    source, output = tmp_path / "source.csv", tmp_path / "validated.csv"
+    write_table(source, ["url", "title", "company", "description"], [{
+        "url": "https://example.com/job", "title": "Frontend Engineer", "company": "Acme",
+        "description": "Build TypeScript interfaces with React.",
+    }])
+    agent = FillingAgent()
+    asyncio.run(fill_fields_csv(source, output, DEFINITIONS, agent=agent))
+    assert agent.jobs[0]["description"] == "Build TypeScript interfaces with React."
+    with output.open(encoding="utf-8-sig", newline="") as stream:
+        assert "description" not in csv.DictReader(stream).fieldnames
+    saved = json.loads(output.with_suffix(".json").read_text(encoding="utf-8"))
+    assert "description" not in saved["jobs"][0]
+    assert set(saved["jobs"][0]["fields"]) == {"role", "is_backend"}
+    assert set(saved["jobs"][0]["array_fields"]) >= {"languages", "frameworks"}
+
+
+
+@pytest.mark.parametrize("definition", [
+    {"languages": {"type": "array_field"}},
+    {"languages": {"type": "array_field", "prompt": " "}},
+    {"languages": {"terms": {"Python": []}}},
+])
+def test_validation_cli_rejects_unprompted_fields_before_agent_or_browser(
+    tmp_path, monkeypatch, capsys, definition
+):
+    from wagecuck_search import csv_cli
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("Invalid definitions must fail before constructing an agent or navigating")
+    monkeypatch.setattr(csv_cli, "OpenAIFieldAgent", unexpected)
+    monkeypatch.setattr(csv_cli, "validate_csv", unexpected)
+    source, output, definitions = tmp_path / "source.csv", tmp_path / "out.csv", tmp_path / "fields.json"
+    write_jobs(source, [asdict(job())])
+    definitions.write_text(json.dumps(definition), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        main(["validate", str(source), "--output", str(output), "--fields", str(definitions)])
+    assert exc.value.code == 2
+    assert "prompt" in capsys.readouterr().err
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("flag", ["--fields", "--array-fields"])
+def test_cli_field_definitions_reach_agent_and_are_saved(tmp_path, monkeypatch, flag):
+    from wagecuck_search import csv_cli
+
+    class Agent(FillingAgent):
+        async def fill(self, record, definitions):
+            assert definitions == DEFINITIONS
+            return await super().fill(record, definitions)
+    agent = Agent()
+    monkeypatch.setattr(csv_cli, "OpenAIFieldAgent", lambda **kwargs: agent)
+    source, output, definitions = tmp_path / "source.csv", tmp_path / "out.csv", tmp_path / "fields.json"
+    write_jobs(source, [asdict(job())])
+    definitions.write_text(json.dumps(DEFINITIONS), encoding="utf-8")
+    assert main(["fill-fields", str(source), "--output", str(output), flag, str(definitions)]) == 0
+    assert len(agent.jobs) == 1
+    assert read_jobs(output)[0]["enrichment"]["field_definitions"] == DEFINITIONS
+
+
+def test_adding_more_fields_preserves_existing_prompts_and_evidence():
+    async def run():
+        first = await fill_fields(
+            [asdict(job())], {"languages": DEFINITIONS["languages"]}, agent=FillingAgent(),
+        )
+        second = await fill_fields(
+            first["jobs"], {"role": DEFINITIONS["role"]}, agent=FillingAgent(),
+        )
+        enriched = second["jobs"][0]["enrichment"]
+        assert enriched["field_definitions"] == {
+            "languages": DEFINITIONS["languages"], "role": DEFINITIONS["role"],
+        }
+        assert enriched["evidence"]["languages"] == first["jobs"][0]["enrichment"]["evidence"]["languages"]
+        assert set(enriched["evidence"]) == {"languages", "role"}
+    asyncio.run(run())

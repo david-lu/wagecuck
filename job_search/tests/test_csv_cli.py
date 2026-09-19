@@ -163,7 +163,8 @@ def test_search_command_only_discovers_to_user_supplied_path(tmp_path, monkeypat
     output = tmp_path / "my" / "chosen-file.csv"
     assert main(["search", "--query", "software engineer", "--sites", "a16z",
                  "--output", str(output)]) == 0
-    assert read_jobs(output)[0]["description"] == "Build TypeScript interfaces"
+    assert "description" not in read_jobs(output)[0]
+    assert "description" not in json.loads(output.with_suffix(".json").read_text())["jobs"][0]
     assert json.loads(capsys.readouterr().out)["returned"] == 1
     assert not (tmp_path / "01-search.csv").exists()
 

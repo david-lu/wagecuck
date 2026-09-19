@@ -1,21 +1,10 @@
 {
   "cloud_platforms": {
-    "terms": {
-      "AWS": [
-        "Amazon Web Services"
-      ],
-      "GCP": [
-        "Google Cloud",
-        "Google Cloud Platform"
-      ],
-      "Azure": [
-        "Microsoft Azure"
-      ]
-    }
+    "type": "array_field",
+    "prompt": "Cloud platforms required for the job"
   },
   "teams": {
-    "selectors": [
-      "[data-testid=job-department]"
-    ]
+    "type": "array_field",
+    "prompt": "Teams this job belongs to"
   }
 }

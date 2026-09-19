@@ -76,7 +76,7 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--max-salary", type=float)
     command.add_argument(
         "--array-fields", "--partial-fields", type=Path,
-        help="JSON file of additional array-field extraction definitions",
+        help="Use the CSV validate/search commands with --fields for prompt-based extraction",
     )
     command.add_argument(
         "--array-filter", "--partial-filter", action="append", default=[],
@@ -118,7 +118,10 @@ def main(argv=None) -> int:
     args["array_filters"] = {}
     try:
         if definitions_path:
-            args["array_fields"] = json.loads(definitions_path.read_text(encoding="utf-8"))
+            raise ValueError(
+                "Use validate INPUT --output OUTPUT --fields FILE "
+                "with type and prompt definitions to add fields through the agent"
+            )
         for entry in array_filters:
             name, separator, prompt = entry.partition("=")
             if not separator or name in args["array_filters"]:

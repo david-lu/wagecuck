@@ -7,39 +7,11 @@ import hashlib
 import io
 import json
 import re
-from functools import lru_cache
 
 from bs4 import BeautifulSoup
 
 from .matching import matches_role_title, normalized
 
-BUILTIN_TERMS = {
-    "programming_languages": {
-        "Python": [], "JavaScript": ["JS"], "TypeScript": [], "Java": [],
-        "C++": [], "C#": [], "Go": ["Golang"], "Rust": [], "Ruby": [], "PHP": [],
-        "Swift": [], "Kotlin": [], "Scala": [], "SQL": [], "Dart": [], "Elixir": [],
-        "Clojure": [], "Haskell": [], "Objective-C": [], "Solidity": [],
-        "Bash": [], "PowerShell": [], "R": [], "C": [],
-    },
-    "frameworks": {
-        "React": ["React.js", "ReactJS"], "Next.js": ["NextJS"],
-        "Vue.js": ["Vue", "VueJS"], "Nuxt.js": ["Nuxt", "NuxtJS"],
-        "Angular": ["AngularJS"], "Svelte": [], "SvelteKit": [],
-        "Node.js": ["NodeJS"], "Express.js": ["ExpressJS"],
-        "Django": [], "Flask": [], "FastAPI": [], "Ruby on Rails": ["Rails"],
-        "Spring Boot": [], "Spring": ["Spring Framework"], ".NET": ["ASP.NET", "dotnet"],
-        "Laravel": [], "Symfony": [], "Phoenix": [], "React Native": [],
-        "Flutter": [], "TensorFlow": [], "PyTorch": [], "scikit-learn": ["sklearn"],
-        "jQuery": [], "NestJS": ["Nest.js"], "Remix": [], "Astro": [],
-        "Three.js": ["ThreeJS"],
-    },
-}
-# Bare words such as "go", "react", "spring" and letters need technical context.
-AMBIGUOUS = {"Go", "R", "C", "React", "Spring", "Astro", "Remix", "Phoenix"}
-TECH_CONTEXT = re.compile(
-    r"language|framework|stack|develop|program|code|coding|backend|frontend|"
-    r"experience|proficien|expert|familiar|skill|built|using|engineer|\bwith\b", re.I
-)
 RESERVED = {
     "url", "title", "company", "source", "salary", "description", "sources",
     "application_urls", "employer_urls", "array_fields", "array_fields_json",
@@ -112,8 +84,8 @@ def field_values(job, name):
 def all_fields(job):
     values = normalize_fields(job.get("array_fields") or {})
     values.setdefault("location", field_values(job, "location"))
-    for name in BUILTIN_TERMS:
-        if name not in (job.get("fields") or {}):
+    for name in ("programming_languages", "frameworks"):
+        if name in job and name not in (job.get("fields") or {}):
             values.setdefault(name, field_values(job, name))
     return values
 
@@ -124,73 +96,8 @@ def comma_separated(values):
     return stream.getvalue()
 
 
-def definitions(custom=None):
-    result = {name: {"terms": terms} for name, terms in BUILTIN_TERMS.items()}
-    if custom is not None and not isinstance(custom, dict):
-        raise ValueError("Array field definitions must be an object")
-    for name, definition in (custom or {}).items():
-        validate_name(name)
-        if not isinstance(definition, dict) or set(definition) - {"terms", "selectors"}:
-            raise ValueError(f"{name}: use terms and/or selectors for extraction")
-        terms = definition.get("terms", {})
-        selectors = definition.get("selectors", [])
-        if not isinstance(terms, dict) or any(
-            not isinstance(key, str) or not key.strip()
-            or not isinstance(aliases, list)
-            or any(not isinstance(alias, str) or not alias.strip() for alias in aliases)
-            for key, aliases in terms.items()
-        ):
-            raise ValueError(f"{name}: terms must map canonical items to lists of aliases")
-        if not isinstance(selectors, list) or any(
-            not isinstance(selector, str) or not selector.strip() for selector in selectors
-        ):
-            raise ValueError(f"{name}: selectors must be a list of CSS selectors")
-        for selector in selectors:
-            import soupsieve
-            soupsieve.compile(selector)
-        result[name] = {"terms": terms, "selectors": selectors}
-    return result
-
-
-@lru_cache(maxsize=2048)
-def term_pattern(term):
-    return re.compile(r"(?<![\w+#.\-])" + re.escape(term)
-                      + (r"(?![\w+#&])" if term in ("R", "C") else r"(?![\w+#])"), re.I)
-
-
-def extract_fields(description, custom=None, *, html=None):
-    result = {}
-    soup = BeautifulSoup(html, "html.parser") if html else None
-    for name, definition in definitions(custom).items():
-        found = []
-        for canonical, aliases in definition.get("terms", {}).items():
-            for term in [canonical, *aliases]:
-                matches = list(term_pattern(term).finditer(description or ""))
-                if term == canonical and canonical in AMBIGUOUS:
-                    matches = [
-                        match for match in matches
-                        if match.group() == canonical
-                        and TECH_CONTEXT.search(
-                            description[max(0, match.start() - 100):match.end() + 100]
-                        )
-                    ]
-                if matches:
-                    found.append(canonical)
-                    break
-        if soup:
-            for selector in definition.get("selectors", []):
-                for node in soup.select(selector):
-                    found.extend(items(node.get_text(" ", strip=True)))
-        result[name] = items(found)
-    return result
-
-
-def enrich_job(job, custom=None):
-    job.array_fields = merge_fields(
-        job.array_fields,
-        {k: v for k, v in extract_fields(job.title + "\n" + job.description, custom).items()
-         if k not in job.fields},
-    )
+def enrich_job(job):
+    """Normalize the location already provided by discovery."""
     job.array_fields.setdefault("location", [job.location] if job.location else [])
     return job
 
@@ -283,12 +190,10 @@ def page_evidence(html, title):
     return {"description": "\n".join(descriptions), "locations": items(locations), "html": str(soup)}
 
 
-def extract_page_fields(html, title, custom=None):
-    evidence = page_evidence(html, title)
-    result = extract_fields(title + "\n" + evidence["description"], custom, html=evidence["html"])
-    if evidence["locations"]:
-        result["location"] = items([*result.get("location", []), *evidence["locations"]])
-    return result
+def extract_page_fields(html, title):
+    """Read structured location metadata; additional fields require agent prompts."""
+    locations = page_evidence(html, title)["locations"]
+    return {"location": locations} if locations else {}
 
 
 def value_id(name, value, context=""):
@@ -311,6 +216,6 @@ def unique_values(jobs, name):
     return sorted(rows.values(), key=lambda row: (row["raw_value"].casefold(), row["context"]))
 
 
-def extraction_fingerprint(custom=None):
-    value = json.dumps({"version": 3, "definitions": definitions(custom)}, sort_keys=True)
-    return hashlib.sha256(value.encode()).hexdigest()
+def extraction_fingerprint():
+    # Invalidate journals containing the former keyword-based technology fields.
+    return hashlib.sha256(b"native-page-evidence-v4-prompt-only-fields").hexdigest()

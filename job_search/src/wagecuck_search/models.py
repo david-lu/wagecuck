@@ -117,9 +117,13 @@ class SearchCriteria:
     salary_basis: str = "maximum"
 
     def __post_init__(self):
-        from .array_fields import definitions, validate_name
+        from .array_fields import validate_name
         from .job_fields import filter_definitions
-        definitions(self.array_fields)
+        if not isinstance(self.array_fields, dict) or self.array_fields:
+            raise ValueError(
+                "Custom fields require type and prompt definitions. Use --fields FILE "
+                "or pass field_definitions to validate_csv / definitions to fill_fields."
+            )
         self.field_filters = filter_definitions(self.field_filters)
         if set(self.field_filters) & set(self.array_filters):
             raise ValueError("Use one filter definition per field")

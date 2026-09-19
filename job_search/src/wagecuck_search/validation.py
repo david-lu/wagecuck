@@ -150,7 +150,7 @@ def destination_problem(job, html, url, status, employer_urls):
 class BrowserValidator:
     def __init__(self, browser, criteria, *, browser_factory=None):
         self.browser, self.criteria = browser, criteria
-        self.array_field_fingerprint = extraction_fingerprint(criteria.array_fields)
+        self.array_field_fingerprint = extraction_fingerprint()
         self.browser_factory = browser_factory
         self.http_hosts = {}
         self.http_context = None
@@ -450,7 +450,7 @@ class BrowserValidator:
                                     final, kind, checked_at=utc_now().isoformat(),
                                     description=page_evidence(html, job.title)["description"],
                                     array_fields=extract_page_fields(
-                                        html, job.title, self.criteria.array_fields
+                                        html, job.title
                                     ),
                                 )
                         pending.extend((v, depth + 1) for v in applications if v not in visited)
