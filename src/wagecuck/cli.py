@@ -30,8 +30,11 @@ def main(argv=None):
     run.add_argument("url")
     run.add_argument(
         "--profile",
-        required=True,
-        help="Profile name (for example, ryan) or path to a profile JSON file",
+        default="default",
+        help=(
+            "Profile name or path to a profile JSON file "
+            "(default: profiles/default/profile.json)"
+        ),
     )
     mode = run.add_mutually_exclusive_group()
     mode.add_argument("--mode", choices=("inspect", "fill", "submit"), default="fill")

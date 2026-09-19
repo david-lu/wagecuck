@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from wagecuck.agent import Mapping, WorkflowAgent
+from wagecuck.agent import WorkflowAgent
 from wagecuck.inference import FieldAnswer, apply_inferred_answers
 from wagecuck.models import ApplicationError, Code, FormField, Option
 
@@ -24,7 +24,7 @@ def answer(id, value, basis="made_up", keys=()):
 async def test_inference_sees_all_unmapped_controls_and_full_profile(profile):
     class Agent:
         async def map(self, fields, keys):
-            return []
+            pytest.fail("Agent fill should not run a separate profile-key mapping pass")
 
         async def infer(self, fields, facts):
             assert {f.id for f in fields} == {"count", "language", "consent", "date", "line2"}
@@ -69,10 +69,10 @@ async def test_inference_sees_all_unmapped_controls_and_full_profile(profile):
     assert {r["field_id"] for r in rows if r["made_up"]} == {"0:language", "0:date", "0:line2"}
 
 
-async def test_invalid_mapping_falls_through_to_inference_without_losing_parser_actions(profile):
+async def test_agent_fill_goes_directly_to_inference_without_losing_parser_actions(profile):
     class Agent:
         async def map(self, fields, keys):
-            return [Mapping(field_id="0:x", fact_key="not_a_profile_field", confidence=1)]
+            pytest.fail("Agent fill should not run a separate profile-key mapping pass")
 
         async def infer(self, fields, facts):
             assert [f.id for f in fields] == ["x"]
@@ -85,7 +85,7 @@ async def test_invalid_mapping_falls_through_to_inference_without_losing_parser_
     assert not unresolved and len(actions) == 2
     assert actions[0].source == "facts:first_name"
     assert actions[1].made_up
-    assert planner.warnings[0]["stage"] == "mapping"
+    assert not planner.warnings
 
 
 async def test_requirement_failure_still_allows_answer_inference(profile):

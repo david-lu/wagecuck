@@ -46,7 +46,7 @@ metadata = field_metadata
 
 
 class WorkflowAgent:
-    """Run deterministic parsing before bounded model mapping and answer inference."""
+    """Run deterministic parsing before bounded full-profile answer inference."""
 
     def __init__(self, fallback: MappingAgent | None = None):
         self.fallback = fallback
@@ -190,7 +190,12 @@ class WorkflowAgent:
                 "file",
             )
         ]
-        if self.fallback and eligible:
+        # Agent-enabled filling gets one direct inference pass over every unresolved
+        # supported control.  That request already contains the complete sanitized
+        # profile, so a separate model call to choose which profile keys matter only
+        # adds latency and can discard context needed to interpret verbose choices.
+        direct_inference = agent_fill and getattr(self.fallback, "infer", None)
+        if self.fallback and eligible and not direct_inference:
             try:
                 await self._map_unresolved(
                     eligible, fields, facts, profile, actions, unresolved, declared

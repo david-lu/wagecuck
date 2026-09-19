@@ -350,26 +350,22 @@ async def test_offline_probe_invokes_hosted_mapping_and_drafting(profile):
         fields = json.loads(body["input"][1]["content"])["fields"]
         if name == "Requirements":
             return response({"assessments": []})
-        if name == "Mappings":
-            target = next(f for f in fields if f["label"] == "Applicant identity")
-            return response(
-                {
-                    "mappings": [
-                        {
-                            "field_id": target["field_id"],
-                            "fact_keys": ["full_name"],
-                            "separator": "space",
-                            "evidence": "Applicant identity",
-                            "confidence": 1,
-                        }
-                    ]
-                }
-            )
+        payload = json.loads(body["input"][1]["content"])
+        assert payload["facts"]["full_name"] == "Alex Morgan"
+        identity = next(f for f in fields if f["label"] == "Applicant identity")
+        strengths = next(f for f in fields if "technical strengths" in f["label"])
         return response(
             {
                 "answers": [
                     {
-                        "field_id": fields[0]["field_id"],
+                        "field_id": identity["field_id"],
+                        "value": "Alex Morgan",
+                        "basis": "profile",
+                        "reason": "Uses the supplied full name.",
+                        "fact_keys": ["full_name"],
+                    },
+                    {
+                        "field_id": strengths["field_id"],
                         "value": "My skills include Python.",
                         "basis": "inferred",
                         "reason": "Uses declared skills.",
@@ -390,10 +386,13 @@ async def test_offline_probe_invokes_hosted_mapping_and_drafting(profile):
           <label>Describe your technical strengths<textarea required></textarea></label>
         </form>""")
         result = await module.probe_fields(page, profile, agent, agent_fill=True)
-        assert operations == ["Requirements", "Mappings", "FieldAnswers"]
+        assert operations == ["Requirements", "FieldAnswers"]
         assert result["filled_count"] == 2
         assert result["required_answers_missing"] == []
         assert result["completed_values_retained"]
-        assert [f["source"] for f in result["fields"]] == ["agent:full_name", "agent_fill:skills"]
+        assert [f["source"] for f in result["fields"]] == [
+            "agent_fill:full_name",
+            "agent_fill:skills",
+        ]
         assert await page.evaluate("navigator.onLine") is False
         await browser.close()

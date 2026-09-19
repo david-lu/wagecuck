@@ -115,7 +115,7 @@ async def main():
     parser.add_argument("--expected-split", choices=("training", "validation"), default="training")
     parser.add_argument("--aggregate-only", action="store_true")
     parser.add_argument("--ephemeral-artifacts", action="store_true")
-    parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
+    parser.add_argument("--profile", type=Path, default=Path("profiles/default/profile.json"))
     parser.add_argument("--output", type=Path)
     parser.add_argument("--limit", type=int)
     add_concurrency_argument(parser)

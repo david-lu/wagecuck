@@ -1,6 +1,6 @@
 # wagecuck
 
-One job URL + one profile -> a JSON result. Playwright navigates and fills the form. Optional model assistance maps unfamiliar questions to profile fields, then drafts answers for anything still unresolved.
+One job URL + one profile -> a JSON result. Playwright navigates and fills the form. Optional model assistance resolves unfamiliar questions directly from the complete profile and the options found on the form.
 
 ## Install
 
@@ -17,10 +17,10 @@ python -m venv .venv
 Fill a job application and watch the browser:
 
 ```powershell
-.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --profile ryan --show-browser
+.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --show-browser
 ```
 
-`--profile ryan` loads `profiles/ryan/profile.json`. You can also pass a JSON file path. The default mode fills supported steps, verifies the answers, stops before final submission, and closes the browser.
+Runs use `profiles/default/profile.json` unless `--profile` supplies another short profile name or JSON path. For example, `--profile ryan` loads `profiles/ryan/profile.json`. The default mode fills supported steps, verifies the answers, stops before final submission, and closes the browser.
 
 Optional resume autofill helpers are skipped. Required attachments are uploaded first; the app waits for upload/autofill activity to settle, rereads the form, then fills mapped answers from your profile and verifies them. A stored attachment is recognized even if the site replaces its file input. Processing waits are bounded; `UPLOAD_TIMEOUT` means the site did not settle. The offline corpus probe reports `UPLOAD_UNVERIFIED` when its network block prevents an upload from completing.
 
@@ -29,13 +29,13 @@ Filling runs in this order: **documents -> country selectors -> phone numbers ->
 To fill everything and **wait for you to review and submit**:
 
 ```powershell
-.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --profile ryan --wait-for-user
+.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --wait-for-user
 ```
 
 With a configured model, add `--agent-fill` to infer unresolved answers from the profile. Unsupported invented answers are recorded as `made_up: true`. A profile value that is absent from a dropdown or selector goes to the model with the actual options. If inference cannot provide a usable choice, the fallback randomly selects an available option (or one option for a checkbox/radio group), excludes placeholders and disabled choices, and records the reason as made up.
 
 ```powershell
-.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --profile ryan --wait-for-user --agent-fill
+.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --wait-for-user --agent-fill
 ```
 
 | Option | Behavior |
@@ -59,7 +59,13 @@ Fill mode can upload documents and send data during intermediate steps. It is no
 
 ## Profile and keys
 
-Use [profiles/demo/profile.json](profiles/demo/profile.json) as the structure for your profile. Replace the fictional values and resume; set `synthetic: false` for a real applicant. Document paths are relative to the profile JSON.
+`profiles/default/profile.json` is the canonical local applicant profile used by the CLI and evaluation scripts. Everything under `profiles/` except its placeholder is ignored by Git so personal data and résumés cannot be committed. Document paths are relative to the profile JSON. Use `--profile NAME` or `--profile PATH` only when intentionally overriding it.
+
+Initialize a new local default profile with fictional data, then replace its values and résumé before a real run:
+
+```powershell
+.venv\Scripts\wagecuck.exe demo-profile --output profiles/default
+```
 
 - `facts`: contact details and links.
 - `address`, `employment`, `education`: structured address and history.
@@ -77,7 +83,7 @@ WAGECUCK_AGENT_PROVIDER=openai
 CAPSOLVER_API_KEY=your-capsolver-key
 ```
 
-The CLI loads `.env` from the working directory; shell variables take precedence. `WAGECUCK_AGENT_MODEL` or `--agent-model` selects the model. Without a model, deterministic profile mappings still work. Agent-fill sends resolved profile facts to the configured model provider; answer logs record their source and whether an answer was inferred or made up.
+The CLI loads `.env` from the working directory; shell variables take precedence. `WAGECUCK_AGENT_MODEL` or `--agent-model` selects the model. Without a model, deterministic profile mappings still work. Agent-fill sends the complete resolved application profile to the configured model provider; answer logs record the supporting profile fields and whether an answer was inferred or made up. Credentials, API tokens, and document paths are excluded.
 
 CapSolver is used for supported CAPTCHAs in submit mode. The adapter supports discoverable reCAPTCHA v2 and Turnstile widgets; missing credentials return `CAPTCHA_KEY_MISSING`. Manual review leaves CAPTCHA completion to you. hCaptcha, reCAPTCHA v3, and full-page challenges are not supported.
 

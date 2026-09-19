@@ -128,7 +128,7 @@ def main():
         default=None,
     )
     parser.add_argument("--split", choices=("training", "validation"), default="training")
-    parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
+    parser.add_argument("--profile", type=Path, default=Path("profiles/default/profile.json"))
     parser.add_argument("--output", type=Path)
     parser.add_argument("--summarize-only", action="store_true")
     add_agent_arguments(parser)

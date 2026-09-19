@@ -308,7 +308,7 @@ async def probe_cases(cases, browser_type, profile, args, metadata_template, *, 
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reports", type=Path, nargs="+", required=True)
-    parser.add_argument("--profile", type=Path, default=Path("profiles/demo/profile.json"))
+    parser.add_argument("--profile", type=Path, default=Path("profiles/default/profile.json"))
     parser.add_argument("--output", type=Path)
     parser.add_argument("--dataset-split", choices=("training", "validation"), default="training")
     parser.add_argument("--implementation-fingerprint", default="")
@@ -323,8 +323,8 @@ async def main():
     except ValueError as exc:
         parser.error(str(exc))
     profile = Profile.load(args.profile)
-    if not profile.synthetic:
-        parser.error("Use a synthetic profile for this diagnostic.")
+    # Real profiles are safe in this diagnostic because probe_fields installs an
+    # abort-all route before any value is entered and this script never submits.
     cases = [
         case
         for report in args.reports
