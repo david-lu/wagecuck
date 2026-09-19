@@ -7,16 +7,16 @@ import sys
 from pathlib import Path
 
 from .checkpoint import restore_discovery, save_discovery
+from .field_filter import OpenAIFieldFilterAgent
 from .location_agent import OpenAILocationAgent
 from .models import LEVELS, SITES, SearchCriteria
-from .partial_filter import OpenAIPartialFieldAgent
+from .operations import filter_csv
 from .pipeline import search
-from .stages import filter_csv, run_stages
 
 
 def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(
-        description="Search jobs independently of application workflows"
+        description="Commands: search, validate, fill-fields, filter. Use COMMAND --help. Legacy search flags are also accepted."
     )
     command.add_argument("--job-title")
     command.add_argument("--location", action="append", default=[], dest="locations")
@@ -67,10 +67,6 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--show-browser", action="store_true")
     command.add_argument("--browser-channel", choices=["chrome", "msedge"])
     command.add_argument("--output", type=Path, help="Also save the JSON report to this path")
-    command.add_argument(
-        "--stages-output-dir", type=Path,
-        help="Run search, filtering, and validation separately and write a CSV for each stage",
-    )
     command.add_argument("--post-filter-input", type=Path, help="Filter an existing job CSV")
     command.add_argument("--post-filter-output", type=Path, help="Write the filtered job CSV")
     command.add_argument(
@@ -79,11 +75,11 @@ def parser() -> argparse.ArgumentParser:
     )
     command.add_argument("--max-salary", type=float)
     command.add_argument(
-        "--partial-fields", type=Path,
-        help="JSON file of additional partial-field extraction definitions",
+        "--array-fields", "--partial-fields", type=Path,
+        help="JSON file of additional array-field extraction definitions",
     )
     command.add_argument(
-        "--partial-filter", action="append", default=[],
+        "--array-filter", "--partial-filter", action="append", default=[],
         help='Filter unique items once, then join to jobs: FIELD=natural-language request',
     )
     command.add_argument("--agent-model")
@@ -98,6 +94,10 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
+    values = list(argv) if argv is not None else sys.argv[1:]
+    if values and values[0] in ("search", "validate", "fill-fields", "filter"):
+        from .csv_cli import main as csv_main
+        return csv_main(values[0], values[1:])
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     command = parser()
@@ -105,7 +105,6 @@ def main(argv=None) -> int:
     output = args.pop("output")
     discovery_output = args.pop("discovery_output")
     resume_discovery = args.pop("resume_discovery")
-    stages_output = args.pop("stages_output_dir")
     filter_input = args.pop("post_filter_input")
     filter_output = args.pop("post_filter_output")
     location_prompt = args.pop("location_prompt")
@@ -113,28 +112,26 @@ def main(argv=None) -> int:
     agent_model = args.pop("agent_model")
     agent_endpoint = args.pop("agent_endpoint")
     agent_timeout = args.pop("agent_timeout")
-    definitions_path = args.pop("partial_fields")
-    partial_filters = args.pop("partial_filter")
-    args["partial_fields"] = {}
-    args["partial_filters"] = {}
+    definitions_path = args.pop("array_fields")
+    array_filters = args.pop("array_filter")
+    args["array_fields"] = {}
+    args["array_filters"] = {}
     try:
         if definitions_path:
-            args["partial_fields"] = json.loads(definitions_path.read_text(encoding="utf-8"))
-        for entry in partial_filters:
+            args["array_fields"] = json.loads(definitions_path.read_text(encoding="utf-8"))
+        for entry in array_filters:
             name, separator, prompt = entry.partition("=")
-            if not separator or name in args["partial_filters"]:
-                raise ValueError("Use one --partial-filter FIELD=prompt per field")
-            args["partial_filters"][name] = prompt
+            if not separator or name in args["array_filters"]:
+                raise ValueError("Use one --array-filter FIELD=prompt per field")
+            args["array_filters"][name] = prompt
     except (OSError, ValueError) as exc:
         command.error(str(exc))
-    if partial_filters and not (filter_input or stages_output):
-        command.error("--partial-filter requires a staged or post-filter run")
+    if array_filters and not filter_input:
+        command.error("--array-filter requires --post-filter-input; or use the filter command")
     if bool(filter_input) != bool(filter_output):
         command.error("--post-filter-input and --post-filter-output must be used together")
-    if filter_input and stages_output:
-        command.error("--post-filter-input cannot be combined with --stages-output-dir")
-    if (location_prompt or max_salary is not None) and not (filter_input or stages_output):
-        command.error("--location-prompt and --max-salary require a staged or post-filter run")
+    if (location_prompt or max_salary is not None) and not filter_input:
+        command.error("--location-prompt and --max-salary require --post-filter-input; or use the filter command")
     if not args["job_title"] and not filter_input:
         command.error("--job-title is required unless --post-filter-input is used")
     if not args["job_title"]:
@@ -147,7 +144,7 @@ def main(argv=None) -> int:
     effective_location_prompt = location_prompt or (
         " or ".join(criteria.locations) if criteria.locations else None
     )
-    if effective_location_prompt and (filter_input or stages_output):
+    if effective_location_prompt and filter_input:
         try:
             agent = OpenAILocationAgent(
                 model=agent_model, endpoint=agent_endpoint, timeout=agent_timeout
@@ -155,10 +152,10 @@ def main(argv=None) -> int:
         except ValueError as exc:
             command.error(str(exc))
 
-    partial_agent = None
-    if criteria.partial_filters:
+    filter_agent = None
+    if criteria.array_filters:
         try:
-            partial_agent = OpenAIPartialFieldAgent(
+            filter_agent = OpenAIFieldFilterAgent(
                 model=agent_model, endpoint=agent_endpoint, timeout=agent_timeout
             )
         except ValueError as exc:
@@ -168,7 +165,7 @@ def main(argv=None) -> int:
         phase = event["phase"]
         if phase == "filter_started":
             message = f"[filter] loaded {event['input']} rows"
-        elif phase == "filter_partial_field":
+        elif phase == "filter_field":
             message = (
                 f"[filter:{event['field']}] {event['unique_values']} unique items; "
                 f"{event['cached']} cached, {event['pending']} pending"
@@ -205,28 +202,13 @@ def main(argv=None) -> int:
                 criteria,
                 location_prompt=effective_location_prompt,
                 agent=agent,
-                partial_agent=partial_agent,
+                filter_agent=filter_agent,
                 max_salary=max_salary,
                 progress=filter_progress,
             ))
         except (OSError, ValueError, RuntimeError) as exc:
             command.error(str(exc))
         print(json.dumps(report["summary"], indent=2, ensure_ascii=False))
-        return 0
-    if stages_output:
-        try:
-            summary = asyncio.run(run_stages(
-                criteria,
-                stages_output,
-                location_prompt=effective_location_prompt,
-                agent=agent,
-                partial_agent=partial_agent,
-                max_salary=max_salary,
-                progress=filter_progress,
-            ))
-        except (OSError, ValueError, RuntimeError) as exc:
-            command.error(str(exc))
-        print(json.dumps(summary, indent=2, ensure_ascii=False))
         return 0
     providers = None
     if resume_discovery:

@@ -4,7 +4,7 @@ import json
 
 from wagecuck_search.export import read_jobs
 from wagecuck_search.models import JobPosting, SearchCriteria, SiteResult
-from wagecuck_search.stages import run_stages
+from wagecuck_search.operations import discover, filter_csv, save_report, validate_csv
 from wagecuck_search.validation import ValidationResult
 
 
@@ -40,36 +40,42 @@ class Agent:
                 for row in rows]
 
 
-def test_run_stages_filters_before_validation_and_writes_each_csv(tmp_path):
-    output = tmp_path / "stages"
+def test_file_operations_preserve_rows_and_validate_only_supplied_input(tmp_path):
+    output = tmp_path
     validator = Validator()
-    summary = asyncio.run(run_stages(
-        SearchCriteria("software engineer", sites=("simplify",)),
-        output,
-        providers=[Provider()],
-        validator=validator,
-        location_prompt="in OC",
-        agent=Agent(),
-    ))
-    search = read_jobs(output / "01-search.csv")
-    filtered = read_jobs(output / "02-filter.csv")
-    validated = read_jobs(output / "03-validation.csv")
+    async def run():
+        criteria = SearchCriteria("software engineer", sites=("simplify",))
+        discovered = await discover(criteria, providers=[Provider()])
+        save_report(output / "search.csv", discovered)
+        filtered = await filter_csv(
+            output / "search.csv", output / "filter.csv", criteria,
+            location_prompt="in OC", agent=Agent(),
+        )
+        validated = await validate_csv(
+            output / "filter.csv", output / "validation.csv", validator=validator,
+        )
+        return {"search": discovered["summary"], "filter": filtered["summary"],
+                "validation": validated["summary"]}
+    summary = asyncio.run(run())
+    search = read_jobs(output / "search.csv")
+    filtered = read_jobs(output / "filter.csv")
+    validated = read_jobs(output / "validation.csv")
     assert len(search) == 2
     assert [job["company"] for job in filtered] == ["Acme"]
     assert [job["company"] for job in validated] == ["Acme"]
     assert validator.companies == ["Acme"]
-    assert (output / ".artifacts" / "02-filter.locations.csv").exists()
-    with (output / "01-search.csv").open(encoding="utf-8-sig", newline="") as stream:
+    assert (output / ".artifacts" / "filter.locations.csv").exists()
+    with (output / "search.csv").open(encoding="utf-8-sig", newline="") as stream:
         search_reader = csv.DictReader(stream)
         search_columns = search_reader.fieldnames
         search_rows = list(search_reader)
-    with (output / "02-filter.csv").open(encoding="utf-8-sig", newline="") as stream:
+    with (output / "filter.csv").open(encoding="utf-8-sig", newline="") as stream:
         filter_reader = csv.DictReader(stream)
         filter_columns = filter_reader.fieldnames
         filter_rows = list(filter_reader)
     assert filter_columns == search_columns
     assert filter_rows == search_rows[:1]
-    for name in ("01-search.json", "02-filter.json", "03-validation.json"):
+    for name in ("search.json", "filter.json", "validation.json"):
         payload = json.loads((output / name).read_text(encoding="utf-8"))
         assert payload["summary"]["stage"] in name
     assert summary["search"]["stage"] == "search"

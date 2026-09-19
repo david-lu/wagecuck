@@ -23,7 +23,9 @@ FILTER_KEYS = {
     "exclude_companies",
     "posted_within_days",
     "include_unknown",
-    "partial_filters",
+    "array_filters",
+    "field_filters",
+    "salary_basis",
 }
 
 
@@ -46,7 +48,7 @@ class SearchProfile:
     location_prompt: str | None
     criteria_options: dict
     max_salary: float | None
-    partial_fields: dict = field(default_factory=dict)
+    array_fields: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, path):
@@ -71,10 +73,13 @@ class SearchProfile:
         if not isinstance(filters, dict):
             raise ValueError("filters must be a JSON object")
         filters = dict(filters)
-        if "partial_fields" in filters:
-            if "partial_filters" in filters:
-                raise ValueError("Use one partial-field filter mapping")
-            filters["partial_filters"] = filters.pop("partial_fields")
+        for old, new in (("partial_fields", "array_fields"), ("partial_filters", "array_filters")):
+            if old in filters:
+                filters.setdefault(new, filters.pop(old))
+        if "array_fields" in filters:
+            if "array_filters" in filters:
+                raise ValueError("Use one array-field filter mapping")
+            filters["array_filters"] = filters.pop("array_fields")
         unknown = set(filters) - FILTER_KEYS - {"location_prompt", "max_salary"}
         if unknown:
             raise ValueError(f"unsupported profile filters: {', '.join(sorted(unknown))}")
@@ -82,8 +87,8 @@ class SearchProfile:
         max_salary = filters.get("max_salary")
         criteria_options = {key: value for key, value in filters.items() if key in FILTER_KEYS}
         # Reuse the public criteria validation for profile values.
-        partial_fields = payload.get("partial_fields", {})
-        SearchCriteria(job_titles[0], sites=sites, partial_fields=partial_fields, **criteria_options)
+        array_fields = payload.get("array_fields", payload.get("partial_fields", {}))
+        SearchCriteria(job_titles[0], sites=sites, array_fields=array_fields, **criteria_options)
         if max_salary is not None:
             maximum = float(max_salary)
             minimum = criteria_options.get("min_salary")
@@ -100,11 +105,11 @@ class SearchProfile:
             location_prompt=location_prompt,
             criteria_options=criteria_options,
             max_salary=max_salary,
-            partial_fields=partial_fields,
+            array_fields=array_fields,
         )
 
     def filter_criteria(self):
         return SearchCriteria(
-            self.job_titles[0], sites=self.sites, partial_fields=self.partial_fields,
+            self.job_titles[0], sites=self.sites, array_fields=self.array_fields,
             **self.criteria_options
         )

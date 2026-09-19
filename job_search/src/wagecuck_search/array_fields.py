@@ -11,7 +11,7 @@ from functools import lru_cache
 
 from bs4 import BeautifulSoup
 
-from .matching import normalized
+from .matching import matches_role_title, normalized
 
 BUILTIN_TERMS = {
     "programming_languages": {
@@ -42,18 +42,19 @@ TECH_CONTEXT = re.compile(
 )
 RESERVED = {
     "url", "title", "company", "source", "salary", "description", "sources",
-    "application_urls", "employer_urls", "partial_fields", "partial_fields_json",
+    "application_urls", "employer_urls", "array_fields", "array_fields_json",
     "note", "url_validated_at", "application_url_type", "source_sites", "source_urls",
     "workplace", "employment_type", "experience_levels", "internship", "sponsors_visa",
     "posted_at", "last_updated", "valid_through",
+    "fields", "fields_json", "field_types", "field_types_json", "enrichment", "enrichment_json",
 }
 
 
 def validate_name(name):
     if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", name):
-        raise ValueError("Partial field names must use lowercase letters, numbers and underscores")
+        raise ValueError("Array field names must use lowercase letters, numbers and underscores")
     if name in RESERVED or name.startswith("salary_") or name.endswith("_json"):
-        raise ValueError(f"Partial field name conflicts with a job column: {name}")
+        raise ValueError(f"Array field name conflicts with a job column: {name}")
     return name
 
 
@@ -64,7 +65,7 @@ def items(value):
     if isinstance(value, str):
         value = next(csv.reader([value], skipinitialspace=True))
     if not isinstance(value, (list, tuple)) or any(not isinstance(v, str) for v in value):
-        raise ValueError("Partial field values must be strings or lists of strings")
+        raise ValueError("Array field values must be strings or lists of strings")
     unique = {}
     for item in value:
         item = re.sub(r"\s+", " ", item).strip()
@@ -75,7 +76,7 @@ def items(value):
 
 def normalize_fields(fields):
     if not isinstance(fields, dict):
-        raise ValueError("partial_fields must be an object")
+        raise ValueError("array_fields must be an object")
     return {validate_name(name): items(value) for name, value in fields.items()}
 
 
@@ -88,21 +89,32 @@ def merge_fields(*values):
 
 
 def field_values(job, name):
-    partial = job.get("partial_fields") or {}
-    if name in partial:
-        return items(partial[name])
-    if name == "location":
-        # Legacy city/state and remote/country strings are one geographic expression.
-        value = str(job.get("location") or "").strip()
-        return [value] if value else []
-    return items(job.get(name, []))
+    arrays = job.get("array_fields") or {}
+    if name in arrays:
+        return items(arrays[name])
+    if name in (job.get("fields") or {}):
+        value = job["fields"][name]
+    else:
+        if name.startswith("salary_"):
+            name = "salary." + name.removeprefix("salary_")
+        value = job
+        for part in name.split("."):
+            value = value.get(part) if isinstance(value, dict) else None
+    if value is None or value == "":
+        return []
+    if isinstance(value, (list, tuple)):
+        return items(value)
+    if isinstance(value, dict):
+        return [json.dumps(value, sort_keys=True)]
+    return [str(value).lower() if isinstance(value, bool) else str(value).strip()]
 
 
 def all_fields(job):
-    values = normalize_fields(job.get("partial_fields") or {})
+    values = normalize_fields(job.get("array_fields") or {})
     values.setdefault("location", field_values(job, "location"))
     for name in BUILTIN_TERMS:
-        values.setdefault(name, field_values(job, name))
+        if name not in (job.get("fields") or {}):
+            values.setdefault(name, field_values(job, name))
     return values
 
 
@@ -115,7 +127,7 @@ def comma_separated(values):
 def definitions(custom=None):
     result = {name: {"terms": terms} for name, terms in BUILTIN_TERMS.items()}
     if custom is not None and not isinstance(custom, dict):
-        raise ValueError("Partial field definitions must be an object")
+        raise ValueError("Array field definitions must be an object")
     for name, definition in (custom or {}).items():
         validate_name(name)
         if not isinstance(definition, dict) or set(definition) - {"terms", "selectors"}:
@@ -142,7 +154,8 @@ def definitions(custom=None):
 
 @lru_cache(maxsize=2048)
 def term_pattern(term):
-    return re.compile(r"(?<![\w+#.\-])" + re.escape(term) + r"(?![\w+#])", re.I)
+    return re.compile(r"(?<![\w+#.\-])" + re.escape(term)
+                      + (r"(?![\w+#&])" if term in ("R", "C") else r"(?![\w+#])"), re.I)
 
 
 def extract_fields(description, custom=None, *, html=None):
@@ -173,19 +186,21 @@ def extract_fields(description, custom=None, *, html=None):
 
 
 def enrich_job(job, custom=None):
-    job.partial_fields = merge_fields(
-        job.partial_fields,
-        extract_fields(job.title + "\n" + job.description, custom),
+    job.array_fields = merge_fields(
+        job.array_fields,
+        {k: v for k, v in extract_fields(job.title + "\n" + job.description, custom).items()
+         if k not in job.fields},
     )
-    job.partial_fields.setdefault("location", [job.location] if job.location else [])
+    job.array_fields.setdefault("location", [job.location] if job.location else [])
     return job
 
 
-def extract_page_fields(html, title, custom=None):
+def page_evidence(html, title):
     """Use job descriptions, excluding scripts, navigation and recommended jobs."""
     soup = BeautifulSoup(html, "html.parser")
     descriptions = []
     locations = []
+    records = []
 
     def location(value):
         if isinstance(value, list):
@@ -209,16 +224,7 @@ def extract_page_fields(html, title, custom=None):
         if isinstance(value, dict):
             kind = value.get("@type", [])
             if kind == "JobPosting" or isinstance(kind, list) and "JobPosting" in kind:
-                if normalized(str(value.get("title", ""))) == normalized(title):
-                    places = location(value.get("jobLocation"))
-                    if value.get("jobLocationType") == "TELECOMMUTE":
-                        places = location(value.get("applicantLocationRequirements")) or places
-                        places = ["Remote; " + place for place in places] or ["Remote"]
-                    locations.extend(places)
-                    descriptions.append(
-                        BeautifulSoup(str(value.get("description") or ""), "html.parser")
-                        .get_text(" ", strip=True)
-                    )
+                records.append(value)
             else:
                 for child in value.values():
                     walk(child)
@@ -231,7 +237,23 @@ def extract_page_fields(html, title, custom=None):
             walk(json.loads(script.string or script.get_text()))
         except (ValueError, TypeError):
             pass
-    for node in soup.select("script, style, nav, footer, aside, [aria-hidden=true]"):
+    relevant = [record for record in records
+                if normalized(str(record.get("title", ""))) == normalized(title)]
+    if not relevant:
+        candidates = [record for record in records
+                      if matches_role_title(title, str(record.get("title", "")))]
+        relevant = candidates if len(candidates) == 1 else []
+    for record in relevant:
+        places = location(record.get("jobLocation"))
+        if record.get("jobLocationType") == "TELECOMMUTE":
+            places = location(record.get("applicantLocationRequirements")) or places
+            places = ["Remote; " + place for place in places] or ["Remote"]
+        locations.extend(places)
+        descriptions.append(
+            BeautifulSoup(str(record.get("description") or ""), "html.parser")
+            .get_text(" ", strip=True)
+        )
+    for node in soup.select("script, style, nav, footer, aside, noscript, [aria-hidden=true]"):
         node.decompose()
     if not any(descriptions):
         nodes = soup.select(
@@ -247,7 +269,6 @@ def extract_page_fields(html, title, custom=None):
                 node.get_text(" ", strip=True), flags=re.I,
             )[0]
             descriptions.append(value)
-    result = extract_fields(title + "\n" + "\n".join(descriptions), custom, html=str(soup))
     if not locations:
         labels = {}
         for term in soup.select("main header dl dt"):
@@ -259,8 +280,14 @@ def extract_page_fields(html, title, custom=None):
             if labels.get("work arrangement", "").casefold() == "remote":
                 place = "Remote; " + place
             locations.append(place)
-    if locations:
-        result["location"] = items([*result.get("location", []), *locations])
+    return {"description": "\n".join(descriptions), "locations": items(locations), "html": str(soup)}
+
+
+def extract_page_fields(html, title, custom=None):
+    evidence = page_evidence(html, title)
+    result = extract_fields(title + "\n" + evidence["description"], custom, html=evidence["html"])
+    if evidence["locations"]:
+        result["location"] = items([*result.get("location", []), *evidence["locations"]])
     return result
 
 
@@ -285,5 +312,5 @@ def unique_values(jobs, name):
 
 
 def extraction_fingerprint(custom=None):
-    value = json.dumps({"version": 1, "definitions": definitions(custom)}, sort_keys=True)
+    value = json.dumps({"version": 3, "definitions": definitions(custom)}, sort_keys=True)
     return hashlib.sha256(value.encode()).hexdigest()

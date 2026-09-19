@@ -36,8 +36,13 @@ def save_discovery(path, criteria, results):
 
 def restore_discovery(payload, criteria):
     saved_filters = dict(payload.get("filters") or {})
-    saved_filters.setdefault("partial_fields", {})
-    saved_filters.setdefault("partial_filters", {})
+    for old, new in (("partial_fields", "array_fields"), ("partial_filters", "array_filters")):
+        if old in saved_filters:
+            saved_filters.setdefault(new, saved_filters.pop(old))
+    saved_filters.setdefault("array_fields", {})
+    saved_filters.setdefault("array_filters", {})
+    saved_filters.setdefault("field_filters", {})
+    saved_filters.setdefault("salary_basis", "maximum")
     if payload.get("version") != 1 or saved_filters != filters(criteria):
         raise ValueError(
             "Discovery checkpoint must use the same title, filters, and selected sites"
@@ -47,6 +52,8 @@ def restore_discovery(payload, criteria):
         jobs = []
         for entry in value["jobs"]:
             entry = dict(entry)
+            if "partial_fields" in entry:
+                entry.setdefault("array_fields", entry.pop("partial_fields"))
             if entry.get("salary"):
                 entry["salary"] = Salary(**entry["salary"])
             jobs.append(JobPosting(**entry))

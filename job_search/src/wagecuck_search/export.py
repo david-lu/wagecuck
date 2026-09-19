@@ -1,14 +1,14 @@
-"""Lossless stage CSVs, also compatible with the original saved job-list CSV."""
+"""Lossless job CSVs, also compatible with the original saved job-list CSV."""
 
 import csv
 import json
 import math
-from collections import Counter
 from dataclasses import asdict, fields
 from pathlib import Path
 
+from .array_fields import all_fields, comma_separated, items, normalize_fields, validate_name
+from .job_fields import job_field_types, normalize_field_types, normalize_scalars, scalar_from_csv
 from .models import JobPosting, Salary
-from .partial_fields import all_fields, comma_separated, items, normalize_fields, validate_name
 
 FIELDS = [
     "url", "title", "company", "location", "programming_languages", "frameworks",
@@ -17,16 +17,23 @@ FIELDS = [
     "internship", "sponsors_visa", "workplace", "employment_type", "experience_levels",
     "note", "url_validated_at", "application_url_type", "source_sites", "source_urls",
     "description", "valid_through", "source", "sources_json", "application_urls_json",
-    "employer_urls_json", "partial_fields_json",
+    "employer_urls_json", "array_fields_json", "fields_json", "field_types_json", "enrichment_json",
 ]
 
 
 def csv_row(job):
     result = {key: job.get(key, "") for key in FIELDS}
-    partial = all_fields(job)
-    result.update({name: comma_separated(values) for name, values in partial.items()
+    arrays = all_fields(job)
+    scalars = normalize_scalars(job.get("fields") or {})
+    if set(arrays) & set(scalars):
+        raise ValueError("A CSV column cannot be both scalar and array")
+    result.update(scalars)
+    result["fields_json"] = json.dumps(scalars, ensure_ascii=False)
+    result["field_types_json"] = json.dumps(job_field_types(job), ensure_ascii=False)
+    result["enrichment_json"] = json.dumps(job.get("enrichment") or {}, ensure_ascii=False)
+    result.update({name: comma_separated(values) for name, values in arrays.items()
                    if name != "location"})
-    result["partial_fields_json"] = json.dumps(partial, ensure_ascii=False)
+    result["array_fields_json"] = json.dumps(arrays, ensure_ascii=False)
     for key in ("minimum", "maximum", "currency", "period", "text"):
         result["salary_" + key] = (job.get("salary") or {}).get(key, "")
     result["experience_levels"] = " | ".join(job.get("experience_levels") or [])
@@ -50,16 +57,18 @@ def write_table(path, columns, rows):
     temporary.replace(path)
 
 
-def write_jobs(path, jobs):
+def write_jobs(path, jobs, *, extra_columns=()):
     jobs = list(jobs)
-    extra = sorted({name for job in jobs for name in all_fields(job)} - set(FIELDS))
+    extra = sorted({name for job in jobs for name in
+                    (*all_fields(job), *(job.get("fields") or {}))} - set(FIELDS))
+    extra = sorted(set(extra) | (set(extra_columns) - set(FIELDS)))
     write_table(path, [*FIELDS, *extra], (csv_row(j) for j in jobs))
 
 
-def write_filtered_job_rows(source, destination, accepted_urls):
+def write_filtered_job_rows(source, destination, accepted_indices):
     """Copy accepted CSV rows byte-for-field without changing the input schema."""
     csv.field_size_limit(16 * 1024 * 1024)
-    remaining = Counter(str(url) for url in accepted_urls)
+    remaining = set(accepted_indices)
     source = Path(source)
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -72,35 +81,41 @@ def write_filtered_job_rows(source, destination, accepted_urls):
         with temporary.open("w", encoding="utf-8-sig", newline="") as output_stream:
             writer = csv.DictWriter(output_stream, fieldnames=columns)
             writer.writeheader()
-            for row in reader:
-                url = row["url"]
-                if remaining[url] > 0:
+            for index, row in enumerate(reader):
+                if index in remaining:
                     writer.writerow(row)
-                    remaining[url] -= 1
-    missing = sum(remaining.values())
+                    remaining.remove(index)
+    missing = len(remaining)
     if missing:
         temporary.unlink(missing_ok=True)
         raise ValueError(f"Filtered jobs contain {missing} rows absent from the source CSV")
     temporary.replace(destination)
 
 
-def read_jobs(path):
+def read_jobs(path, *, array_columns=(), field_types=None):
     # Large descriptions may exceed the csv module's default 128 KiB field limit.
     csv.field_size_limit(16 * 1024 * 1024)
+    overrides = normalize_field_types(field_types or {})
+    for name in array_columns:
+        validate_name(name)
+        if name in overrides and overrides[name] != "array_field":
+            raise ValueError(f"{name}: --array-column conflicts with its declared type")
+        overrides[name] = "array_field"
     with Path(path).open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
-        if not {"url", "title", "company", "location"} <= set(reader.fieldnames or []):
-            raise ValueError("Job CSV requires url, title, company, and location columns")
+        if not {"url", "title", "company"} <= set(reader.fieldnames or []):
+            raise ValueError("Job CSV requires url, title, and company columns")
         jobs = []
         for number, row in enumerate(reader, 2):
             try:
                 if None in row or any(v is None for v in row.values()):
                     raise ValueError("wrong number of CSV columns")
-                if not all(row[k].strip() for k in ("url", "title", "company", "location")):
+                if not all(row[k].strip() for k in ("url", "title", "company")):
                     raise ValueError("empty required job field")
                 job = {k: v for k, v in row.items() if v and k in
                        {f.name for f in fields(JobPosting)} | {
                            "url_validated_at", "application_url_type"}}
+                job.setdefault("location", "Unknown")
                 for key in ("internship", "sponsors_visa"):
                     if row.get(key):
                         if row[key].lower() not in ("true", "false"):
@@ -138,22 +153,55 @@ def read_jobs(path):
                     urls = [v.strip() for v in row.get("source_urls", "").split("|") if v.strip()]
                     job["sources"] = [{"site": sites[min(i, len(sites) - 1)], "url": url}
                                       for i, url in enumerate(urls)] if sites else []
-                partial = normalize_fields(json.loads(row.get("partial_fields_json") or "{}"))
+                arrays = normalize_fields(json.loads(row.get("array_fields_json") or row.get("partial_fields_json") or "{}"))
+                types = normalize_field_types(json.loads(row.get("field_types_json") or "{}"))
+                for name, kind in overrides.items():
+                    if name in types and types[name] != kind:
+                        raise ValueError(f"{name}: supplied type conflicts with saved field type")
+                    types[name] = kind
+                scalars = normalize_scalars(json.loads(row.get("fields_json") or "{}"))
                 # Visible CSV columns are editable; the JSON carries atomic locations
                 # and distinguishes a comma within one item from an item separator.
-                names = set(partial) | {"programming_languages", "frameworks"} | (set(row) - set(FIELDS))
+                names = (set(arrays) | ({"programming_languages", "languages", "frameworks"}
+                         - set(scalars) - {name for name, kind in types.items() if kind != "array_field"})
+                         | {name for name, kind in types.items() if kind == "array_field"})
                 for name in names:
                     try:
                         validate_name(name)
                     except ValueError:
                         continue
                     if name != "location" and name in row:
-                        partial[name] = items(row[name])
-                if partial:
-                    job["partial_fields"] = partial
+                        arrays[name] = items(row[name])
+                scalar_names = (set(row) - set(FIELDS) - {"partial_fields_json"} - names) | set(scalars)
+                for name in scalar_names:
+                    validate_name(name)
+                    if name in row:
+                        scalars[name] = scalar_from_csv(row[name], scalars.get(name), types.get(name))
+                if set(arrays) & set(scalars):
+                    raise ValueError("A field cannot be both scalar and array")
+                job["fields"] = scalars
+                job["field_types"] = types
+                job["enrichment"] = json.loads(row.get("enrichment_json") or "{}")
+                if not isinstance(job["enrichment"], dict):
+                    raise ValueError("enrichment_json must be an object")
+                if arrays:
+                    job["array_fields"] = arrays
+                job_field_types(job)
                 jobs.append(job)
             except (ValueError, TypeError, KeyError) as exc:
                 raise ValueError(f"Invalid job CSV row {number}: {exc}") from exc
+    # A blank cell must not turn an otherwise numeric column into string_field
+    # when validation or field filling re-exports the CSV.
+    observed = {}
+    for job in jobs:
+        types = job_field_types(job)
+        for name, value in job["fields"].items():
+            if value is not None:
+                observed.setdefault(name, set()).add(types[name])
+    for job in jobs:
+        for name, kinds in observed.items():
+            if name in job["fields"] and job["fields"][name] is None and len(kinds) == 1:
+                job["field_types"].setdefault(name, next(iter(kinds)))
     return jobs
 
 

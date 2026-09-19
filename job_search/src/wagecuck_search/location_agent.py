@@ -13,8 +13,8 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
+from .array_fields import field_values
 from .export import write_table
-from .partial_fields import field_values
 
 LOCATION_COLUMNS = [
     "filter_prompt", "location_id", "raw_location", "workplace", "job_count",
@@ -133,6 +133,35 @@ Keep each reason short and factual."""
             "text": {"format": {"type": "json_schema", "name": self.schema_name,
                                   "strict": True, "schema": schema}},
         }
+        result = (await self.structured_response(client, body)).get(self.result_key)
+        if not isinstance(result, list):
+            raise InvalidLocationResponse("Location agent returned a malformed location list")
+        by_id = {}
+        for item in result:
+            try:
+                key = item[self.id_key]
+            except (KeyError, TypeError) as exc:
+                raise InvalidLocationResponse(
+                    "Location agent returned a location without an ID"
+                ) from exc
+            if key not in ids or key in by_id:
+                raise InvalidLocationResponse(
+                    "Location agent returned an unknown or duplicate location ID"
+                )
+            if (
+                not isinstance(item.get("matches"), bool)
+                or not isinstance(item.get(self.canonical_key), str)
+                or not isinstance(item.get("reason"), str)
+            ):
+                raise InvalidLocationResponse("Agent decisions require a boolean and text evidence")
+            by_id[key] = {name: item[name] for name in (
+                self.id_key, self.canonical_key, "matches", "reason"
+            )}
+        if set(by_id) != set(ids):
+            raise InvalidLocationResponse("Location agent omitted one or more locations")
+        return [{**row, **by_id[row[self.id_key]]} for row in rows]
+
+    async def structured_response(self, client, body):
         response = None
         for attempt in range(4):
             self.request_count += 1
@@ -182,37 +211,14 @@ Keep each reason short and factual."""
                 "Location agent did not return one structured result"
             )
         try:
-            result = json.loads(texts[0])[self.result_key]
+            result = json.loads(texts[0])
+            if not isinstance(result, dict):
+                raise InvalidLocationResponse("Agent returned a non-object response")
+            return result
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise InvalidLocationResponse(
                 "Location agent returned malformed structured data"
             ) from exc
-        if not isinstance(result, list):
-            raise InvalidLocationResponse("Location agent returned a malformed location list")
-        by_id = {}
-        for item in result:
-            try:
-                key = item[self.id_key]
-            except (KeyError, TypeError) as exc:
-                raise InvalidLocationResponse(
-                    "Location agent returned a location without an ID"
-                ) from exc
-            if key not in ids or key in by_id:
-                raise InvalidLocationResponse(
-                    "Location agent returned an unknown or duplicate location ID"
-                )
-            if (
-                not isinstance(item.get("matches"), bool)
-                or not isinstance(item.get(self.canonical_key), str)
-                or not isinstance(item.get("reason"), str)
-            ):
-                raise InvalidLocationResponse("Agent decisions require a boolean and text evidence")
-            by_id[key] = {name: item[name] for name in (
-                self.id_key, self.canonical_key, "matches", "reason"
-            )}
-        if set(by_id) != set(ids):
-            raise InvalidLocationResponse("Location agent omitted one or more locations")
-        return [{**row, **by_id[row[self.id_key]]} for row in rows]
 
     async def classify(self, rows, prompt, on_batch=None):
         if not prompt or not prompt.strip():

@@ -59,11 +59,19 @@ class JobPosting:
     sources: list[dict[str, str]] = field(default_factory=list)
     application_urls: list[str] = field(default_factory=list)
     employer_urls: list[str] = field(default_factory=list)
-    partial_fields: dict[str, list[str]] = field(default_factory=dict)
+    array_fields: dict[str, list[str]] = field(default_factory=dict)
+    fields: dict = field(default_factory=dict)
+    field_types: dict[str, str] = field(default_factory=dict)
+    enrichment: dict = field(default_factory=dict)
 
     def __post_init__(self):
-        from .partial_fields import normalize_fields
-        self.partial_fields = normalize_fields(self.partial_fields)
+        from .array_fields import normalize_fields
+        from .job_fields import job_field_types, normalize_scalars
+        self.array_fields = normalize_fields(self.array_fields)
+        self.fields = normalize_scalars(self.fields)
+        self.field_types = job_field_types(asdict(self))
+        if set(self.fields) & set(self.array_fields):
+            raise ValueError("A field cannot be both scalar and array")
         if not self.sources:
             self.sources = [{"site": self.source, "url": self.url}]
 
@@ -103,18 +111,26 @@ class SearchCriteria:
     validation_timeout_seconds: float = 60
     validation_workers: int = 8
     detail_workers: int = 4
-    partial_fields: dict = field(default_factory=dict)
-    partial_filters: dict[str, str] = field(default_factory=dict)
+    array_fields: dict = field(default_factory=dict)
+    array_filters: dict[str, str] = field(default_factory=dict)
+    field_filters: dict = field(default_factory=dict)
+    salary_basis: str = "maximum"
 
     def __post_init__(self):
-        from .partial_fields import definitions, validate_name
-        definitions(self.partial_fields)
-        if not isinstance(self.partial_filters, dict):
-            raise ValueError("partial_filters must map field names to filter prompts")
-        for name, prompt in self.partial_filters.items():
+        from .array_fields import definitions, validate_name
+        from .job_fields import filter_definitions
+        definitions(self.array_fields)
+        self.field_filters = filter_definitions(self.field_filters)
+        if set(self.field_filters) & set(self.array_filters):
+            raise ValueError("Use one filter definition per field")
+        if self.salary_basis not in ("minimum", "maximum"):
+            raise ValueError("salary_basis must be minimum or maximum")
+        if not isinstance(self.array_filters, dict):
+            raise ValueError("array_filters must map field names to filter prompts")
+        for name, prompt in self.array_filters.items():
             validate_name(name)
             if not isinstance(prompt, str) or not prompt.strip():
-                raise ValueError("Partial field filter prompts must be nonempty strings")
+                raise ValueError("Array field filter prompts must be nonempty strings")
         self.job_title = self.job_title.strip()
         if not self.job_title or not any(c.isalnum() for c in self.job_title):
             raise ValueError("job_title must contain a job title")

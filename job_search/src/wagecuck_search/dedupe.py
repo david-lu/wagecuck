@@ -4,9 +4,10 @@ import copy
 import re
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
+from .array_fields import merge_fields
+from .job_fields import merge_field_types, merge_scalars
 from .matching import levels, normalized, parse_date
 from .models import JobPosting
-from .partial_fields import merge_fields
 
 
 def canonical_url(url: str) -> str:
@@ -106,7 +107,9 @@ def deduplicate(jobs: list[JobPosting]) -> tuple[list[JobPosting], dict[str, int
             continue
         removed[original.source] = removed.get(original.source, 0) + 1
         target = groups[group]
-        target.partial_fields = merge_fields(target.partial_fields, original.partial_fields)
+        target.array_fields = merge_fields(target.array_fields, original.array_fields)
+        target.fields = merge_scalars(target.fields, original.fields)
+        target.field_types = merge_field_types(target.field_types, original.field_types)
         for key in ("application_urls", "employer_urls"):
             setattr(target, key, list(dict.fromkeys(getattr(target, key) + getattr(original, key))))
         for source in original.sources:

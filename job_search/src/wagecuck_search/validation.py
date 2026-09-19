@@ -21,11 +21,11 @@ from .application_links import (
     unwrap,
     web_url,
 )
+from .array_fields import extract_page_fields, extraction_fingerprint, page_evidence
 from .ats_apis import AtsApiVerifier
-from .matching import normalized, parse_date
+from .matching import matches_role_title, normalized, parse_date
 from .models import JobPosting, utc_now
 from .parsing import document, structured_jobs, text
-from .partial_fields import extract_page_fields, extraction_fingerprint
 from .providers import access_problem
 
 
@@ -35,7 +35,9 @@ class ValidationResult:
     kind: str | None = None
     reason: str | None = None
     checked_at: str | None = None
-    partial_fields: dict[str, list[str]] = field(default_factory=dict)
+    array_fields: dict[str, list[str]] = field(default_factory=dict)
+    fields: dict = field(default_factory=dict)
+    description: str = ""
 
 
 @dataclass
@@ -91,14 +93,14 @@ def destination_problem(job, html, url, status, employer_urls):
     ):
         return "Application is closed or missing", None
     records = structured_jobs(soup)
-    relevant = [r for r in records if normalized(text(r.get("title"))) == normalized(job.title)]
+    relevant = [r for r in records if matches_role_title(job.title, text(r.get("title")))]
     for record in relevant:
         expiry = parse_date(record.get("validThrough"))
         if expiry and expiry < utc_now():
             return "Application is expired", None
     title_headings = soup.select("h1") or soup.select("h2, [role=heading]")
     title_found = any(
-        f" {normalized(job.title)} " in f" {normalized(h.get_text(' ', strip=True))} "
+        matches_role_title(job.title, h.get_text(" ", strip=True))
         for h in title_headings
     )
     if len(records) > 1 or (not title_found and not relevant):
@@ -148,7 +150,7 @@ def destination_problem(job, html, url, status, employer_urls):
 class BrowserValidator:
     def __init__(self, browser, criteria, *, browser_factory=None):
         self.browser, self.criteria = browser, criteria
-        self.partial_field_fingerprint = extraction_fingerprint(criteria.partial_fields)
+        self.array_field_fingerprint = extraction_fingerprint(criteria.array_fields)
         self.browser_factory = browser_factory
         self.http_hosts = {}
         self.http_context = None
@@ -366,6 +368,8 @@ class BrowserValidator:
                 page = None
                 # Establish employer provenance before trying a custom careers-domain link.
                 sources = [(s["url"], 0) for s in job.sources]
+                if job.url not in {url for url, _ in sources}:
+                    sources.append((job.url, 0))
                 applications = [(v, 0) for v in job.application_urls]
                 pending = applications + sources if job.employer_urls else sources + applications
                 shortcuts = {
@@ -373,6 +377,8 @@ class BrowserValidator:
                     if (link := simplify_application_url(source))
                 }
                 pending = [(v, 0) for v in sorted(shortcuts)] + pending
+                if on_domain(job.url, ATS_DOMAINS):
+                    pending = [(job.url, 0)] + pending
                 source_urls = {url for url, _ in sources}
                 employer_urls = list(job.employer_urls)
                 render_targets = []
@@ -442,8 +448,9 @@ class BrowserValidator:
                             if reason is None:
                                 return ValidationResult(
                                     final, kind, checked_at=utc_now().isoformat(),
-                                    partial_fields=extract_page_fields(
-                                        html, job.title, self.criteria.partial_fields
+                                    description=page_evidence(html, job.title)["description"],
+                                    array_fields=extract_page_fields(
+                                        html, job.title, self.criteria.array_fields
                                     ),
                                 )
                         pending.extend((v, depth + 1) for v in applications if v not in visited)

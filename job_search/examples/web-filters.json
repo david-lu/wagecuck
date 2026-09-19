@@ -1,0 +1,14 @@
+{
+  "role": {
+    "prompt": "Is this role frontend or full_stack?",
+    "mode": "any"
+  },
+  "languages": {
+    "prompt": "Is this an interpreted or web scripting language suitable for a JavaScript/TypeScript/Python/Ruby/PHP-style application stack? TypeScript is allowed despite transpilation. Return false for C, C++, Go, Rust, Java, Kotlin, C#, Swift, Objective-C, and other native, systems, or compiled application languages. SQL and shell scripting are acceptable supporting languages.",
+    "mode": "all"
+  },
+  "frameworks": {
+    "prompt": "Is this a framework or runtime primarily for JavaScript, TypeScript, Python, Ruby, PHP, or similar interpreted web application stacks? Examples that match: React, Next.js, Vue, Angular, Svelte, Node.js, Django, Flask, FastAPI, Rails, Laravel. Exclude frameworks primarily for C, C++, Go, Rust, Java, Kotlin, C#, Swift, or other native/compiled stacks.",
+    "mode": "all"
+  }
+}

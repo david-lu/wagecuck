@@ -1,16 +1,18 @@
 {
-  "name": "software-frontend-creative-technologist-los-angeles-or-remote",
+  "name": "software-engineer-la-or-remote-180k-web",
   "job_titles": [
-    "software engineer",
-    "frontend engineer",
-    "creative technologist"
+    "software engineer"
   ],
   "search_queries": [
-    "software engineer",
-    "creative technologist"
+    "software engineer"
   ],
-  "output_directory": "results/software-frontend-creative-technologist-2026-09-17",
+  "output_directory": "results/software-engineer-la-remote-180k",
   "filters": {
-    "location_prompt": "Los Angeles metropolitan area or remote"
+    "min_salary": 180000,
+    "salary_currency": "USD",
+    "salary_period": "year",
+    "salary_basis": "maximum",
+    "include_unknown": true,
+    "location_prompt": "Remote roles, or roles in the Los Angeles metropolitan area. A known onsite or hybrid role outside the Los Angeles area does not match. Unknown location and unknown remote status do not establish a match."
   }
 }

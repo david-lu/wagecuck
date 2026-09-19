@@ -4,10 +4,11 @@ import asyncio
 from dataclasses import asdict
 
 from .application_links import BOARD_DOMAINS, on_domain, web_url
+from .array_fields import enrich_job, merge_fields
 from .dedupe import canonical_url, deduplicate
+from .job_fields import job_field_types, merge_field_types, merge_scalars
 from .matching import broad_query, matches
 from .models import SearchCriteria, SiteResult, utc_now
-from .partial_fields import enrich_job, merge_fields
 from .workers import map_bounded
 
 
@@ -16,8 +17,8 @@ async def search(
     filter_candidates=True, deduplicate_candidates=True,
 ) -> dict:
     """Discover, deduplicate, filter, and validate employer application destinations."""
-    if filter_candidates and criteria.partial_filters:
-        raise ValueError("Partial-field predicates require run_stages() or filter_jobs()")
+    if filter_candidates and (criteria.array_filters or criteria.field_filters):
+        raise ValueError("Field predicates require filter_csv() or filter_jobs()")
     started = utc_now()
     query = broad_query(criteria.job_title)
     results = await _fetch(criteria, query, providers, progress) if providers is not None else None
@@ -231,9 +232,15 @@ async def _validated_report(
                 }
             )
             continue
-        posting["partial_fields"] = merge_fields(
-            posting.get("partial_fields"), check.partial_fields
+        posting["array_fields"] = merge_fields(
+            posting.get("array_fields"), check.array_fields
         )
+        posting["fields"] = {**posting.get("fields", {}), **check.fields}
+        for name in check.fields:
+            posting.get("field_types", {}).pop(name, None)
+        posting["field_types"] = job_field_types(posting)
+        if not filter_candidates:
+            posting["description"] = check.description or original.description
         posting["url"] = check.url
         posting["url_validated_at"] = check.checked_at or utc_now().isoformat()
         posting["application_url_type"] = check.kind
@@ -248,9 +255,13 @@ async def _validated_report(
         key = canonical_url(posting["url"])
         if key in seen:
             target = seen[key]
-            target["partial_fields"] = merge_fields(
-                target.get("partial_fields"), posting.get("partial_fields")
+            target["array_fields"] = merge_fields(
+                target.get("array_fields"), posting.get("array_fields")
             )
+            target["fields"] = merge_scalars(target.get("fields"), posting.get("fields"))
+            target["field_types"] = merge_field_types(target.get("field_types"), posting.get("field_types"))
+            if len(posting.get("description", "")) > len(target.get("description", "")):
+                target["description"] = posting["description"]
             for origin in posting["sources"]:
                 if origin not in target["sources"]:
                     target["sources"].append(origin)
@@ -285,7 +296,7 @@ async def _fetch(criteria, query, providers, progress=None):
                 selected[site].fetch(query, criteria), timeout=criteria.site_timeout_seconds + 10
             )
             for job in result.jobs:
-                enrich_job(job, criteria.partial_fields)
+                enrich_job(job, criteria.array_fields)
             return result
         except Exception as exc:
             return SiteResult(site, status="error", errors=[f"{type(exc).__name__}: {exc}"])

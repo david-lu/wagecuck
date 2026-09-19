@@ -1,0 +1,27 @@
+{
+  "languages": {
+    "type": "array_field",
+    "prompt": "List the programming languages used in this job's responsibilities or requested qualifications. Include required and preferred languages, not unrelated company text or examples explicitly excluded. Normalize names (JavaScript, TypeScript, Python, C, C++, C#, Go, Rust). You may infer a language from an explicitly named framework only when the association is unambiguous; explain that inference in evidence."
+  },
+  "frameworks": {
+    "type": "array_field",
+    "prompt": "List named software frameworks and application runtimes relevant to the role, such as React, Next.js, Django, Rails, Node.js, Spring, or .NET. Include required and preferred technologies. Use canonical names. Do not fabricate a framework from a programming language alone."
+  },
+  "role": {
+    "type": "string_field",
+    "options": [
+      "backend",
+      "frontend",
+      "full_stack"
+    ],
+    "prompt": "Classify the engineering role from its primary responsibilities, using the title as supporting evidence. frontend means client-side UI/web application work; backend means server-side services, APIs, data or systems work; full_stack requires material frontend and backend duties. Ignore generic company descriptions and other teams. Choose null if none applies or evidence is insufficient."
+  },
+  "is_backend": {
+    "type": "boolean_field",
+    "prompt": "Does this role have material backend/server-side development responsibilities? True for backend and full-stack duties, false for a clearly frontend-only role, null if unclear."
+  },
+  "minimum_experience": {
+    "type": "number_field",
+    "prompt": "Minimum required years of experience, or null if unspecified."
+  }
+}

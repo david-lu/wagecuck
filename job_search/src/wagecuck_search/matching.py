@@ -27,6 +27,12 @@ def normalized(text: str) -> str:
     return " ".join(re.findall(r"\w+", text))
 
 
+def matches_role_title(expected, actual):
+    """Board titles may omit a qualifier present on the same native posting."""
+    expected, actual = normalized(expected), normalized(actual)
+    return bool(expected) and f" {expected} " in f" {actual} "
+
+
 def levels(title: str) -> set[str]:
     return {level for level, pattern in LEVEL_PATTERNS.items() if re.search(pattern, title, re.I)}
 
@@ -116,7 +122,8 @@ def matches(
         ):
             check("salary", None)
         else:
-            upper = salary.maximum if salary.maximum is not None else salary.minimum
+            upper = (salary.minimum if criteria.salary_basis == "minimum" else
+                     salary.maximum if salary.maximum is not None else salary.minimum)
             check("salary", upper >= criteria.min_salary if upper is not None else None)
     if criteria.posted_within_days:
         posted = parse_date(job.posted_at)

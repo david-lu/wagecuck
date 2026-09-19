@@ -8,9 +8,9 @@ from urllib.parse import urljoin, urlsplit
 from bs4 import BeautifulSoup
 
 from .application_links import extract_links
+from .array_fields import extract_page_fields
 from .dedupe import canonical_url
 from .models import JobPosting, Salary
-from .partial_fields import extract_page_fields
 
 LINK_PATTERNS = {
     "a16z": r"/jobs/[^/?#]+/[^/?#]+--[^/?#]+(?:[/?#]|$)",
@@ -218,7 +218,7 @@ def first_text(soup, selectors: str) -> str:
     return node.get_text(" ", strip=True) if node else ""
 
 
-def parse_posting(site: str, html: str, url: str, *, partial_fields=None) -> JobPosting | None:
+def parse_posting(site: str, html: str, url: str, *, array_fields=None) -> JobPosting | None:
     application_urls, employer_urls = extract_links(html, url)
     if site == "remote_rocketship":
         # Its detail payload embeds a carousel of complete related-job records after
@@ -336,7 +336,7 @@ def parse_posting(site: str, html: str, url: str, *, partial_fields=None) -> Job
         company=company,
         location=location or "Unknown",
         source=site,
-        partial_fields=extract_page_fields(html, title, partial_fields),
+        array_fields=extract_page_fields(html, title, array_fields),
         application_urls=application_urls,
         employer_urls=employer_urls,
         salary=(

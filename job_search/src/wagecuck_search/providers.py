@@ -352,7 +352,7 @@ class BrowserProvider:
                             )
                             job = parse_posting(
                                 self.site, await detail.content(), url,
-                                partial_fields=criteria.partial_fields,
+                                array_fields=criteria.array_fields,
                             )
                             if seed:
                                 job = self._enrich_seed(seed, job)
