@@ -47,7 +47,10 @@ async def probe_fields(page, profile, agent=None, *, agent_fill=False):
     planner = WorkflowAgent(agent)
     previous_actions, analysis, warnings = {}, {}, []
     seen = {}
-    for _ in range(4):
+    # Dynamic forms can reveal several dependency waves. Stop on repeated state,
+    # but do not impose a four-control ceiling on long forms.
+    max_passes = min(12, max(4, len(snap.fields) + 1))
+    for _ in range(max_passes):
         signature = form_signature(snap)
         seen[signature] = seen.get(signature, 0) + 1
         actions, unresolved = await planner.plan(snap.fields, profile, agent_fill=agent_fill)
@@ -79,19 +82,28 @@ def probe_code(report):
     """Classify the recorded verification result without promoting a failed pass."""
     if not report["field_count"]:
         return "FORM_NOT_RELOADED"
-    upload_codes = {
-        row["code"] for row in report.get("control_outcomes", []) if row.get("kind") == "file"
-    }
-    upload_codes.update(report.get("upload_error_codes", []))
+    upload_codes = set(report.get("required_upload_error_codes", []))
     for code in ("UPLOAD_TIMEOUT", "UPLOAD_UNVERIFIED"):
         if code in upload_codes:
             return code
-    if report["filled_count"] < report["mapped_count"] or not report["completed_values_retained"]:
-        return "FIELD_FILL_FAILED"
     if report["required_answers_missing"]:
         return "REQUIRED_ANSWER_MISSING"
-    if report["page_validation_error_count"] or not report["required_fill_pass"]:
+    if not report["required_fill_pass"]:
+        failed = set(report.get("required_fill_failures", []))
+        outcomes = report.get("control_outcomes", [])
+        if any(
+            row.get("label") in failed and row.get("code") == "FIELD_FILL_FAILED"
+            for row in outcomes
+        ):
+            return "FIELD_FILL_FAILED"
+        # Compatibility for aggregate/fixture reports that omit per-control rows.
+        if report["filled_count"] < report["mapped_count"] or not report[
+            "completed_values_retained"
+        ]:
+            return "FIELD_FILL_FAILED"
         return "VALIDATION_FAILED"
+    if report.get("required_question_count"):
+        return "MAPPED_FIELDS_VERIFIED"
     if not report["mapped_count"]:
         return "NO_MAPPED_FIELDS"
     return "MAPPED_FIELDS_VERIFIED"

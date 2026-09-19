@@ -49,6 +49,15 @@ async def matches_text(page, target: Target, action: Action, value):
     return await target.input_value() == value
 
 
+async def write_contenteditable(page, target: Target, action: Action, value):
+    await target.fill(value)
+    await target.blur()
+
+
+async def matches_contenteditable(page, target: Target, action: Action, value):
+    return (await target.inner_text()).strip() == value
+
+
 async def write_range(page, target: Target, action: Action, value):
     await target.evaluate(
         """(element, value) => {

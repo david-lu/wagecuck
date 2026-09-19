@@ -58,6 +58,44 @@ async def test_country_dial_code_verification_is_scoped_to_owned_popup(page):
     await verify_actions(page, [action])
 
 
+async def test_combobox_reads_committed_value_past_empty_data_value_wrapper(page):
+    await page.set_content("""<label id="answer-label">Answer*
+      <div><div class="select__value-container"><div class="select__single-value">Yes</div>
+      <div data-value=""><input role="combobox" aria-labelledby="answer-label"></div>
+      </div></div></label>""")
+    field = (await snapshot(page)).fields[0]
+    action = Action(field=field, value="Yes", source="facts:answer", choice_labels=["Yes"])
+    assert await combobox_matches(page, locator(page, field), action, "Yes")
+
+
+async def test_country_combobox_accepts_committed_dial_code_after_exact_selection(page):
+    await page.set_content("""<label id="country-label">Country*
+      <div><div class="select__value-container"><div class="select__single-value">+1</div>
+      <div data-value=""><input role="combobox" aria-labelledby="country-label"></div>
+      </div></div></label>""")
+    field = (await snapshot(page)).fields[0]
+    action = Action(
+        field=field,
+        value="Canada +1",
+        source="facts:country",
+        choice_labels=["Canada +1"],
+    )
+    assert await combobox_matches(page, locator(page, field), action, "Canada +1")
+
+
+async def test_multiselect_combobox_verifies_one_committed_chip(page):
+    await page.set_content("""<label id="gender-label">Gender*
+      <div><div class="select__value-container select__value-container--is-multi">
+      <div class="select__multi-value"><span>Male</span></div>
+      <div class="select__multi-value"><span>Non-binary</span></div>
+      <div data-value=""><input role="combobox" aria-labelledby="gender-label"></div>
+      </div></div></label>""")
+    field = (await snapshot(page)).fields[0]
+    assert field.filled
+    action = Action(field=field, value="Male", source="facts:gender", choice_labels=["Male"])
+    assert await combobox_matches(page, locator(page, field), action, "Male")
+
+
 async def test_range_uses_native_setter_dispatches_events_and_verifies_retention(page):
     await page.set_content("""<label>Experience score<input type="range" min="0" max="10" step="0.5"
       oninput="window.inputEvents=(window.inputEvents||0)+1"
@@ -182,3 +220,72 @@ async def test_prepared_snapshot_classifies_controls_and_discovers_dynamic_optio
     actions, unresolved = await WorkflowAgent().plan([veteran], profile)
     assert not unresolved
     assert actions[0].value == "No military service"
+
+
+async def test_combobox_reacquires_node_replaced_when_option_commits(page):
+    await page.set_content("""<form><label>Country<input name="country" role="combobox"
+      aria-controls="countries" onclick="document.querySelector('#countries').hidden=false"></label>
+      <div id="countries" role="listbox" hidden><div role="option" onclick="
+        const old=document.querySelector('[name=country]');
+        const next=old.cloneNode(); next.value='Canada';
+        next.setAttribute('aria-expanded','false'); next.removeAttribute('data-wagecuck-id');
+        old.replaceWith(next); this.parentElement.hidden=true">Canada</div></div></form>""")
+    field = (await prepared_snapshot(page)).fields[0]
+    old_id = field.id
+    action = Action(field=field, value="Canada", source="facts:country")
+    await fill(page, action)
+    assert action.field.id == old_id
+    assert await locator(page, action.field).count() == 1
+    assert (await verify_action_results(page, [action]))[0].valid
+
+
+async def test_combobox_reacquires_unnamed_node_replaced_while_typing(page):
+    await page.set_content("""<form><label id="country-label">Country*
+      <input role="combobox" aria-labelledby="country-label" aria-controls="countries"
+        oninput="if(!window.replaced){window.replaced=true;const next=this.cloneNode();
+          next.value=this.value;next.removeAttribute('data-wagecuck-id');this.replaceWith(next)}"
+        onclick="document.querySelector('#countries').hidden=false"></label>
+      <div id="countries" role="listbox" hidden><div role="option" onclick="
+        const input=document.querySelector('[role=combobox]');input.value='Canada';
+        this.parentElement.hidden=true">Canada</div></div></form>""")
+    field = (await prepared_snapshot(page)).fields[0]
+    action = Action(field=field, value="Canada", source="facts:country")
+    await fill(page, action)
+    assert await page.locator('[role="combobox"]').input_value() == "Canada"
+    assert (await verify_action_results(page, [action]))[0].valid
+
+
+async def test_combobox_uses_keyboard_fallback_when_option_click_does_not_commit(page):
+    await page.set_content("""<label id="answer-label">Answer*
+      <input role="combobox" aria-labelledby="answer-label" aria-controls="answers"
+        aria-expanded="false" onclick="this.setAttribute('aria-expanded','true');
+          document.querySelector('#answers').hidden=false"
+        onkeydown="if(event.key==='Enter'){this.value='Yes';
+          this.setAttribute('aria-expanded','false');document.querySelector('#answers').hidden=true}">
+      </label><div id="answers" role="listbox" hidden><div role="option">Yes</div></div>""")
+    field = (await prepared_snapshot(page)).fields[0]
+    action = Action(field=field, value="Yes", source="facts:answer", choice_labels=["Yes"])
+    await fill(page, action)
+    assert await page.locator('[role="combobox"]').input_value() == "Yes"
+
+
+async def test_parser_and_handler_support_aria_choices_and_contenteditable(page):
+    await page.set_content("""<form>
+      <div role="checkbox" aria-checked="false" aria-label="Agree"
+        onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') !== 'true')">Agree</div>
+      <div role="radio" aria-checked="false" aria-label="Remote"
+        onclick="this.setAttribute('aria-checked','true')">Remote</div>
+      <div role="textbox" contenteditable="true" aria-label="Summary"><br></div>
+      </form>""")
+    fields = (await snapshot(page)).fields
+    assert [field.control_type for field in fields] == [
+        "checkbox", "radio", "contenteditable_text"
+    ]
+    actions = [
+        Action(field=fields[0], value=True, source="facts:agree"),
+        Action(field=fields[1], value=True, source="facts:remote"),
+        Action(field=fields[2], value="Frontend engineer", source="facts:summary"),
+    ]
+    for action in actions:
+        await fill(page, action)
+    assert all(result.valid for result in await verify_action_results(page, actions))

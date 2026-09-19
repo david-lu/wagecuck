@@ -72,13 +72,20 @@
     if (el.type === 'file') return !el.closest('[hidden], [aria-hidden="true"]');
     return visible(el);
   }).map(el => {
-    const kind = el.type === 'file' ? 'file' : el.getAttribute('role') === 'combobox' ? 'combobox' : el.tagName === 'SELECT' ? 'select' : el.type || 'text';
+    const role = el.getAttribute('role');
+    const kind = el.type === 'file' ? 'file'
+      : role === 'combobox' ? 'combobox'
+      : ['checkbox', 'switch'].includes(role) ? 'checkbox'
+      : role === 'radio' ? 'radio'
+      : el.tagName === 'SELECT' ? 'select'
+      : el.type || 'text';
     const controlType = kind === 'file' ? 'file_upload'
       : kind === 'combobox' ? 'dynamic_combobox'
       : kind === 'select' ? 'native_select'
       : kind === 'checkbox' ? 'checkbox'
       : kind === 'radio' ? 'radio'
       : kind === 'range' ? 'range'
+      : el.isContentEditable ? 'contenteditable_text'
       : 'text_input';
     const groupEl = el.closest('fieldset, [role="radiogroup"], [role="group"]');
     const localHeading = questionHeading(container(el), el);
@@ -90,8 +97,12 @@
       let parent = el.parentElement;
       for (let depth = 0; parent && depth < 3; depth++, parent = parent.parentElement) {
         if (parent.querySelectorAll('[role=combobox]').length > 1) break;
-        const selected = parent.querySelectorAll('[class*="single-value"], [class*="singleValue"]');
-        if (selected.length === 1) { renderedSelection = text(selected[0]); break; }
+        const selected = [...parent.querySelectorAll(
+          '[class*="single-value"], [class*="singleValue"], [class*="multi-value"], [class*="multiValue"]'
+        )].filter(node => visible(node));
+        const committed = selected.filter(node => !selected.some(parent =>
+          parent !== node && parent.contains(node)));
+        if (committed.length) { renderedSelection = committed.map(text).join(', '); break; }
       }
     }
     const hasRequired = (node) => !!node && (node.getAttribute('aria-required') === 'true' || (!/\boptional\b|\bnot required\b/i.test(labelText(node)) && (/\*|✱|\brequired\b/i.test(labelText(node)) || /(?:^|[ _-])required(?:[ _-]|$)/i.test(node.className || ''))));
@@ -114,7 +125,9 @@
       context, required_evidence: required ? 'DOM required marker or constraint' : /optional|not required/i.test(lab + ' ' + described) ? 'DOM optional marker' : '',
       requirement_status: required ? 'required' : /optional|not required/i.test(lab + ' ' + described) ? 'optional' : 'unknown',
       options: el.tagName === 'SELECT' ? [...el.options].filter(o => !o.matches(':disabled') && !o.closest('[hidden], [aria-hidden="true"], [aria-disabled="true"]') && o.value !== '').map(o => ({label: text(o), value: o.value})) : [],
-      filled: kind === 'file' ? !!el.files?.length : ['checkbox', 'radio'].includes(kind) ? el.checked : !!(el.value || renderedSelection),
+      filled: kind === 'file' ? !!el.files?.length
+        : ['checkbox', 'radio'].includes(kind) ? (role ? el.getAttribute('aria-checked') === 'true' : el.checked)
+        : el.isContentEditable ? !!text(el) : !!(el.value || renderedSelection),
       invalid: !!(el.getAttribute('aria-invalid') === 'true' || (el.willValidate && !el.validity.valid))
     };
   });

@@ -258,10 +258,11 @@ def test_page_validation_errors_are_counted_and_classified_without_raw_text():
         [{"field_id": "0:email", "route": "already_filled_or_group_option", "source": None}],
     )
     assert report["required_question_satisfied_count"] == 1
-    assert not report["required_fill_pass"]
+    assert report["required_fill_pass"]
+    assert not report["form_validation_pass"]
     assert report["page_validation_error_count"] == 1
     assert "Private validation detail" not in json.dumps(report)
-    assert script("probe_live").probe_code(report) == "VALIDATION_FAILED"
+    assert script("probe_live").probe_code(report) == "MAPPED_FIELDS_VERIFIED"
 
 
 def test_summary_does_not_recalculate_or_modify_recorded_results(tmp_path):

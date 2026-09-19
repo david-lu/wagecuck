@@ -7,9 +7,11 @@ from .base import ControlHandler
 from .choice import matches_choice, write_choice
 from .combobox import matches_combobox, write_combobox
 from .native import (
+    matches_contenteditable,
     matches_number,
     matches_select,
     matches_text,
+    write_contenteditable,
     write_range,
     write_select,
     write_text,
@@ -40,6 +42,8 @@ def handler_for(field: FormField) -> ControlHandler | None:
             validates_natively=False,
             may_change_form=True,
         )
+    if field.control_type == "contenteditable_text":
+        return ControlHandler(write_contenteditable, matches_contenteditable)
     if field.control_type == "range":
         return ControlHandler(write_range, matches_number)
     if field.control_type == "text_input" and is_phone_field(field):

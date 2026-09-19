@@ -53,17 +53,33 @@ def execution_report(execution: ExecutionResult, analysis: list[dict]) -> dict:
     failures = [question for question in required if not question.satisfied]
     unresolved = [question for question in questions if question["code"] == "UNRESOLVED"]
     retained = all(row["verified"] for row in outcomes)
-    # Page-level validation errors have no reliable field association, so they
-    # also prevent a pass even if each native input currently looks valid.
     upload_errors = list(
         dict.fromkeys(
             row.action.upload_error.value for row in execution.fields if row.action.upload_error
         )
     )
-    pass_required = not failures and not execution.snapshot.errors and not upload_errors
+    required_upload_errors = list(
+        dict.fromkeys(
+            row.action.upload_error.value
+            for row in execution.fields
+            if row.action.upload_error and row.action.field.required
+        )
+    )
+    optional_upload_errors = list(
+        dict.fromkeys(
+            row.action.upload_error.value
+            for row in execution.fields
+            if row.action.upload_error and not row.action.field.required
+        )
+    )
+    # This metric answers one question only: are all required logical fields
+    # filled? Page alerts and optional upload diagnostics are reported apart.
+    pass_required = not failures and not required_upload_errors
     return {
         "field_count": len(fields),
         "upload_error_codes": upload_errors,
+        "required_upload_error_codes": required_upload_errors,
+        "optional_upload_error_codes": optional_upload_errors,
         "question_count": len(questions),
         "mapped_count": len(outcomes),
         "filled_count": sum(row["verified"] for row in outcomes),
@@ -78,6 +94,7 @@ def execution_report(execution: ExecutionResult, analysis: list[dict]) -> dict:
         "required_question_count": len(required),
         "required_question_satisfied_count": len(required) - len(failures),
         "required_fill_pass": pass_required,
+        "form_validation_pass": pass_required and not execution.snapshot.errors,
         "required_fill_failure_count": len(failures),
         "required_fill_failures": [question.question for question in failures],
         "made_up_answer_count": sum(

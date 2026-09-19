@@ -11,6 +11,50 @@ from wagecuck.models import Action, ApplicationError, Code, FormField, Option, S
 from .base import Target, normalize
 
 
+def accessible_name(label: str):
+    clean = re.sub(r"[\s*✱]+$", "", label).strip()
+    return re.compile(r"^" + re.escape(clean) + r"\s*[✱*]?$", re.IGNORECASE)
+
+
+async def live_target(page, target: Target, action: Action) -> Target:
+    """Rebind an editable widget that its framework replaced while typing."""
+    if await target.count():
+        return target
+    frame = page.frames[action.field.frame]
+    candidates = frame.get_by_role(
+        "combobox", name=accessible_name(action.field.label), include_hidden=False
+    )
+    if await candidates.count() == 1:
+        rebound = candidates.first
+    else:
+        controls = frame.locator('[role="combobox"]:visible')
+        rows = []
+        for index in range(await controls.count()):
+            candidate = controls.nth(index)
+            label = await candidate.evaluate(r"""element => {
+              const text = node => (node?.innerText || node?.textContent || '')
+                .trim().replace(/\s+/g, ' ');
+              const referenced = (element.getAttribute('aria-labelledby') || '')
+                .split(/\s+/).filter(Boolean)
+                .map(id => text(element.getRootNode().getElementById?.(id) ||
+                  document.getElementById(id))).join(' ').trim();
+              return referenced || element.getAttribute('aria-label') ||
+                [...(element.labels || [])].map(text).join(' ') ||
+                element.getAttribute('placeholder') || '';
+            }""")
+            if normalize(re.sub(r"[\s*✱]+$", "", label)) == normalize(
+                re.sub(r"[\s*✱]+$", "", action.field.label)
+            ):
+                rows.append(candidate)
+        if len(rows) != 1:
+            return target
+        rebound = rows[0]
+    await rebound.evaluate(
+        "(element, id) => element.dataset.wagecuckId = id", action.field.id
+    )
+    return rebound
+
+
 async def combobox_value(target: Target):
     """Read committed component state instead of transient search text."""
     return await target.evaluate("""e => {
@@ -18,10 +62,16 @@ async def combobox_value(target: Target):
       for (let depth = 0; parent && depth < 4; depth++, parent = parent.parentElement) {
         if (parent.querySelectorAll('[role=combobox]').length > 1) break;
         const chosen = parent.querySelectorAll(
-          '[class*="single-value"], [class*="singleValue"], [data-value], [aria-selected="true"]'
+          '[class*="single-value"], [class*="singleValue"], '
+          + '[class*="multi-value"], [class*="multiValue"], '
+          + '[data-value]:not([data-value=""]), [aria-selected="true"]'
         );
-        const visible = [...chosen].filter(node => node.getClientRects().length);
-        if (visible.length === 1) return visible[0].innerText || visible[0].textContent || '';
+        const visible = [...chosen].filter(node => node.getClientRects().length &&
+          (node.innerText || node.textContent || '').trim());
+        const committed = visible.filter(node => !visible.some(parent =>
+          parent !== node && parent.contains(node)));
+        if (committed.length) return committed.map(node =>
+          node.innerText || node.textContent || '').join(String.fromCharCode(10));
       }
       return e.value || e.getAttribute('aria-valuetext') || e.innerText || '';
     }""")
@@ -92,10 +142,10 @@ async def open_popup(page, target, *, frame_index):
 
 
 async def close_popup(target):
+    """Dismiss an open popup without toggling the control back open."""
     try:
-        await target.press("Escape", timeout=500)
-        if await target.get_attribute("aria-expanded") == "true":
-            await target.click(timeout=500)
+        if await target.count() and await target.get_attribute("aria-expanded") == "true":
+            await target.press("Escape", timeout=500)
     except PlaywrightError:
         pass
 
@@ -151,12 +201,21 @@ async def enrich_dynamic_options(page, snap: Snapshot) -> Snapshot:
 async def matches_combobox(page, target: Target, action: Action, expected):
     actual = await combobox_value(target)
     if actual.strip():
-        if action.choice_labels and normalize(actual) in {
+        committed = {normalize(value) for value in actual.splitlines() if value.strip()}
+        if action.choice_labels and committed.intersection({
             normalize(label) for label in action.choice_labels
-        }:
+        }):
             return True
-        if selected_value(expected, action) == selected_value(actual, action):
+        if any(
+            selected_value(expected, action) == selected_value(value, action)
+            for value in actual.splitlines()
+            if value.strip()
+        ):
             return True
+        if action.source == "facts:country":
+            expected_dial = re.search(r"\+\d{1,4}$", expected)
+            if expected_dial and normalize(expected_dial.group()) in committed:
+                return True
     scope = await popup_scope(page, target, action.field.frame)
     if scope is None:
         return False
@@ -170,10 +229,20 @@ async def matches_combobox(page, target: Target, action: Action, expected):
 
 
 async def write_combobox(page, target: Target, action: Action, value):
-    await open_popup(page, target, frame_index=action.field.frame)
+    try:
+        await open_popup(page, target, frame_index=action.field.frame)
+    except PlaywrightError:
+        target = await live_target(page, target, action)
+        await open_popup(page, target, frame_index=action.field.frame)
     try:
         if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
-            await target.fill("" if action.random_choice else value)
+            query = "" if action.random_choice else value
+            try:
+                await target.fill(query)
+            except PlaywrightError:
+                target = await live_target(page, target, action)
+                await target.fill(query)
+            target = await live_target(page, target, action)
         options = await option_locator(page, target, action)
         if action.random_choice:
             await options.first.wait_for(state="visible")
@@ -193,6 +262,14 @@ async def write_combobox(page, target: Target, action: Action, value):
             await options.nth(index).click()
             action.value = label
             action.choice_labels = [label]
+            target = await live_target(page, target, action)
+            if not (await combobox_value(target)).strip() and await target.evaluate(
+                "e => e.tagName === 'INPUT' && !e.readOnly"
+            ):
+                await open_popup(page, target, frame_index=action.field.frame)
+                await target.fill(label)
+                await target.press("ArrowDown")
+                await target.press("Enter")
             return
         matching = options.and_(
             page.frames[action.field.frame].get_by_role(
@@ -202,5 +279,16 @@ async def write_combobox(page, target: Target, action: Action, value):
         await matching.first.wait_for(state="visible")
         option = await unambiguous_option(matching, action.field.label)
         await option.click()
+        target = await live_target(page, target, action)
+        if not (await combobox_value(target)).strip() and await target.evaluate(
+            "e => e.tagName === 'INPUT' && !e.readOnly"
+        ):
+            # Some virtualized controls expose clickable options but commit only
+            # through their keyboard state machine. The typed filter makes the
+            # first enabled option the already validated exact match.
+            await open_popup(page, target, frame_index=action.field.frame)
+            await target.fill(value)
+            await target.press("ArrowDown")
+            await target.press("Enter")
     finally:
         await close_popup(target)

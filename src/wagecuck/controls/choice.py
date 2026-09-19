@@ -9,6 +9,14 @@ from .base import Target
 
 async def set_choice(target: Target, value: bool) -> None:
     """Set a native or visually hidden choice input and verify the checked state."""
+    role = await target.get_attribute("role")
+    if role in ("checkbox", "radio", "switch"):
+        checked = await target.get_attribute("aria-checked") == "true"
+        if checked != value:
+            await target.click()
+        if (await target.get_attribute("aria-checked") == "true") != value:
+            raise ValueError("ARIA check state not retained")
+        return
     try:
         await target.set_checked(value)
     except PlaywrightError:
@@ -32,4 +40,6 @@ async def write_choice(page, target: Target, action: Action, value):
 
 
 async def matches_choice(page, target: Target, action: Action, value):
+    if await target.get_attribute("role") in ("checkbox", "radio", "switch"):
+        return (await target.get_attribute("aria-checked") == "true") == value
     return await target.is_checked() == value

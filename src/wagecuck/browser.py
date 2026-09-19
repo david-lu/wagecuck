@@ -43,7 +43,9 @@ async def snapshot(page: Page) -> Snapshot:
         try:
             await annotate(frame)
             fields = await frame.locator(
-                "input:not([type=submit]):not([type=button]):not([type=reset]), textarea, select, [role=combobox]:not(input):not(select)"
+                "input:not([type=submit]):not([type=button]):not([type=reset]), textarea, select, "
+                "[role=combobox]:not(input):not(select), [role=checkbox]:not(input), "
+                "[role=radio]:not(input), [role=switch]:not(input), [contenteditable=true][role=textbox]"
             ).evaluate_all(PARSE)
             for raw in fields:
                 field = FormField(frame=index, **raw)
@@ -82,6 +84,39 @@ def locator(page: Page, target: FormField | Control):
             Code.NO_PROGRESS, "Application frame changed; restart before submission."
         )
     return page.frames[target.frame].locator(f'[data-wagecuck-id="{target.id}"]')
+
+
+def _same_logical_control(left: FormField, right: FormField) -> bool:
+    return (
+        left.frame,
+        left.name,
+        left.label,
+        left.kind,
+        left.control_type,
+        left.group,
+        left.group_id,
+    ) == (
+        right.frame,
+        right.name,
+        right.label,
+        right.kind,
+        right.control_type,
+        right.group,
+        right.group_id,
+    )
+
+
+async def current_target(page: Page, action: Action, target):
+    """Reacquire a control when a framework replaced its DOM node during input."""
+    if await target.count():
+        return target
+    candidates = [
+        field for field in (await snapshot(page)).fields if _same_logical_control(field, action.field)
+    ]
+    if len(candidates) == 1:
+        action.field = candidates[0]
+        return locator(page, action.field)
+    return target
 
 
 def entry_controls(snap: Snapshot):
@@ -137,6 +172,7 @@ async def fill(page: Page, action: Action):
             action.value = normalize_field_value(field, action.value)
             value = render_field_value(field, action.value)
         await handler.write(page, target, action, value)
+        target = await current_target(page, action, target)
         expected = render_field_value(field, action.value) if action.random_choice else value
         if not await _matches_control(page, target, action, expected):
             raise ValueError("Value not retained")

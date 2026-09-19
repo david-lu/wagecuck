@@ -337,6 +337,7 @@ ControlType = Literal[
     "checkbox",
     "radio",
     "range",
+    "contenteditable_text",
 ]
 
 

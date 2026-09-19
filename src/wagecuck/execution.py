@@ -18,6 +18,19 @@ def field_id(field: FormField) -> str:
     return f"{field.frame}:{field.id}"
 
 
+def field_identity(field: FormField) -> tuple:
+    """Identify a logical control across framework-driven DOM replacement."""
+    return (
+        field.frame,
+        field.name,
+        field.label,
+        field.kind,
+        field.control_type,
+        field.group,
+        field.group_id,
+    )
+
+
 def form_signature(snap: Snapshot) -> tuple:
     """Describe actionable state without volatile DOM IDs or applicant values."""
     return (
@@ -49,8 +62,8 @@ def form_signature(snap: Snapshot) -> tuple:
     )
 
 
-def field_contracts(fields: list[FormField]) -> tuple:
-    """Compare control contracts while ignoring ordinary value/validity changes."""
+def field_contracts(fields: list[FormField], *, include_ids: bool = True) -> tuple:
+    """Compare field contracts, optionally including generated node identity."""
     return tuple(
         (
             field.frame,
@@ -68,7 +81,7 @@ def field_contracts(fields: list[FormField]) -> tuple:
             field.minimum,
             field.maximum,
             field.step,
-            field_id(field),
+            field_id(field) if include_ids else None,
         )
         for field in fields
     )
@@ -76,6 +89,15 @@ def field_contracts(fields: list[FormField]) -> tuple:
 
 def fields_changed(before: list[FormField], after: list[FormField]) -> bool:
     return field_contracts(before) != field_contracts(after)
+
+
+def only_nodes_replaced(before: list[FormField], after: list[FormField]) -> bool:
+    """Recognize a framework rerender that preserved every logical contract."""
+    return (
+        fields_changed(before, after)
+        and field_contracts(before, include_ids=False)
+        == field_contracts(after, include_ids=False)
+    )
 
 
 def form_changed(before: Snapshot, after: Snapshot) -> bool:
@@ -197,14 +219,7 @@ async def execute_actions(
     # Keep generated answers consistent within this invocation, including after
     # a DOM replacement; a replan must not invent a different applicant answer.
     def identity(field):
-        return (
-            field.frame,
-            field.name,
-            field.label,
-            field.kind,
-            field.group,
-            field.group_id,
-        )
+        return field_identity(field)
 
     current_counts = Counter(
         identity(field)
@@ -324,6 +339,16 @@ async def execute_actions(
     # Uploads precede country selection, phone entry, and the remaining fields.
     # Fresh checks account for autofill and country-dependent value changes.
     for action in sorted(actions, key=fill_priority):
+        # React and similar form libraries routinely replace a control after a
+        # neighbouring value changes. Rebind an unambiguous logical control so
+        # the rest of the batch does not keep targeting a stale generated ID.
+        peers = [field for field in current_fields if identity(field) == identity(action.field)]
+        if len(peers) == 1 and peers[0].id != action.field.id:
+            old_key = field_id(action.field)
+            action.field = peers[0]
+            if by_id.get(old_key) is action:
+                by_id.pop(old_key)
+                by_id[field_id(action.field)] = action
         visited.add(field_id(action.field))
         check = (await verify_action_results(page, [action]))[0]
         if not check.present or (check.valid and not action.random_choice):
@@ -355,6 +380,9 @@ async def execute_actions(
             candidate = await settled_snapshot(page, polls=settle_polls)
             preserve_requirements(candidate.fields, assessed_fields or [])
             if current_fields and fields_changed(current_fields, candidate.fields):
+                if only_nodes_replaced(current_fields, candidate.fields):
+                    current_fields = candidate.fields
+                    continue
                 structural_checkpoint = candidate
                 needs_replan = True
                 break
