@@ -19,5 +19,9 @@
   "is_backend": {
     "type": "boolean_field",
     "prompt": "Does this role have material backend/server-side development responsibilities? True for backend and full-stack duties, false for a clearly frontend-only role, null if unclear."
+  },
+  "us_authorization": {
+    "type": "boolean_field",
+    "prompt": "Does this position explicitly require U.S. citizenship or U.S. government security authorization? Return true when the posting requires U.S. citizenship, an active security clearance, or eligibility to obtain and maintain a U.S. government security clearance. Return false when the posting explicitly says neither is required or states that general U.S. work authorization is sufficient. Export-control or U.S.-person language alone does not qualify when non-citizens can satisfy it without government security authorization. Return null when neither requirement is stated or the requirement is unclear."
   }
 }

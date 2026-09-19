@@ -1,0 +1,1882 @@
+{
+  "started_at": "2026-09-19T19:06:20.613887+00:00",
+  "finished_at": "2026-09-19T19:13:14.252982+00:00",
+  "sites": {
+    "simplify": {
+      "status": "ok",
+      "discovered": 354,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 354,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 220,
+      "matched_with_duplicates": 220,
+      "pages": 0,
+      "limited": false,
+      "errors": [],
+      "validation_attempted": 354,
+      "validation_rejected": 134
+    },
+    "jobright": {
+      "status": "ok",
+      "discovered": 2,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 2,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [],
+      "validation_attempted": 2,
+      "validation_rejected": 2
+    },
+    "yc": {
+      "status": "ok",
+      "discovered": 5,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 5,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [],
+      "validation_attempted": 5,
+      "validation_rejected": 5
+    },
+    "builtin": {
+      "status": "ok",
+      "discovered": 4,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 4,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [],
+      "validation_attempted": 4,
+      "validation_rejected": 4
+    },
+    "rolesweep": {
+      "status": "ok",
+      "discovered": 10,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 10,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 1,
+      "matched_with_duplicates": 1,
+      "pages": 0,
+      "limited": false,
+      "errors": [],
+      "validation_attempted": 10,
+      "validation_rejected": 9
+    },
+    "hn": {
+      "status": "ok",
+      "discovered": 2,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 2,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [],
+      "validation_attempted": 2,
+      "validation_rejected": 2
+    },
+    "a16z": {
+      "status": "ok",
+      "discovered": 17,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 17,
+      "unavailable": 0,
+      "deduplicated": 4,
+      "returned": 11,
+      "matched_with_duplicates": 15,
+      "pages": 0,
+      "limited": false,
+      "errors": [],
+      "validation_attempted": 17,
+      "validation_rejected": 2
+    }
+  },
+  "fetched": 394,
+  "discovered": 394,
+  "deduplicated": 4,
+  "filtered_out": 0,
+  "returned": 232,
+  "filter_reasons": {},
+  "partial": true,
+  "validation_attempted": 394,
+  "validation_rejected": 158,
+  "validation_rejections": [
+    {
+      "title": "Software Engineer 2 - Frontend",
+      "company": "Teamworks",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/9349c437-486d-49f1-ba57-9fac5bf9ff36"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Frontend Engineer - Acquisition",
+      "company": "Caesars Entertainment",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/3f2dbf34-1a5a-40fb-b0c5-ad7b319ccf21"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Frontend Software Engineer - Space",
+      "company": "Anduril",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0e042208-410d-40d1-ad04-0c362b31d38e"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Front-End Developer - CraftCMS - CraftCommerce",
+      "company": "Ebeacon",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/58b346c8-3335-45b1-b62d-95a06d11d565"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Staff Frontend Engineer",
+      "company": "sound.xyz",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/2b3b312a-bc61-480d-af98-7a032691ae53"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Education Research - Frontend Developer-SLATE",
+      "company": "Huron",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/67c3293f-f8cb-4a2f-aa79-da9019127d2a"
+        }
+      ],
+      "reason": "Destination could not be loaded (Error)"
+    },
+    {
+      "title": "Staff Frontend Software Engineer - Frontend - Factory Software",
+      "company": "Tesla",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/1a569769-a371-4bfb-9571-26c6f30984bf"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Senior Frontend Software Engineer - DogByte",
+      "company": "Veterinary Emergency Group (VEG ER)",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/28634bd8-4d20-4962-8a99-6a5e25b6e7d2"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Frontend Engineer - Frontend - Product Engineering",
+      "company": "TRM Labs",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/51193bef-6195-454d-8eef-120dd2cf186c"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer - Front-End - CX Apps",
+      "company": "Collectors",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/89bb7497-b231-4b74-8663-2230941f4b42"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Senior Frontend Developer - AI Cloud Platform",
+      "company": "Evergrid",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/3bdeef66-5cb3-4b4e-b4ab-0a3b814ec230"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Frontend Engineer - Architect",
+      "company": "Tempo",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/2c1678b2-becf-4001-99bb-f9438e2dd20f"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Software Engineer 2 - Frontend",
+      "company": "Greenlight",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/bef6cd4a-5f73-4a94-af42-88b1343ada05"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Frontend Software Engineer - Multiple Teams",
+      "company": "Hadrian",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/25f7ec37-481b-4a92-9c27-13b31f683b4f"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Staff Engineer Frontend",
+      "company": "Lendistry",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a948073b-9a15-42e6-b3ef-b4342c2c349e"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Frontend Software Engineer",
+      "company": "Veilant",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/46e54301-c314-4ff1-9bc8-11bad7566c8b"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Principal Software Engineer - Frontend",
+      "company": "Palo Alto Networks",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/1b6dad46-d332-4d72-8ecb-494ea7b03366"
+        }
+      ],
+      "reason": "Destination could not be loaded (Error)"
+    },
+    {
+      "title": "Senior Software Engineer - Frontend - Extensions Team",
+      "company": "Cerby",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/40eda1d7-ee7d-4f62-a628-ab9e5e1977d1"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Senior Product Software Engineer - Frontend",
+      "company": "The Walt Disney Company",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/f87368ea-638b-4f30-a7da-8dd684c03bff"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Frontend Software Development Engineer 2",
+      "company": "Slate Auto",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/3e9efe58-f6ba-4287-a8ba-296b9d768f4e"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Front-End Developer - Front-End",
+      "company": "The Publisher Desk",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/8f093ad0-1f3e-40c8-805c-78412862bef4"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Frontend Architect",
+      "company": "Koch Industries",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/efbb51f4-e993-4ca6-9b6f-a325d3da9b5e"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Frontend Engineer - User Interface",
+      "company": "Nebius",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a0ca246f-0680-466c-8464-28f63b1d728f"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Power Platform Developer - UI/UX - Front-End",
+      "company": "Engineer Up",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c7da830f-f4a2-4f1d-83f8-84c38ce02230"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Frontend / UX Engineer",
+      "company": "NTT Data",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/6506b226-4f46-4824-ae0e-e9c1545d2106"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "WordPress Front-End Developer - Front-End Development",
+      "company": "Ebeacon",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/9bd7dfc8-5439-4d9c-808b-0bc2f91ee017"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Junior Frontend Developer - AI & LLM Focus",
+      "company": "Advision Development",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/cedade19-55b4-4bee-8cb4-a7c8030cfc23"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Front-End Software Engineer 2 - Front End - Apex Platform",
+      "company": "AXS",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/58af8c96-0e5d-4edf-b7fd-621ec92dce4a"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Junior Frontend Designer & Developer",
+      "company": "The Aerospace Corporation",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/7029a464-f407-4a19-8153-29a527e6713d"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Senior Frontend Engineer",
+      "company": "Newfold Digital",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/80a24e16-d483-4f6e-875f-f008c1a84525"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Product Software Engineer 2 - Frontend",
+      "company": "The Walt Disney Company",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/9ec805d5-9a56-43cb-b7b7-083886750970"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer - Frontend",
+      "company": "Flock Safety",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/5c5fa30d-a444-4963-a85d-875412d13e41"
+        }
+      ],
+      "reason": "HTTP 404"
+    },
+    {
+      "title": "SCADA Front-End Engineer",
+      "company": "Divcon",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c6d770cf-ece1-4ec5-a16b-ca4c10e09c6d"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer - Frontend - Access Management",
+      "company": "Cerby",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/6452c0d3-a177-4ac5-9dfc-ca25962c32f8"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Staff Software Engineer - Frontend",
+      "company": "Ping Identity",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/74a4dd56-1c2e-456d-9945-6b0155406fc0"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer - Front-End",
+      "company": "The Walt Disney Company",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/57592ce0-0502-4a6b-aaba-9d8d32b9524b"
+        }
+      ],
+      "reason": "Destination could not be loaded (Error)"
+    },
+    {
+      "title": "Senior Frontend Software Engineer",
+      "company": "Affirm",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/49ca0720-fb71-4f28-a1a2-1c161bc953d5"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Frontend Architect - Multiple Teams",
+      "company": "OleOle",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/b69be7bf-f303-4009-9a5b-1486507bf724"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Front-End Software Engineer",
+      "company": "Acclaim Technical Services",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c4ea4a74-d683-487a-9c45-df778bfd7606"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Front-End Developer 4",
+      "company": "Jobsbridge",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/89a68372-bcd7-46e5-893e-211aea1ba50a"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Staff Frontend Engineer - Front End",
+      "company": "Scout Motors",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/2a81c7eb-bb3d-448c-ae5f-a308642c5842"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Healthcare Financial Transformation - Front-End Revenue Cycle/Patient Access",
+      "company": "Guidehouse",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/466108ca-7a9f-4787-8a2b-eb4893e77c9a"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Engineering Manager - Front-End - UI/UX",
+      "company": "StackBlitz",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/841a6c0f-15cd-4cb5-b654-fa744d83b404"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Senior Software Engineering Manager - Frontend and API",
+      "company": "Ford Motor Company",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/f51bb6ff-8eff-4987-8b46-214179e5c1b5"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Frontend Outsystems Manager",
+      "company": "Axos Bank",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/49520bf5-94ff-4aa2-8ce9-bbc1831a8b7c"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Frontend Engineering Manager",
+      "company": "Wrapbook",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/20e8390a-7220-4074-872e-d961dea3144c"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior RF Front-End Module Design Engineer - Radio Frequency IC Engineering",
+      "company": "SpaceX",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/e0e9206d-afcd-4ffc-9676-fc732e8f04b0"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Software Engineer 3 - Service Monetization",
+      "company": "Crunchyroll",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/7e0b85f0-c3d2-4896-879a-f2eacc6beb0b"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Staff Software Engineer",
+      "company": "Higharc",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/3bd1b569-2850-4c00-9515-add952c707d4"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Software Developer 3 - Next.js and Sanity",
+      "company": "Cleveland Clinic",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/83563ea0-5441-4398-ba4b-339435823a48"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Staff Front End Engineer",
+      "company": "Motional",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/214f2fe3-2b2c-4a40-904d-fa0ed21c4801"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer",
+      "company": "The J. Paul Getty Trust",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/4960e3eb-b5e1-48bf-8a7f-91811f411a18"
+        }
+      ],
+      "reason": "Site requires sign-in"
+    },
+    {
+      "title": "Principal Software Engineer - Front End Web UI Platform",
+      "company": "GitHub",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/2efd642e-11e4-418c-af77-61e3c031442f"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Senior UI Developer - UI",
+      "company": "LPL Financial Holdings",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/23d177b4-b0ec-4b7b-9f32-74e0c340efed"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Angular Developer",
+      "company": "Leidos",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a70caee6-1643-4b22-890f-6c3d230c82ac"
+        }
+      ],
+      "reason": "Destination could not be loaded (Error)"
+    },
+    {
+      "title": "Data Engineer 2 - Palantir MSS",
+      "company": "Deloitte",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c969188f-9671-4998-a13e-c1fec521ff8a"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Junior User Interface Developer 2",
+      "company": "Jobsbridge",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/1f30a8f4-3c65-44e7-94da-e4ecc86dfca2"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Ecommerce Engineer",
+      "company": "Signet Jewelers",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a8828ee1-3307-4415-9ce5-055c00c75a46"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "SharePoint Developer",
+      "company": "Leidos",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/3661d77d-1d6a-458e-8cce-9a40793073f7"
+        }
+      ],
+      "reason": "Destination could not be loaded (Error)"
+    },
+    {
+      "title": "Front End Engineer",
+      "company": "Outpatient App",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c5f3ca67-dda1-4628-9426-d48887b37e51"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer",
+      "company": "The Walt Disney Company",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/ea8d10b5-1bd6-497b-9e2e-cd54dd0a32a3"
+        }
+      ],
+      "reason": "Destination could not be loaded (Error)"
+    },
+    {
+      "title": "Senior Shopify Developer",
+      "company": "DemandPDX",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/d2888ba3-3e6c-40a2-86b6-03b0b42e0f05"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Staff Principal Software Engineer (Frontend/Fullstack)",
+      "company": "Voltaiq",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/223ecdb3-1c44-42a5-94a8-9c337ec71a37"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Senior Software Engineer - Ctv",
+      "company": "Paramount Global",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/03a02d5a-519a-499d-9d52-f1f3a6ed53fb"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Junior Mobile and Front End Developer - Systems Administration - Innovation and Technology",
+      "company": "Lap of Love",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/18b16f68-5abf-449e-a4d2-5eec877f6ef0"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Development Front End Engineer",
+      "company": "CVS Health",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a62c43e1-0ee1-4c48-b7a4-d0a822abe7d5"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Data Visualization Software Engineer - Data Visualization",
+      "company": "General Matter",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/537ffcde-ab21-4802-8953-8fba345392b6"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Web Developer",
+      "company": "Aptive Resources",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c9e6b880-b9c9-4f1a-b0c8-63b0217b4e0b"
+        }
+      ],
+      "reason": "Site requires sign-in"
+    },
+    {
+      "title": "Web Developer Intern - WordPress - WooCommerce",
+      "company": "Codeage",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/272cb1de-278a-45fe-87a1-7215f39bdd32"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Senior 3D Engineer",
+      "company": "Moon",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a77f742d-9716-4482-be5b-44b84fdc1570"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Developer 3 - Application Development",
+      "company": "IEHP",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/2dbe5fcd-f78f-481a-8b84-2f678b519d09"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Staff Software Engineer - iOS Search and Shopping Journeys",
+      "company": "Pinterest",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/b5d63fca-6319-4f27-949e-1ff83691e1f7"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "UI/UX Engineer",
+      "company": "General Dynamics Information Technology",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0010212f-4d87-4db1-9890-65232f6e7ae9"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Design Technologist 2 - Creative X",
+      "company": "Amazon",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/6ea3f0d4-54eb-4f8a-a1fa-d6c87982e2b3"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Staff Engineer - Store/Digital",
+      "company": "Papa John's",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/89986e29-776f-44ee-8199-54b66504907d"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior UI Engineer - Electronic Warfare",
+      "company": "Anduril",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/5f9c99d8-03a9-45d8-9140-04aace5283ed"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Web Developer 2 - EverPro",
+      "company": "EverCommerce",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/d8704237-85ed-41fb-973e-c503b4134920"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer - CTV",
+      "company": "Paramount Global",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/fa45790d-61fd-45ad-8a11-68fbd632cc82"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Senior PHP Developer",
+      "company": "Jobsbridge",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/ddc36d77-eabe-4aa2-b080-6995eb22f93c"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "UI Developer",
+      "company": "Photon",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c94e1700-f381-4190-9115-8ee2e5ef2a31"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "User Experience Engineer Intern - PhD - Summer 2027",
+      "company": "Google",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/05b3642e-a1c8-4a0a-b252-24530e109900"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Senior React Engineer - Online Banking",
+      "company": "First Citizens BancShares",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/9952db01-3ca5-4bb4-a0dd-4f9f0279de76"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Lead Software Engineer - Ctv",
+      "company": "Paramount Global",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/71d223ec-26aa-4eda-9162-ad7a5a78aa2f"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Angular Developer - Java Backend",
+      "company": "Bright Vision Technologies",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a4315a7f-b573-43e9-9b3f-d29f7b5966ad"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer - UI",
+      "company": "Ontrak Health",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/1be51885-7a83-4d76-854d-ef97a64ec808"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Lead Software Engineer - Ctv",
+      "company": "Paramount Global",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/4473970f-6042-4c36-923c-1873b7d775ff"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Software Engineer 2 - Ceres Adaptive Learning",
+      "company": "McGraw Hill",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/e56e786f-022c-47a8-b037-46e41627a0c0"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Lead Software Engineer - Web",
+      "company": "Paramount Global",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/2f14b773-ad60-4412-a286-f206a9591790"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Staff Software Engineer - Multiple Teams",
+      "company": "Coinbase",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/dde6052b-fe1e-4af0-b87f-610c69780eb5"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Lead Software Engineer - CTV",
+      "company": "Paramount Global",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/78a2a9a6-044b-4b0f-87c9-937e4ae5a5ef"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Software Development Engineer – UI/UX",
+      "company": "Dragos",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/311bf589-2a7c-403a-89e6-2b8a2ff94732"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "SharePoint Developer",
+      "company": "TD Synnex",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/d3396f93-741b-4490-8933-8c4da1fd881b"
+        }
+      ],
+      "reason": "Destination could not be loaded (Error)"
+    },
+    {
+      "title": "Angular Web Developer",
+      "company": "Edgewater IT",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/af310d45-e0b0-4466-bb45-8250925bbd96"
+        }
+      ],
+      "reason": "Site requires sign-in"
+    },
+    {
+      "title": "AI Web Framework Lead Software Engineer - Octagon Framework",
+      "company": "JP Morgan Chase",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/16bb0734-5824-4d97-99b9-41e495a9ac25"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Product Design Engineer Audio",
+      "company": "Stability AI",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0499f15a-142c-4147-b5a1-812badd9e4b0"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "UI/UX Engineer - Case Management Modernization",
+      "company": "General Dynamics Information Technology",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/f1aceb27-87fe-45c6-a8b8-1a7e8814c4fc"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Ground Software Engineer 2 - Arc Vehicle",
+      "company": "Inversion Space",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/381d314e-1a5d-49bf-abfd-ea95dff02f33"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Lead Front End Engineer - Adobe Edge Delivery Services",
+      "company": "Blue Acorn iCi",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/8e0652f8-a3c1-448e-9815-c599449a65cc"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Mid-Level Developer - CMS",
+      "company": "DecisionPoint",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/b10b79d6-df14-4895-85af-e65d1a1fdc75"
+        }
+      ],
+      "reason": "Site requires sign-in"
+    },
+    {
+      "title": "Senior Software Engineer - Multiple Teams",
+      "company": "Coinbase",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/7563c38f-7d95-4310-9637-b167df6662e6"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "User Experience Engineer Intern",
+      "company": "Google",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/709433ac-42c3-4c44-a25b-c31b22c52054"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Senior Design Engineer",
+      "company": "Spear AI",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/b0089a74-570f-4972-8e07-62003b8fc331"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Design Technologist 2 - Prime Video",
+      "company": "Amazon",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/3ca6a747-9266-4ffa-a720-063048c017a1"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Web Developer",
+      "company": "Strategic Association Solutions",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0394fa84-c124-43f8-9418-770e3b385922"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Junior JavaScript Engineer",
+      "company": "Jobsbridge",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/8f814ad4-09cc-4b37-bbbf-8e9ad861bf2c"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Front End Developer - React",
+      "company": "Webtellect",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/6a2a0236-9f32-4a03-a475-4cadaa98ac7c"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Senior or Staff Growth Engineer",
+      "company": "Skylight Calendar & Frame",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a085bd2e-cab3-40ec-82ff-2467b912ce59"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Front End Web Developer",
+      "company": "Living Spaces",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/75256d11-66da-429f-bdb3-8c3f1ca59318"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Senior Front End Developer",
+      "company": "Paramount Global",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c88d4a89-0450-4437-b443-b25374430c14"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Staff Software Engineer - Web Product Enablement",
+      "company": "Pinterest",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/76fed855-92e6-4870-9a91-bddf9bdd810e"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Microsoft Dynamics CRM Developer",
+      "company": "vTech Solution",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c6f7dfd7-d024-4046-b78d-221c22ea5ef9"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Web User Interface Developer",
+      "company": "Jobsbridge",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/02921941-ed01-4ede-8512-1bb18b7d52db"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "Software Engineer 2",
+      "company": "The Walt Disney Company",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/002d17ef-9260-432d-b9ee-fb8048f2c639"
+        }
+      ],
+      "reason": "Destination could not be loaded (Error)"
+    },
+    {
+      "title": "Shopify Developer",
+      "company": "Execution Space",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/4b744d01-b6e2-4098-ab94-b518843e8f33"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Mid-Level Angular Engineer",
+      "company": "GovCIO",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/b2b288e4-fab5-41c0-879c-1973aa205448"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "Web Development Specialist-Freelance AI Trainer Project",
+      "company": "Invisible Technologies",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a7759a3d-4188-4fac-9e90-89ff45b12570"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "Senior SAP Fiori Developer",
+      "company": "Bright Vision Technologies",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/12e8cc5f-44b7-4212-b35a-4a7400100c18"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "UI Engineer",
+      "company": "Analytica",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/9bea323e-6871-49fe-ae55-4c5af9a26cde"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "Senior Cyber Security UI Developer - Cyber Security Data",
+      "company": "AIG",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/d9165601-fc9a-4cd3-aa5c-79cf3f01dafb"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer - Browser Extension",
+      "company": "Cyberhaven",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/4aa9f98a-5fbd-4686-aa90-03f0a9801227"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "UI/UX Developer",
+      "company": "General Dynamics Information Technology",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/bd21b255-93bc-4a08-93f3-d650de67e714"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "3D Engineer",
+      "company": "Moon",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/9a8d29c7-fc3d-4bfc-af6f-4e2e81be4c9d"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior/Staff Software Engineer - Front End",
+      "company": "Abridge",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/9ed0b53e-d841-4cb6-8349-dbdcd461dd0b"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "Senior Front End Engineer",
+      "company": "Urban SDK",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/5d64949f-2f56-43cd-b156-b478a608532d"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Design Engineer - Design Engineering",
+      "company": "GC AI",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/417479a6-f074-4d5c-a169-074b9e35f96e"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Design Engineer - Psa",
+      "company": "Collectors",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0a776ac0-cfc6-4a60-ad10-ac9372294596"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "Front End Developer - Ecommerce",
+      "company": "Jobsbridge",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/fa17765b-d23b-42a4-aca9-694e601dfca2"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "Senior Design Engineer - GM Design System",
+      "company": "General Motors",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/fcfb17ec-dfec-4f07-a81e-65b48ed40932"
+        }
+      ],
+      "reason": "Destination has no application entry point"
+    },
+    {
+      "title": "Software Engineer - Front End",
+      "company": "Aditude",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/b0c3333b-cfd0-4d09-9605-7a1107e20978"
+        }
+      ],
+      "reason": "HTTP 429"
+    },
+    {
+      "title": "Front End Software Engineer - React/Next.js",
+      "company": "Hang",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/25821482-b684-48c1-bf52-b501ff528b08"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Staff Software Engineer - Front End Web UI Platform",
+      "company": "GitHub",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/85ff87da-1556-4a12-93b5-069ff8768d58"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Software Engineer 4",
+      "company": "Netspend",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0184ca67-c76a-4e1d-b961-fa8af2056f53"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer - Prebid & Header Bidding",
+      "company": "Freestar",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/3b16d06d-7f1f-4b0b-be6c-382956b651a2"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Front End Architect - EDS",
+      "company": "Blue Acorn iCi",
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/273d1f34-9340-44cd-9d3d-6ba970e5b23b"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "[Remote] Senior Software Engineer - Frontend Developer Experience",
+      "company": "Mercury",
+      "sources": [
+        {
+          "site": "jobright",
+          "url": "https://jobright.ai/jobs/info/6a57c4e810c4d945d8650e8f?page=1&visit=frontend-jobs-in-united-states"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Frontend Engineer Intern (6 month internship)",
+      "company": "Centerfield",
+      "sources": [
+        {
+          "site": "jobright",
+          "url": "https://jobright.ai/jobs/info/6a74ea0dbb6ca93ae560ca8f?page=1&visit=frontend-jobs-in-united-states"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Senior Software Engineer",
+      "company": "Pine Park Health",
+      "sources": [
+        {
+          "site": "yc",
+          "url": "https://www.ycombinator.com/companies/pine-park-health/jobs/wx8rhlj-senior-software-engineer"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Backend Engineer",
+      "company": "GoGoGrandparent",
+      "sources": [
+        {
+          "site": "yc",
+          "url": "https://www.ycombinator.com/companies/gogograndparent/jobs/2vbzAw8-backend-engineer"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Staff Software Engineer",
+      "company": "Curri",
+      "sources": [
+        {
+          "site": "yc",
+          "url": "https://www.ycombinator.com/companies/curri/jobs/Pc2wWok-staff-software-engineer"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Backend Engineer",
+      "company": "PropelAuth",
+      "sources": [
+        {
+          "site": "yc",
+          "url": "https://www.ycombinator.com/companies/propelauth/jobs/8W9NMOq-backend-engineer"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Senior Full Stack Software Engineer",
+      "company": "Instrumentl",
+      "sources": [
+        {
+          "site": "yc",
+          "url": "https://www.ycombinator.com/companies/instrumentl/jobs/HAkpPkY-senior-full-stack-software-engineer"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Front-end Engineer",
+      "company": "NetNow",
+      "sources": [
+        {
+          "site": "builtin",
+          "url": "https://builtin.com/job/front-end-engineer/9352293"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Senior Frontend Engineer",
+      "company": "Newfold Digital",
+      "sources": [
+        {
+          "site": "builtin",
+          "url": "https://builtin.com/job/senior-frontend-engineer/11196824"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Senior Front End Engineer",
+      "company": "Secta Labs",
+      "sources": [
+        {
+          "site": "builtin",
+          "url": "https://builtin.com/job/senior-front-end-engineer/9723368"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Senior/Staff Frontend Engineer",
+      "company": "Embedding VC",
+      "sources": [
+        {
+          "site": "builtin",
+          "url": "https://builtin.com/job/senior-staff-frontend-engineer/10410204"
+        }
+      ],
+      "reason": "No employer application link found"
+    },
+    {
+      "title": "Senior Frontend Software Engineer, Consumer Engineering",
+      "company": "Senior Frontend Software Engineer, Consumer Engineering Seen 2d ago Reddit",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/19c6bed1992192d7dad3ba51d20c22d9-senior-frontend-software-engineer-consumer-engineering"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Senior Frontend Engineer, Home Experience",
+      "company": "Senior Frontend Engineer, Home Experience Seen 8d ago Reddit",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/ea056fb9a8209078674d1e7069029ecd-senior-frontend-engineer-home-experience"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Frontend Engineer, Ads",
+      "company": "Frontend Engineer, Ads Seen 9d ago Reddit",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/e6502f4ac563e5dcd17c461c6ef4ed45-frontend-engineer-ads"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Senior Software Engineer, Frontend (Auth Experiences)",
+      "company": "Senior Software Engineer, Frontend (Auth Experiences) Seen 9d ago Affirm",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/99d407cc29ca5c134d8666e633f09058-senior-software-engineer-frontend-auth-experiences"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Senior Frontend Engineer, Ads Creative",
+      "company": "Senior Frontend Engineer, Ads Creative Seen 17d ago Reddit",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/b65d35797feea12507a4cd3d725c234c-senior-frontend-engineer-ads-creative"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Senior Software Engineer, Frontend (Platform - Identity)",
+      "company": "Senior Software Engineer, Frontend (Platform - Identity) Seen 22d ago Coinbase",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/90c45b4cc10dc9438871c85d20aa555c-senior-software-engineer-frontend-platform-identity"
+        }
+      ],
+      "reason": "HTTP 403"
+    },
+    {
+      "title": "Senior Software Engineering Manager, FrontEnd and API",
+      "company": "Senior Software Engineering Manager, FrontEnd and API Seen 29d ago Ford Motor",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/cff258f7b0523b06350291ce8ad360a3-senior-software-engineering-manager-frontend-and-api"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Frontend Engineer, Payments & Risk",
+      "company": "Frontend Engineer, Payments & Risk Seen 36d ago Stripe",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/7f470e6b1cad7dce0774c40ce266420c-frontend-engineer-payments-risk"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Mission Software Engineer, Vehicle Software, Frontend",
+      "company": "Mission Software Engineer, Vehicle Software, Frontend Seen 37d ago Anduril",
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/55b2056172fd43a66d2bdcd7cf2212be-mission-software-engineer-vehicle-software-frontend"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    },
+    {
+      "title": "Frontend Engineer",
+      "company": "Matcha.fm",
+      "sources": [
+        {
+          "site": "hn",
+          "url": "https://news.ycombinator.com/item?id=49538758"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "frontend",
+      "company": "Mattermost",
+      "sources": [
+        {
+          "site": "hn",
+          "url": "https://news.ycombinator.com/item?id=49530116"
+        }
+      ],
+      "reason": "Destination does not identify the requested role"
+    },
+    {
+      "title": "Senior Software Engineer, Frontend",
+      "company": "Flock",
+      "sources": [
+        {
+          "site": "a16z",
+          "url": "https://jobs.a16z.com/jobs/flock-safety/05e066a7-9636-4c7e-8357-4b9c915e30b9--senior-software-engineer-frontend"
+        }
+      ],
+      "reason": "HTTP 404"
+    },
+    {
+      "title": "Staff Software Engineer (Frontend / UI)",
+      "company": "Function Health",
+      "sources": [
+        {
+          "site": "a16z",
+          "url": "https://jobs.a16z.com/jobs/function-health/am9icG9zdDpyJtbQYuSC0l_lOd7kZ9-n--staff-software-engineer-frontend-ui"
+        }
+      ],
+      "reason": "Could not verify that the destination belongs to this employer"
+    }
+  ],
+  "application_url_deduplicated": 4,
+  "discovery_deduplicated": 0,
+  "stage": "validation",
+  "input": 394,
+  "field_filling": {
+    "stage": "field_filling",
+    "input": 232,
+    "returned": 232,
+    "filled": 232,
+    "cached": 0,
+    "failed": 0,
+    "unknown_fields": 241,
+    "model": "gpt-5.4-mini",
+    "requests": 232
+  }
+}

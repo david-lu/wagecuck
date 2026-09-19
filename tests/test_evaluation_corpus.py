@@ -17,10 +17,12 @@ def test_training_and_validation_corpora_are_explicit_and_disjoint():
     assert len({case["company"] for case in imported}) >= 40
     assert len({case["source_platform"] for case in imported}) >= 10
     assert {"remote", "hybrid", "onsite"} <= {case["workplace"] for case in imported}
-    assert all(
-        case["source_dataset"] == "job_search/results/senior-staff-2026-09-16.csv"
-        for case in imported
-    )
+    source_datasets = {
+        "job_search/results/senior-staff-2026-09-16.csv",
+        "job_search/results/frontend-2026-09-19-021153/04-selected.csv",
+        "job_search/results/software-engineer-2026-09-18/03-validation.csv",
+    }
+    assert {case["source_dataset"] for case in imported} == source_datasets
     assert {case["id"] for case in training.cases}.isdisjoint(
         case["id"] for case in validation.cases
     )

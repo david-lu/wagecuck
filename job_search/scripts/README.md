@@ -24,14 +24,16 @@ definitions, which resolve beside the package's scripts.
 | Script | Preset behavior | Overrides |
 | --- | --- | --- |
 | `run_search.py` | Search for software engineer jobs | `--query`, `--sites`, `--max-pages`, `--max-per-site` |
-| `run_preliminary_filter.py` | Salary range reaches USD 180k/year; remote or Los Angeles metro | `--min-salary`, `--salary-basis`, `--salary-currency`, `--salary-period`, `--location-prompt` |
-| `run_validation.py` | Verify URLs and generate languages, frameworks, role, and is_backend | `--fields`, `--validation-workers`, `--field-workers`, `--cache` |
+| `run_preliminary_filter.py` | Salary range reaches USD 180k/year; U.S.-eligible remote or Los Angeles metro | `--min-salary`, `--salary-basis`, `--salary-currency`, `--salary-period`, `--location-prompt` |
+| `run_validation.py` | Verify URLs and generate languages, frameworks, role, is_backend, and us_authorization | `--fields`, `--validation-workers`, `--field-workers`, `--cache` |
 | `run_final_filter.py` | Frontend/full_stack and all listed languages/frameworks fit an interpreted web stack | `--filters` and additional `--filter` conditions |
 
 The preliminary filter retains unknown salary information by default; pass
 `--no-include-unknown` to require known salary information in the selected currency
-and period. Its location prompt requires evidence of remote work or an LA-area
-location. Final filtering excludes unknown required filter values by default.
+and period. Its location prompt requires evidence that a remote job accepts workers
+located in the United States, or evidence of an LA-area location. Generic remote and
+foreign-only remote listings do not match. Final filtering excludes unknown required
+filter values by default.
 
 All underlying operation options are available. Arguments supplied on the command
 line override the script's preset scalar options:

@@ -1,0 +1,44 @@
+{
+  "stage": "filter",
+  "input": 232,
+  "returned": 77,
+  "filtered_out": 155,
+  "filter_reasons": {
+    "languages": 76,
+    "unknown languages": 25,
+    "unknown frameworks": 31,
+    "frameworks": 91,
+    "role": 2,
+    "unknown role": 3
+  },
+  "field_filters": {
+    "role": {
+      "type": "string_field",
+      "unique_values": 3,
+      "matching_values": 2,
+      "unclassified_values": 0
+    },
+    "languages": {
+      "type": "array_field",
+      "unique_values": 32,
+      "matching_values": 11,
+      "unclassified_values": 0
+    },
+    "frameworks": {
+      "type": "array_field",
+      "unique_values": 147,
+      "matching_values": 77,
+      "unclassified_values": 0
+    }
+  },
+  "location_prompt": null,
+  "raw_unique_locations": 0,
+  "unique_locations": 0,
+  "unclassified_locations": 0,
+  "agent_location_calls": 0,
+  "agent_model": null,
+  "agent_field_calls": 4,
+  "field_filter_model": "gpt-5.4-mini",
+  "elapsed_seconds": 19.3672,
+  "partial": false
+}

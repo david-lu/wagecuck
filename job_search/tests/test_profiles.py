@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -25,6 +26,17 @@ def test_search_profile_owns_titles_output_and_location_filter(tmp_path):
     assert profile.output_directory.as_posix() == "results/la-or-remote"
     assert profile.location_prompt == "Los Angeles metropolitan area or remote"
     assert profile.filter_criteria().job_title == "software engineer"
+
+
+def test_bundled_preliminary_presets_require_us_remote_eligibility():
+    from scripts.run_preliminary_filter import LOCATION_PROMPT
+
+    profile_path = Path(__file__).parents[1] / "profiles" / "los-angeles-or-remote.json"
+    profile = SearchProfile.load(profile_path)
+    for prompt in (LOCATION_PROMPT, profile.location_prompt):
+        assert "United States" in prompt
+        assert "limited to another country or region" in prompt
+        assert "without evidence that U.S.-based workers are eligible" in prompt
 
 
 @pytest.mark.parametrize(

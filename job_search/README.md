@@ -162,13 +162,15 @@ A number field can have several comparison expressions, written as a JSON list.
 Salary and location filtering can be applied to any job CSV:
 
 ```powershell
-wagecuck-search filter jobs.csv --output local-or-remote.csv --min-salary 180000 --salary-basis maximum --salary-currency USD --salary-period year --include-unknown --filter location "Is this remote or in the Los Angeles metropolitan area?"
+wagecuck-search filter jobs.csv --output local-or-remote.csv --min-salary 180000 --salary-basis maximum --salary-currency USD --salary-period year --include-unknown --filter location "Is this explicitly open to remote workers in the United States, or in the Los Angeles metropolitan area?"
 ```
 
-This retains a salary range whose upper bound reaches $180k, and allows unknown
-salary/location values. Use `--salary-basis minimum` to require the advertised
-floor, and omit `--include-unknown` to exclude unknowns. There is no currency
-conversion or assumed annualization.
+This retains a salary range whose upper bound reaches $180k. Remote listings must
+explicitly allow workers located in the United States; generic remote and
+foreign-only remote listings do not satisfy the location filter. Use
+`--salary-basis minimum` to require the advertised floor, and omit
+`--include-unknown` to exclude unknowns. There is no currency conversion or assumed
+annualization.
 
 ## Validate and generate fields
 
@@ -203,7 +205,8 @@ and array fields:
     "options": ["backend", "frontend", "full_stack"],
     "prompt": "Classify the role from its primary responsibilities."
   },
-  "is_backend": {"type": "boolean_field", "prompt": "Does this role involve material backend development?"}
+  "is_backend": {"type": "boolean_field", "prompt": "Does this role involve material backend development?"},
+  "us_authorization": {"type": "boolean_field", "prompt": "Does this position explicitly require U.S. citizenship or U.S. government security authorization?"}
 }
 ```
 

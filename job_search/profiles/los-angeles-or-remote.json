@@ -13,6 +13,6 @@
     "salary_period": "year",
     "salary_basis": "maximum",
     "include_unknown": true,
-    "location_prompt": "Remote roles, or roles in the Los Angeles metropolitan area. A known onsite or hybrid role outside the Los Angeles area does not match. Unknown location and unknown remote status do not establish a match."
+    "location_prompt": "Remote roles explicitly open to workers located in the United States, or roles located in the Los Angeles metropolitan area. A remote role limited to another country or region does not match. Remote without evidence that U.S.-based workers are eligible does not match. Unknown location and unknown remote-country eligibility do not establish a match."
   }
 }

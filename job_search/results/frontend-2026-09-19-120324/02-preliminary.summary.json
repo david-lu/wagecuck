@@ -1,0 +1,22 @@
+{
+  "stage": "filter",
+  "input": 3814,
+  "returned": 394,
+  "filtered_out": 3420,
+  "filter_reasons": {
+    "location": 3416,
+    "salary": 11,
+    "expired": 3
+  },
+  "field_filters": {},
+  "location_prompt": "Remote roles explicitly open to workers located in the United States, or roles located in the Los Angeles metropolitan area. A remote role limited to another country or region does not match. Remote without evidence that U.S.-based workers are eligible does not match. Unknown location and unknown remote-country eligibility do not establish a match.",
+  "raw_unique_locations": 1247,
+  "unique_locations": 958,
+  "unclassified_locations": 0,
+  "agent_location_calls": 13,
+  "agent_model": "gpt-5.4-mini",
+  "agent_field_calls": 0,
+  "field_filter_model": null,
+  "elapsed_seconds": 48.495,
+  "partial": false
+}

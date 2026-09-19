@@ -287,6 +287,9 @@ def test_example_definitions_and_filters_are_reusable_configuration():
     assert definitions["languages"] == {
         "type": "array_field", "prompt": "Programming languages required for the job",
     }
+    assert definitions["us_authorization"]["type"] == "boolean_field"
+    assert "citizenship or U.S. government security authorization" in definitions["us_authorization"]["prompt"]
+    assert "us_citizen" not in definitions
     assert "minimum_experience" not in definitions
     assert criteria.field_filters["languages"]["mode"] == "all"
 
