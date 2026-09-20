@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from .agent_config import add_agent_arguments, create_agent
 from .demo import generate_profile
+from .evaluation import write_report
 from .models import Profile, RunOptions
 from .runner import ApplicationRunner
 
@@ -19,22 +20,28 @@ def resolve_profile_path(reference: str | Path) -> Path:
     return Path("profiles") / path / "profile.json"
 
 
+def emit_result(payload: dict, output: Path | None) -> None:
+    """Print a result and optionally publish the same JSON at an explicit path."""
+    if output is not None:
+        write_report(output, payload)
+    print(json.dumps(payload, indent=2))
+    if output is not None:
+        print(f"Result: {output.resolve()}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="wagecuck")
     commands = parser.add_subparsers(dest="command", required=True)
     demo = commands.add_parser("demo-profile", help="Generate a synthetic profile and resume PDF")
-    demo.add_argument("--output", type=Path, default=Path("profiles/demo"))
+    demo.add_argument("--output", type=Path, default=Path("profiles/dummy"))
     server = commands.add_parser("demo-server", help="Serve local test application forms")
     server.add_argument("--port", type=int, default=8765)
     run = commands.add_parser("run", help="Process one job application URL")
     run.add_argument("url")
     run.add_argument(
         "--profile",
-        default="default",
-        help=(
-            "Profile name or path to a profile JSON file "
-            "(default: profiles/default/profile.json)"
-        ),
+        default="dummy",
+        help=("Profile name or path to a profile JSON file (default: profiles/dummy/profile.json)"),
     )
     mode = run.add_mutually_exclusive_group()
     mode.add_argument("--mode", choices=("inspect", "fill", "submit"), default="fill")
@@ -72,8 +79,11 @@ def main(argv=None):
     )
     run.add_argument("--timeout", type=float, default=120)
     run.add_argument(
-        "--artifacts", type=Path, default=Path(".artifacts/application/runs")
+        "--output",
+        type=Path,
+        help="Write the final result JSON to this path in addition to stdout",
     )
+    run.add_argument("--artifacts", type=Path, default=Path(".artifacts/application/runs"))
     run.add_argument(
         "--database",
         type=Path,
@@ -117,19 +127,18 @@ def main(argv=None):
             capture_sensitive_artifacts=args.sensitive_artifacts,
         )
     except (OSError, ValidationError, ValueError):
-        print(
-            json.dumps(
-                {
-                    "success": False,
-                    "status": "failed",
-                    "code": "PROFILE_INVALID",
-                    "message": "Invalid profile, profile path, or run options.",
-                }
-            )
+        emit_result(
+            {
+                "success": False,
+                "status": "failed",
+                "code": "PROFILE_INVALID",
+                "message": "Invalid profile, profile path, or run options.",
+            },
+            args.output,
         )
         return 1
     result = asyncio.run(ApplicationRunner(agent).run(args.url, profile, options))
-    print(result.model_dump_json(indent=2))
+    emit_result(result.model_dump(mode="json"), args.output)
     return (
         0
         if result.status in ("succeeded", "ready", "inspected")

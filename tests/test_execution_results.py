@@ -285,9 +285,58 @@ def test_summary_does_not_recalculate_or_modify_recorded_results(tmp_path):
     path = tmp_path / "report.json"
     path.write_text(json.dumps(report), encoding="utf-8")
     before = path.read_bytes()
-    script("dry_run_all").summarize(path)
+    script("run_all").summarize(path)
     assert path.read_bytes() == before
     assert "| no |" in path.with_suffix(".md").read_text(encoding="utf-8")
+
+
+def test_summary_ends_with_pass_counts_and_failure_reasons():
+    report = {
+        "checked_at": "2026-01-01",
+        "results": [
+            {
+                "id": "passed",
+                "url": "https://example.com/pass",
+                "code": "MAPPED_FIELDS_VERIFIED",
+                "field_count": 1,
+                "mapped_count": 1,
+                "filled_count": 1,
+                "required_question_satisfied_count": 1,
+                "required_question_count": 1,
+                "required_fill_pass": True,
+            },
+            {
+                "id": "failed",
+                "url": "https://example.com/fail",
+                "code": "FIELD_FILL_FAILED",
+                "field_count": 1,
+                "mapped_count": 1,
+                "filled_count": 0,
+                "required_question_satisfied_count": 0,
+                "required_question_count": 1,
+                "required_fill_pass": False,
+                "required_fill_failures": ["Work authorization | required"],
+            },
+            {
+                "id": "blocked",
+                "url": "https://example.com/blocked",
+                "code": "ACCESS_DENIED",
+                "message": "Job page returned HTTP 403.",
+            },
+        ],
+    }
+    module = script("run_all")
+
+    rendered = module.render_summary(report, "report.json")
+    terminal = module.render_terminal_summary(report)
+
+    assert "Passed required fields: **1 / 3**" in rendered
+    assert "Failed or incomplete: **2 / 3**" in rendered
+    assert "| 1 | FIELD_FILL_FAILED |" in rendered
+    assert "Work authorization \\| required (1)" in rendered
+    assert "| 1 | ACCESS_DENIED |" in rendered
+    assert "Passed required fields: 1 / 3" in terminal
+    assert "FIELD_FILL_FAILED: 1" in terminal
 
 
 async def test_choice_change_stops_batch_and_exposes_conditional_field(page):

@@ -97,9 +97,10 @@ def probe_code(report):
         ):
             return "FIELD_FILL_FAILED"
         # Compatibility for aggregate/fixture reports that omit per-control rows.
-        if report["filled_count"] < report["mapped_count"] or not report[
-            "completed_values_retained"
-        ]:
+        if (
+            report["filled_count"] < report["mapped_count"]
+            or not report["completed_values_retained"]
+        ):
             return "FIELD_FILL_FAILED"
         return "VALIDATION_FAILED"
     if report.get("required_question_count"):
@@ -264,7 +265,16 @@ async def probe_cases(cases, browser_type, profile, args, metadata_template, *, 
                 )
             }
         )
-        print(json.dumps(printable_row), flush=True)
+        if getattr(args, "concise_progress", False):
+            passed = stored_row.get("required_fill_pass") is True
+            status = "PASS" if passed else "FAIL"
+            print(
+                f"[fill {len(completed)}/{len(cases)}] {status}: {stored_row['id']} "
+                f"({stored_row.get('code', 'UNKNOWN')})",
+                flush=True,
+            )
+        else:
+            print(json.dumps(printable_row), flush=True)
         persist()
 
     async def worker(case):
@@ -308,11 +318,18 @@ async def probe_cases(cases, browser_type, profile, args, metadata_template, *, 
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reports", type=Path, nargs="+", required=True)
-    parser.add_argument("--profile", type=Path, default=Path("profiles/default/profile.json"))
+    parser.add_argument("--profile", type=Path, default=Path("profiles/dummy/profile.json"))
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--dataset-split", choices=("training", "validation"), default="training")
+    parser.add_argument(
+        "--dataset-split", choices=("training", "validation", "run"), default="training"
+    )
     parser.add_argument("--implementation-fingerprint", default="")
     parser.add_argument("--aggregate-only", action="store_true")
+    parser.add_argument(
+        "--concise-progress",
+        action="store_true",
+        help="Print one short progress line per case instead of full JSON rows",
+    )
     add_concurrency_argument(parser)
     add_agent_arguments(parser)
     args = parser.parse_args()
@@ -338,7 +355,8 @@ async def main():
                 )
         else:
             await probe_cases(cases, playwright.chromium, profile, args, metadata_template)
-    print(f"Report: {args.output.resolve()}", flush=True)
+    label = "Fill report" if args.concise_progress else "Report"
+    print(f"{label}: {args.output.resolve()}", flush=True)
 
 
 if __name__ == "__main__":

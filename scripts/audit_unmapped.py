@@ -108,7 +108,7 @@ async def audit(report, profile, snapshot_runs):
 
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", type=Path, default=Path("profiles/default/profile.json"))
+    parser.add_argument("--profile", type=Path, default=Path("profiles/dummy/profile.json"))
     parser.add_argument(
         "--report",
         type=Path,

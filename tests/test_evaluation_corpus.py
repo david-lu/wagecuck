@@ -1,8 +1,21 @@
+import json
 from pathlib import Path
 
 from wagecuck.evaluation import implementation_fingerprint, load_corpus
 
 ROOT = Path(__file__).parents[1]
+
+
+def test_manifest_without_split_is_an_ordinary_run(tmp_path):
+    manifest = tmp_path / "run.json"
+    manifest.write_text(
+        json.dumps({"cases": [{"id": "one", "url": "https://example.com/apply"}]}),
+        encoding="utf-8",
+    )
+
+    corpus = load_corpus(manifest)
+
+    assert corpus.split == "run"
 
 
 def test_training_and_validation_corpora_are_explicit_and_disjoint():

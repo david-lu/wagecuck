@@ -86,7 +86,7 @@ def test_dotenv_configuration_preserves_shell_and_literal_key(tmp_path, monkeypa
 
 def test_corpus_runner_forwards_model_configuration(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location(
-        "dry_run_model_test", Path(__file__).parents[1] / "scripts" / "dry_run_all.py"
+        "run_all_model_test", Path(__file__).parents[1] / "scripts" / "run_all.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -116,9 +116,10 @@ def test_corpus_runner_forwards_model_configuration(tmp_path, monkeypatch):
         module.sys,
         "argv",
         [
-            "dry_run_all.py",
-            "--manifests",
+            "run_all.py",
             str(manifest),
+            "--mode",
+            "dry-run",
             "--output",
             str(output),
             "--agent-provider",
@@ -131,8 +132,10 @@ def test_corpus_runner_forwards_model_configuration(tmp_path, monkeypatch):
         ],
     )
     module.main()
+    assert "--concise-progress" in commands[0]
     assert "--agent-provider" not in commands[0]  # Navigation does not use the model.
     probe = commands[-1]
+    assert "--concise-progress" in probe
     assert probe[probe.index("--agent-provider") + 1] == "openai"
     assert probe[probe.index("--agent-model") + 1] == "gpt-test"
     assert probe[probe.index("--agent-timeout") + 1] == "42.0"
@@ -142,7 +145,7 @@ def test_corpus_runner_forwards_model_configuration(tmp_path, monkeypatch):
 
 def test_validation_runner_keeps_holdout_reports_aggregate(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location(
-        "dry_run_validation_test", Path(__file__).parents[1] / "scripts" / "dry_run_all.py"
+        "run_all_validation_test", Path(__file__).parents[1] / "scripts" / "run_all.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -151,6 +154,7 @@ def test_validation_runner_keeps_holdout_reports_aggregate(tmp_path, monkeypatch
     validation = json.loads(
         (Path(__file__).parents[1] / "examples" / "validation-jobs.json").read_text()
     )
+    manifest = Path(__file__).parents[1] / "examples" / "validation-jobs.json"
     commands = []
 
     def run(command, *, check):
@@ -176,9 +180,10 @@ def test_validation_runner_keeps_holdout_reports_aggregate(tmp_path, monkeypatch
         module.sys,
         "argv",
         [
-            "dry_run_all.py",
-            "--split",
-            "validation",
+            "run_all.py",
+            str(manifest),
+            "--mode",
+            "dry-run",
             "--output",
             str(output),
             "--agent-provider",
@@ -370,7 +375,7 @@ async def test_offline_probe_invokes_hosted_mapping_and_drafting(profile):
                         "basis": "inferred",
                         "reason": "Uses declared skills.",
                         "fact_keys": ["skills"],
-                    }
+                    },
                 ]
             }
         )

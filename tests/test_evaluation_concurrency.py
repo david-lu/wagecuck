@@ -30,12 +30,14 @@ async def test_workers_overlap_with_bound_and_return_input_order():
         if len(started) == 3:
             first_wave.set()
         await asyncio.wait_for(first_wave.wait(), 1)
-        await asyncio.sleep((2 - case % 3) * .01)
+        await asyncio.sleep((2 - case % 3) * 0.01)
         active -= 1
         return {"case": case}
 
     results = await run_cases(
-        list(range(100)), worker, concurrency=3,
+        list(range(100)),
+        worker,
+        concurrency=3,
         on_result=lambda index, result: completed.append(index),
     )
     assert peak == 3 and active == 0
@@ -109,10 +111,11 @@ async def test_pool_reuses_fixed_slots_and_closes_all_browsers():
     launcher = FakeLauncher()
     leased = []
     async with BrowserPool(launcher, 2) as pool:
+
         async def worker(case):
             async with pool.lease() as browser:
                 leased.append(browser)
-                await asyncio.sleep(.01)
+                await asyncio.sleep(0.01)
                 return case
 
         assert await run_cases(list(range(7)), worker, concurrency=4) == list(range(7))
@@ -139,6 +142,7 @@ async def test_pool_releases_lease_after_cancelled_case():
     launcher = FakeLauncher()
     ready = asyncio.Event()
     async with BrowserPool(launcher, 1) as pool:
+
         async def hang():
             async with pool.lease():
                 ready.set()
@@ -172,14 +176,16 @@ def test_atomic_report_failure_preserves_last_complete_snapshot(tmp_path, monkey
 
 def test_separate_evaluations_have_distinct_default_and_intermediate_reports(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location(
-        "parallel_dry_run_cli", Path(__file__).parents[1] / "scripts/dry_run_all.py"
+        "parallel_run_all_cli", Path(__file__).parents[1] / "scripts/run_all.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     manifest = tmp_path / "jobs.json"
-    manifest.write_text(json.dumps({"split": "training", "cases": [
-        {"id": "one", "url": "https://example.test/job"}
-    ]}))
+    manifest.write_text(
+        json.dumps(
+            {"split": "training", "cases": [{"id": "one", "url": "https://example.test/job"}]}
+        )
+    )
     commands = []
 
     def fake_run(command, *, check):
@@ -188,19 +194,28 @@ def test_separate_evaluations_have_distinct_default_and_intermediate_reports(tmp
         assert command[command.index("--concurrency") + 1] == "3"
         assert "--pool" in command
         if Path(command[1]).name == "probe_live.py":
-            write_report(Path(command[command.index("--output") + 1]), {
-                "checked_at": "test", "results": [
-                    {"id": "one", "url": "https://example.test/job", "code": "JOB_CLOSED"}
-                ],
-            })
+            write_report(
+                Path(command[command.index("--output") + 1]),
+                {
+                    "checked_at": "test",
+                    "results": [
+                        {"id": "one", "url": "https://example.test/job", "code": "JOB_CLOSED"}
+                    ],
+                },
+            )
 
     monkeypatch.setattr(module, "create_agent", lambda args: None)
     monkeypatch.setattr(module.subprocess, "run", fake_run)
-    monkeypatch.setattr(module, "default_report_path", lambda prefix, **kwargs:
-        default_report_path(prefix, directory=tmp_path))
-    monkeypatch.setattr(module.sys, "argv", [
-        "dry_run_all.py", "--manifests", str(manifest), "--concurrency", "3", "--pool"
-    ])
+    monkeypatch.setattr(
+        module,
+        "default_report_path",
+        lambda prefix, **kwargs: default_report_path(prefix, directory=tmp_path),
+    )
+    monkeypatch.setattr(
+        module.sys,
+        "argv",
+        ["run_all.py", str(manifest), "--mode", "dry-run", "--concurrency", "3", "--pool"],
+    )
     module.main()
     module.main()
     outputs = [cmd[cmd.index("--output") + 1] for cmd in commands]

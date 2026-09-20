@@ -112,10 +112,17 @@ async def inspect_case(
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, default=Path("examples/jobs.json"))
-    parser.add_argument("--expected-split", choices=("training", "validation"), default="training")
+    parser.add_argument(
+        "--expected-split", choices=("training", "validation", "run"), default="training"
+    )
     parser.add_argument("--aggregate-only", action="store_true")
     parser.add_argument("--ephemeral-artifacts", action="store_true")
-    parser.add_argument("--profile", type=Path, default=Path("profiles/default/profile.json"))
+    parser.add_argument(
+        "--concise-progress",
+        action="store_true",
+        help="Print one short progress line per case instead of full JSON rows",
+    )
+    parser.add_argument("--profile", type=Path, default=Path("profiles/dummy/profile.json"))
     parser.add_argument("--output", type=Path)
     parser.add_argument("--limit", type=int)
     add_concurrency_argument(parser)
@@ -141,7 +148,17 @@ async def main():
 
     def collect(index, row):
         completed[index] = row
-        print(json.dumps({key: value for key, value in row.items() if key != "fields"}), flush=True)
+        if args.concise_progress:
+            print(
+                f"[navigate {len(completed)}/{len(cases)}] {row['code']}: {row['id']} "
+                f"({row.get('field_count', 0)} fields)",
+                flush=True,
+            )
+        else:
+            print(
+                json.dumps({key: value for key, value in row.items() if key != "fields"}),
+                flush=True,
+            )
         write_report(args.output, report())
 
     async def worker(case, browser=None):
@@ -180,7 +197,8 @@ async def main():
             await run_cases(cases, pooled_worker, concurrency=args.concurrency, on_result=collect)
     else:
         await run_cases(cases, worker, concurrency=args.concurrency, on_result=collect)
-    print(f"Report: {args.output}", flush=True)
+    label = "Navigation report" if args.concise_progress else "Report"
+    print(f"{label}: {args.output}", flush=True)
 
 
 if __name__ == "__main__":

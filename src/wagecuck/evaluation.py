@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Literal, TypeVar
 from uuid import uuid4
 
-CorpusSplit = Literal["training", "validation"]
+CorpusSplit = Literal["training", "validation", "run"]
 
 
 @dataclass(frozen=True)
@@ -36,9 +36,11 @@ def load_corpus(path: Path, *, expected_split: CorpusSplit | None = None) -> Cor
             raise ValueError(f"Corpus manifest include cycle at {current}")
         active.add(current)
         data = json.loads(current.read_text(encoding="utf-8"))
-        split = data.get("split", inherited_split)
-        if split not in ("training", "validation"):
-            raise ValueError(f"Corpus manifest needs split=training|validation: {current}")
+        split = data.get("split", inherited_split or "run")
+        if split not in ("training", "validation", "run"):
+            raise ValueError(
+                f"Corpus manifest split must be training, validation, or run: {current}"
+            )
         if inherited_split and split != inherited_split:
             raise ValueError(f"Corpus manifest mixes {inherited_split} and {split}: {current}")
         manifests.append(current)
@@ -88,10 +90,7 @@ MAX_CONCURRENCY = 8
 
 
 def _check_concurrency(count: int) -> int:
-    if (
-        not isinstance(count, int) or isinstance(count, bool)
-        or not 1 <= count <= MAX_CONCURRENCY
-    ):
+    if not isinstance(count, int) or isinstance(count, bool) or not 1 <= count <= MAX_CONCURRENCY:
         raise ValueError(f"concurrency must be between 1 and {MAX_CONCURRENCY}")
     return count
 
@@ -107,11 +106,15 @@ def positive_concurrency(value: str) -> int:
 
 def add_concurrency_argument(parser) -> None:
     parser.add_argument(
-        "--concurrency", type=positive_concurrency, default=1, metavar="N",
+        "--concurrency",
+        type=positive_concurrency,
+        default=1,
+        metavar="N",
         help=f"Maximum active jobs, 1-{MAX_CONCURRENCY} (default: 1); excess jobs wait",
     )
     parser.add_argument(
-        "--pool", action="store_true",
+        "--pool",
+        action="store_true",
         help="Reuse a bounded pool of browsers; each job still gets a fresh context",
     )
 
@@ -167,9 +170,10 @@ def write_report(path: Path, payload: dict) -> None:
 class BrowserPool:
     """A fixed number of reusable browser slots, scoped to one evaluation."""
 
-    def __init__(self, browser_type, size: int):
+    def __init__(self, browser_type, size: int, *, launch_options: dict | None = None):
         self.size = _check_concurrency(size)
         self.browser_type = browser_type
+        self.launch_options = launch_options or {}
         self._available = asyncio.Queue(maxsize=size)
         self._browsers = []
         self._closed = True
@@ -193,7 +197,7 @@ class BrowserPool:
         browser = await self._available.get()
         try:
             if browser is None or not browser.is_connected():
-                browser = await self.browser_type.launch()
+                browser = await self.browser_type.launch(**self.launch_options)
                 self._browsers.append(browser)
             yield browser
         finally:

@@ -17,10 +17,10 @@ python -m venv .venv
 Fill a job application and watch the browser:
 
 ```powershell
-.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --show-browser
+.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --show-browser --output runs\application.json
 ```
 
-Runs use `profiles/default/profile.json` unless `--profile` supplies another short profile name or JSON path. For example, `--profile ryan` loads `profiles/ryan/profile.json`. The default mode fills supported steps, verifies the answers, stops before final submission, and closes the browser.
+Runs use the synthetic `profiles/dummy/profile.json` unless `--profile` supplies another short profile name or JSON path. For example, `--profile ryan` loads `profiles/ryan/profile.json`. The default mode fills supported steps, verifies the answers, stops before final submission, and closes the browser.
 
 Optional resume autofill helpers are skipped. Required attachments are uploaded first; the app waits for upload/autofill activity to settle, rereads the form, then fills mapped answers from your profile and verifies them. A stored attachment is recognized even if the site replaces its file input. Processing waits are bounded; `UPLOAD_TIMEOUT` means the site did not settle. The offline corpus probe reports `UPLOAD_UNVERIFIED` when its network block prevents an upload from completing.
 
@@ -48,23 +48,24 @@ With a configured model, add `--agent-fill` to infer unresolved answers from the
 | `--slow-mo 250` | Add 250 ms between browser actions. |
 | `--timeout 240` | Allow 240 seconds for automated work. Manual review has no time limit. |
 | `--agent-fill` | Enable inferred and explicitly marked invented answers for unresolved questions. |
+| `--output PATH` | Write the final fill or submission result JSON to an explicit path. |
 
 For example, inspect the included fictional profile without filling anything:
 
 ```powershell
-.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --profile demo --dry-run
+.venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --profile dummy --dry-run
 ```
 
 Fill mode can upload documents and send data during intermediate steps. It is not network-isolated. Synthetic profiles can submit or hand off for manual submission only on local test pages.
 
 ## Profile and keys
 
-`profiles/default/profile.json` is the canonical local applicant profile used by the CLI and evaluation scripts. Everything under `profiles/` except its placeholder is ignored by Git so personal data and résumés cannot be committed. Document paths are relative to the profile JSON. Use `--profile NAME` or `--profile PATH` only when intentionally overriding it.
+`profiles/dummy/profile.json` is the canonical synthetic testing profile used by the CLI and evaluation scripts. Everything under `profiles/` except its placeholder is ignored by Git, so profile data and résumés cannot be committed. Document paths are relative to the profile JSON. Pass a separate profile explicitly when using truthful applicant data.
 
-Initialize a new local default profile with fictional data, then replace its values and résumé before a real run:
+Generate or reset the local dummy profile and résumé:
 
 ```powershell
-.venv\Scripts\wagecuck.exe demo-profile --output profiles/default
+.venv\Scripts\wagecuck.exe demo-profile
 ```
 
 - `facts`: contact details and links.
@@ -117,14 +118,30 @@ To try a complete local submission, start the test server in one terminal:
 Then run:
 
 ```powershell
-.venv\Scripts\wagecuck.exe run "http://127.0.0.1:8765/single" --profile demo --mode submit
+.venv\Scripts\wagecuck.exe run "http://127.0.0.1:8765/single" --profile dummy --mode submit
 ```
 
 Run the training corpus without submitting applications:
 
 ```powershell
-.venv\Scripts\python.exe scripts/dry_run_all.py --split training --pool --concurrency 4
+.venv\Scripts\python.exe scripts/run_all.py examples\jobs.json --mode dry-run --split training --pool --concurrency 4
 ```
+
+For an ordinary batch dry run, pass one or more `job_search` CSV or JSON outputs directly:
+
+```powershell
+.venv\Scripts\python.exe scripts/run_all.py job_search\results\RUN\04-selected.csv --mode dry-run --profile profiles\dummy\profile.json --output runs\reports\dry-run.json --pool --concurrency 4
+```
+
+Use the same command for live fills or submissions by changing `--mode`. Live submission requires
+a truthful, non-synthetic profile:
+
+```powershell
+.venv\Scripts\python.exe scripts/run_all.py job_search\results\RUN\04-selected.csv --mode submit --profile profiles\real\profile.json --output runs\reports\submitted.json --agent-provider openai --agent-fill --pool --concurrency 2
+```
+
+`--mode dry-run` retains field-level diagnostics for ordinary job-search outputs. `--split` is
+reserved for asserting the training and held-out validation corpora.
 
 Training examples are in `examples/jobs.json`; held-out cases are in
 `examples/validation-jobs.json`. The validation corpus is evaluated separately and must not be
