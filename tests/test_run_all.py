@@ -120,3 +120,64 @@ async def test_live_batch_persists_results_in_input_order(tmp_path, profile, mon
     assert [row["run_id"] for row in stored["results"]] == ["run-1", "run-2"]
     assert [row["input"]["title"] for row in stored["results"]] == ["Role 1", "Role 2"]
     assert module.outcome_summary(stored)["passed"] == 2
+
+
+async def test_dry_run_uses_live_fill_mode_and_never_enables_submission(
+    tmp_path, profile, monkeypatch
+):
+    module = run_all_script()
+    job = JobInput(
+        id="job-1",
+        url="https://jobs.example.test/1",
+        title="Frontend Engineer",
+        company="Example",
+        source_file=str(tmp_path / "jobs.csv"),
+        source_index=1,
+    )
+    output = tmp_path / "dry-run.json"
+    args = SimpleNamespace(
+        mode="dry-run",
+        headed=False,
+        agent_fill=False,
+        slow_mo=0,
+        timeout=120,
+        artifacts=tmp_path / "artifacts",
+        database=tmp_path / "applications.sqlite3",
+        storage_state=None,
+        sensitive_artifacts=False,
+        inputs=[tmp_path / "jobs.csv"],
+        concurrency=1,
+        pool=False,
+    )
+
+    class Runner:
+        def __init__(self, agent):
+            pass
+
+        async def run(self, url, run_profile, options, *, browser=None):
+            assert options.mode == "fill"
+            return ApplicationResult(
+                run_id="run-1",
+                profile_id=run_profile.id,
+                job_url=url,
+                mode=options.mode,
+                status="ready",
+                code=Code.READY,
+                submitted=False,
+                submission_attempted=False,
+                started_at="start",
+                finished_at="finish",
+            )
+
+    monkeypatch.setattr(module, "ApplicationRunner", Runner)
+    monkeypatch.setattr(module, "create_agent", lambda args: None)
+
+    report = await module.run_live([job], profile, args, output, duplicates=0)
+
+    assert report["mode"] == "dry-run"
+    assert report["execution_mode"] == "fill"
+    assert report["network_disabled_before_filling"] is False
+    assert report["final_submission_enabled"] is False
+    assert report["results"][0]["mode"] == "dry-run"
+    assert report["results"][0]["execution_mode"] == "fill"
+    assert module.outcome_summary(report)["passed"] == 1

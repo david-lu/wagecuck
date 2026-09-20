@@ -48,7 +48,7 @@ def main(argv=None):
     mode.add_argument(
         "--dry-run",
         action="store_true",
-        help="Inspect the application without entering applicant data or submitting",
+        help="Fill a live application with a synthetic profile, then stop before submission",
     )
     run.add_argument(
         "--wait-for-user",
@@ -105,7 +105,7 @@ def main(argv=None):
     if args.command == "demo-profile":
         print(json.dumps({"profile": str(generate_profile(args.output))}))
         return 0
-    selected_mode = "inspect" if args.dry_run else args.mode
+    selected_mode = "fill" if args.dry_run else args.mode
     if args.wait_for_user and (selected_mode != "fill" or args.headed is False):
         parser.error("--wait-for-user requires fill mode and cannot be combined with --headless")
     try:
@@ -114,6 +114,8 @@ def main(argv=None):
         parser.error(str(exc))
     try:
         profile = Profile.load(resolve_profile_path(args.profile))
+        if args.dry_run and not profile.synthetic:
+            parser.error("--dry-run requires a synthetic profile; use --mode fill for real data")
         options = RunOptions(
             mode=selected_mode,
             headless=not args.headed,
@@ -138,7 +140,15 @@ def main(argv=None):
         )
         return 1
     result = asyncio.run(ApplicationRunner(agent).run(args.url, profile, options))
-    emit_result(result.model_dump(mode="json"), args.output)
+    payload = result.model_dump(mode="json")
+    if args.dry_run:
+        payload.update(
+            mode="dry-run",
+            execution_mode="fill",
+            network_disabled_before_filling=False,
+            final_submission_enabled=False,
+        )
+    emit_result(payload, args.output)
     return (
         0
         if result.status in ("succeeded", "ready", "inspected")

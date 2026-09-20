@@ -40,7 +40,7 @@ With a configured model, add `--agent-fill` to infer unresolved answers from the
 
 | Option | Behavior |
 |---|---|
-| `--dry-run` | Inspect the form without entering profile data or submitting. |
+| `--dry-run` | Run the live fill pipeline with a synthetic profile and stop before final submission. |
 | `--mode fill` | Fill and verify; stop before final submission. This is the default. |
 | `--mode submit` | Fill, verify, submit once, and check for confirmation. |
 | `--wait-for-user` | Fill, open a visible browser, and wait for manual submission. Only works in fill mode. |
@@ -50,13 +50,17 @@ With a configured model, add `--agent-fill` to infer unresolved answers from the
 | `--agent-fill` | Enable inferred and explicitly marked invented answers for unresolved questions. |
 | `--output PATH` | Write the final fill or submission result JSON to an explicit path. |
 
-For example, inspect the included fictional profile without filling anything:
+For example, exercise the complete live workflow with the included fictional profile without
+clicking the final submit control:
 
 ```powershell
 .venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --profile dummy --dry-run
 ```
 
-Fill mode can upload documents and send data during intermediate steps. It is not network-isolated. Synthetic profiles can submit or hand off for manual submission only on local test pages.
+Dry-run and fill modes can upload documents and send data during intermediate steps. They keep
+networking enabled so remote widgets and server validation behave normally. Dry-run requires a
+synthetic profile. Synthetic profiles can submit or hand off for manual submission only on local
+test pages.
 
 ## Profile and keys
 
@@ -140,14 +144,17 @@ a truthful, non-synthetic profile:
 .venv\Scripts\python.exe scripts/run_all.py job_search\results\RUN\04-selected.csv --mode submit --profile profiles\real\profile.json --output runs\reports\submitted.json --agent-provider openai --agent-fill --pool --concurrency 2
 ```
 
-`--mode dry-run` retains field-level diagnostics for ordinary job-search outputs. `--split` is
+`--mode dry-run` uses the same navigation, upload, dynamic-control, inference, and validation path
+as a live fill. It stops when the application is ready for its final submit action. `--split` is
 reserved for asserting the training and held-out validation corpora.
 
 Training examples are in `examples/jobs.json`; held-out cases are in
 `examples/validation-jobs.json`. The validation corpus is evaluated separately and must not be
 used to tune field behavior.
 
-Use `--pool --concurrency 4` to reuse up to four browser workers during both navigation and form probing. Extra jobs wait in the queue. **The hard limit is 8 active jobs per evaluation**, with or without pooling; larger values are rejected. Pooling is optional, and concurrency defaults to `1`.
+Use `--pool --concurrency 4` to reuse up to four browser workers. Every job gets a fresh browser
+context. Extra jobs wait in the queue. **The hard limit is 8 active jobs per evaluation**, with or
+without pooling; larger values are rejected. Pooling is optional, and concurrency defaults to `1`.
 
 Each job gets a fresh browser context, planner, and model client; cookies and profile state are not shared. Results stay in corpus order. Browsers close when the evaluation ends. Without `--pool`, each job launches its own browser, subject to the same concurrency limit.
 

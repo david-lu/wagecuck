@@ -174,7 +174,7 @@ def test_atomic_report_failure_preserves_last_complete_snapshot(tmp_path, monkey
     assert list(tmp_path.iterdir()) == [report]
 
 
-def test_separate_evaluations_have_distinct_default_and_intermediate_reports(tmp_path, monkeypatch):
+def test_separate_evaluations_have_distinct_default_reports(tmp_path, profile, monkeypatch):
     spec = importlib.util.spec_from_file_location(
         "parallel_run_all_cli", Path(__file__).parents[1] / "scripts/run_all.py"
     )
@@ -186,38 +186,43 @@ def test_separate_evaluations_have_distinct_default_and_intermediate_reports(tmp
             {"split": "training", "cases": [{"id": "one", "url": "https://example.test/job"}]}
         )
     )
-    commands = []
+    outputs = []
 
-    def fake_run(command, *, check):
-        assert check
-        commands.append(command)
-        assert command[command.index("--concurrency") + 1] == "3"
-        assert "--pool" in command
-        if Path(command[1]).name == "probe_live.py":
-            write_report(
-                Path(command[command.index("--output") + 1]),
+    async def fake_run_live(jobs, run_profile, args, output, duplicates, dataset_split="run"):
+        assert args.concurrency == 3 and args.pool
+        assert run_profile is profile
+        report = {
+            "mode": "dry-run",
+            "execution_mode": "fill",
+            "started_at": "test",
+            "input_files": [str(manifest)],
+            "total": 1,
+            "concurrency": 3,
+            "pool_enabled": True,
+            "results": [
                 {
-                    "checked_at": "test",
-                    "results": [
-                        {"id": "one", "url": "https://example.test/job", "code": "JOB_CLOSED"}
-                    ],
-                },
-            )
+                    "status": "ready",
+                    "code": "READY",
+                    "job_url": "https://example.test/job",
+                    "submitted": False,
+                    "input": {"company": "Example", "title": "Engineer"},
+                }
+            ],
+        }
+        outputs.append(output)
+        write_report(output, report)
+        return report
 
     monkeypatch.setattr(module, "create_agent", lambda args: None)
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    monkeypatch.setattr(module.Profile, "load", lambda path: profile)
+    monkeypatch.setattr(module, "run_live", fake_run_live)
     monkeypatch.setattr(
         module,
         "default_report_path",
         lambda prefix, **kwargs: default_report_path(prefix, directory=tmp_path),
     )
-    monkeypatch.setattr(
-        module.sys,
-        "argv",
-        ["run_all.py", str(manifest), "--mode", "dry-run", "--concurrency", "3", "--pool"],
-    )
-    module.main()
-    module.main()
-    outputs = [cmd[cmd.index("--output") + 1] for cmd in commands]
-    assert len(outputs) == len(set(outputs)) == 4
+    argv = [str(manifest), "--mode", "dry-run", "--concurrency", "3", "--pool"]
+    module.main(argv)
+    module.main(argv)
+    assert len(outputs) == len(set(outputs)) == 2
     assert all(Path(path).parent == tmp_path for path in outputs)

@@ -58,6 +58,9 @@ class StructuredMappingAgent:
         *,
         status_code: int | None = None,
         request_id: str | None = None,
+        provider_code: str | None = None,
+        provider_type: str | None = None,
+        retry_after_seconds: float | None = None,
     ) -> None:
         self.failures[category] += 1
         self.last_error = {
@@ -66,8 +69,33 @@ class StructuredMappingAgent:
             "status_code": status_code,
             "request_id": request_id,
         }
+        if provider_code:
+            self.last_error["provider_code"] = provider_code
+        if provider_type:
+            self.last_error["provider_type"] = provider_type
+        if retry_after_seconds is not None:
+            self.last_error["retry_after_seconds"] = retry_after_seconds
         if request_id:
             self._record_request_id(request_id)
+
+    def agent_failure_message(self, fallback: str) -> str:
+        """Attach a sanitized provider cause without exposing response messages."""
+        if not self.last_error:
+            return fallback
+        descriptions = {
+            "quota_exhausted": "model provider credit or quota is exhausted",
+            "rate_limited": "model provider rate limit was exceeded",
+            "authentication": "model provider authentication failed",
+            "bad_request": "model provider rejected the request",
+            "server_error": "model provider returned a server error",
+            "network_error": "model provider could not be reached",
+        }
+        description = descriptions.get(str(self.last_error.get("category")))
+        if not description:
+            return fallback
+        provider_code = self.last_error.get("provider_code")
+        suffix = f" ({provider_code})" if provider_code else ""
+        return f"{fallback.rstrip('.')} because {description}{suffix}."
 
     def record_usage(self, data: dict[str, Any], request_id: str | None = None) -> None:
         usage = data.get("usage") or {}
@@ -134,7 +162,9 @@ class StructuredMappingAgent:
                 self.record_error(request.operation, "invalid_structured_output")
             raise ApplicationError(
                 Code.AGENT_FAILED,
-                "Required-field agent was unavailable or returned invalid metadata.",
+                self.agent_failure_message(
+                    "Required-field agent was unavailable or returned invalid metadata."
+                ),
             ) from exc
 
     async def map(self, fields, fact_keys):
@@ -189,7 +219,10 @@ class StructuredMappingAgent:
             if self.last_error is None:
                 self.record_error(request.operation, "invalid_structured_output")
             raise ApplicationError(
-                Code.AGENT_FAILED, "Mapping agent returned an invalid response or was unavailable."
+                Code.AGENT_FAILED,
+                self.agent_failure_message(
+                    "Mapping agent returned an invalid response or was unavailable."
+                ),
             ) from exc
 
     async def draft(self, fields, facts):
@@ -215,7 +248,8 @@ class StructuredMappingAgent:
             if self.last_error is None:
                 self.record_error(request.operation, "invalid_structured_output")
             raise ApplicationError(
-                Code.AGENT_FAILED, "Agent-fill returned invalid prose or was unavailable."
+                Code.AGENT_FAILED,
+                self.agent_failure_message("Agent-fill returned invalid prose or was unavailable."),
             ) from exc
 
     async def infer(self, fields, facts):
@@ -248,7 +282,8 @@ class StructuredMappingAgent:
             if self.last_error is None:
                 self.record_error(request.operation, "invalid_structured_output")
             raise ApplicationError(
-                Code.AGENT_FAILED, "Answer inference failed or returned invalid data."
+                Code.AGENT_FAILED,
+                self.agent_failure_message("Answer inference failed or returned invalid data."),
             ) from exc
 
     async def _request(self, request: AgentRequest) -> str:

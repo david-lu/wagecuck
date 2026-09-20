@@ -146,11 +146,3 @@ def load_job_inputs(
     if limit is not None:
         loaded = loaded[:limit]
     return loaded, splits.pop(), duplicates
-
-
-def manifest_for(jobs: list[JobInput], split: CorpusSplit) -> dict:
-    return {
-        "schema_version": 1,
-        "split": split,
-        "cases": [job.as_dict() for job in jobs],
-    }

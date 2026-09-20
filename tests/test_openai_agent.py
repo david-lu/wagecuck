@@ -15,7 +15,7 @@ from wagecuck.agent_config import (
     agent_metadata,
     create_agent,
 )
-from wagecuck.models import ApplicationError, Code, FormField
+from wagecuck.models import ApplicationError, ApplicationResult, Code, FormField
 
 
 def response(data):
@@ -84,7 +84,7 @@ def test_dotenv_configuration_preserves_shell_and_literal_key(tmp_path, monkeypa
     ]
 
 
-def test_corpus_runner_forwards_model_configuration(tmp_path, monkeypatch):
+def test_batch_runner_forwards_model_configuration(tmp_path, profile, monkeypatch):
     spec = importlib.util.spec_from_file_location(
         "run_all_model_test", Path(__file__).parents[1] / "scripts" / "run_all.py"
     )
@@ -94,29 +94,36 @@ def test_corpus_runner_forwards_model_configuration(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     manifest, output = tmp_path / "jobs.json", tmp_path / "result.json"
     manifest.write_text(json.dumps({"cases": [{"id": "one", "url": "https://example.com/job"}]}))
-    commands = []
+    configurations = []
 
-    def run(command, *, check):
-        assert check
-        commands.append(command)
-        if Path(command[1]).name == "probe_live.py":
-            output.write_text(
-                json.dumps(
-                    {
-                        "checked_at": "test",
-                        "results": [
-                            {"id": "one", "url": "https://example.com", "code": "JOB_CLOSED"}
-                        ],
-                    }
-                )
+    def configured_agent(args):
+        configurations.append(
+            (args.agent_provider, args.agent_model, args.agent_timeout, args.agent_fill)
+        )
+        return object()
+
+    class Runner:
+        def __init__(self, agent):
+            assert agent is not None
+
+        async def run(self, url, run_profile, options, *, browser=None):
+            assert options.mode == "fill" and options.agent_fill
+            return ApplicationResult(
+                run_id="one",
+                profile_id=run_profile.id,
+                job_url=url,
+                mode=options.mode,
+                status="ready",
+                code=Code.READY,
+                started_at="start",
+                finished_at="finish",
             )
 
-    monkeypatch.setattr(module.subprocess, "run", run)
-    monkeypatch.setattr(
-        module.sys,
-        "argv",
+    monkeypatch.setattr(module, "create_agent", configured_agent)
+    monkeypatch.setattr(module.Profile, "load", lambda path: profile)
+    monkeypatch.setattr(module, "ApplicationRunner", Runner)
+    module.main(
         [
-            "run_all.py",
             str(manifest),
             "--mode",
             "dry-run",
@@ -129,21 +136,19 @@ def test_corpus_runner_forwards_model_configuration(tmp_path, monkeypatch):
             "--agent-fill",
             "--agent-timeout",
             "42",
-        ],
+        ]
     )
-    module.main()
-    assert "--concise-progress" in commands[0]
-    assert "--agent-provider" not in commands[0]  # Navigation does not use the model.
-    probe = commands[-1]
-    assert "--concise-progress" in probe
-    assert probe[probe.index("--agent-provider") + 1] == "openai"
-    assert probe[probe.index("--agent-model") + 1] == "gpt-test"
-    assert probe[probe.index("--agent-timeout") + 1] == "42.0"
-    assert "--agent-fill" in probe
-    assert "test-key" not in str(commands)
+    assert configurations == [
+        ("openai", "gpt-test", 42.0, True),
+        ("openai", "gpt-test", 42.0, True),
+    ]
+    report = json.loads(output.read_text())
+    assert report["mode"] == "dry-run"
+    assert report["execution_mode"] == "fill"
+    assert report["results"][0]["status"] == "ready"
 
 
-def test_validation_runner_keeps_holdout_reports_aggregate(tmp_path, monkeypatch):
+def test_validation_input_uses_same_live_fill_pipeline(tmp_path, profile, monkeypatch):
     spec = importlib.util.spec_from_file_location(
         "run_all_validation_test", Path(__file__).parents[1] / "scripts" / "run_all.py"
     )
@@ -151,36 +156,31 @@ def test_validation_runner_keeps_holdout_reports_aggregate(tmp_path, monkeypatch
     spec.loader.exec_module(module)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     output = tmp_path / "validation.json"
-    validation = json.loads(
-        (Path(__file__).parents[1] / "examples" / "validation-jobs.json").read_text()
-    )
     manifest = Path(__file__).parents[1] / "examples" / "validation-jobs.json"
-    commands = []
+    seen_modes = []
 
-    def run(command, *, check):
-        assert check
-        commands.append(command)
-        if Path(command[1]).name == "probe_live.py":
-            output.write_text(
-                json.dumps(
-                    {
-                        "checked_at": "test",
-                        "dataset_split": "validation",
-                        "aggregate_only": True,
-                        "results": [
-                            {"id": case["id"], "url": case["url"], "code": "JOB_CLOSED"}
-                            for case in validation["cases"]
-                        ],
-                    }
-                )
+    class Runner:
+        def __init__(self, agent):
+            pass
+
+        async def run(self, url, run_profile, options, *, browser=None):
+            seen_modes.append(options.mode)
+            return ApplicationResult(
+                run_id="one",
+                profile_id=run_profile.id,
+                job_url=url,
+                mode=options.mode,
+                status="ready",
+                code=Code.READY,
+                started_at="start",
+                finished_at="finish",
             )
 
-    monkeypatch.setattr(module.subprocess, "run", run)
-    monkeypatch.setattr(
-        module.sys,
-        "argv",
+    monkeypatch.setattr(module, "create_agent", lambda args: object())
+    monkeypatch.setattr(module.Profile, "load", lambda path: profile)
+    monkeypatch.setattr(module, "ApplicationRunner", Runner)
+    module.main(
         [
-            "run_all.py",
             str(manifest),
             "--mode",
             "dry-run",
@@ -189,15 +189,15 @@ def test_validation_runner_keeps_holdout_reports_aggregate(tmp_path, monkeypatch
             "--agent-provider",
             "openai",
             "--agent-fill",
-        ],
+            "--limit",
+            "1",
+        ]
     )
-    module.main()
-    inspect, probe = commands
-    assert "--aggregate-only" in inspect and "--ephemeral-artifacts" in inspect
-    assert "--aggregate-only" in probe
-    assert probe[probe.index("--dataset-split") + 1] == "validation"
-    fingerprint = probe[probe.index("--implementation-fingerprint") + 1]
-    assert len(fingerprint) == 64
+    report = json.loads(output.read_text())
+    assert seen_modes == ["fill"]
+    assert report["dataset_split"] == "validation"
+    assert report["mode"] == "dry-run"
+    assert report["final_submission_enabled"] is False
 
 
 @pytest.mark.parametrize("separator,expected", [("space", " "), ("comma", ", "), ("newline", "\n")])
@@ -338,6 +338,69 @@ async def test_responses_does_not_retry_permanent_http_error():
         "status_code": 400,
         "request_id": "bad-request-id",
     }
+
+
+async def test_responses_identifies_exhausted_credit_without_futile_retries():
+    def respond(request):
+        return httpx.Response(
+            429,
+            headers={"x-request-id": "quota-request-id"},
+            json={
+                "error": {
+                    "type": "insufficient_quota",
+                    "code": "credit_balance_exhausted",
+                    "message": "sensitive provider message",
+                }
+            },
+        )
+
+    agent = OpenAIMappingAgent(
+        api_key="test-key",
+        transport=httpx.MockTransport(respond),
+        retry_backoff=0,
+    )
+    with pytest.raises(ApplicationError) as caught:
+        await agent.infer([], {})
+
+    assert agent.calls == 1 and agent.retries == 0
+    assert "credit or quota is exhausted" in str(caught.value)
+    assert "credit_balance_exhausted" in str(caught.value)
+    assert "sensitive provider message" not in str(caught.value)
+    assert agent.metrics()["last_error"] == {
+        "operation": "inference",
+        "category": "quota_exhausted",
+        "status_code": 429,
+        "request_id": "quota-request-id",
+        "provider_code": "credit_balance_exhausted",
+        "provider_type": "insufficient_quota",
+    }
+
+
+async def test_responses_honors_retry_after(monkeypatch):
+    attempts = 0
+    delays = []
+
+    def respond(request):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(
+                429,
+                headers={"retry-after": "1.5"},
+                json={"error": {"type": "rate_limit_error", "code": "slow_down"}},
+            )
+        return response({"assessments": []})
+
+    async def sleep(delay):
+        delays.append(delay)
+
+    monkeypatch.setattr("wagecuck.agent_config.asyncio.sleep", sleep)
+    agent = OpenAIMappingAgent(
+        api_key="test-key", transport=httpx.MockTransport(respond), retry_backoff=0
+    )
+
+    assert await agent.assess([]) == []
+    assert delays == [1.5]
 
 
 async def test_offline_probe_invokes_hosted_mapping_and_drafting(profile):

@@ -5,8 +5,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import subprocess
-import sys
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,24 +13,27 @@ from uuid import uuid4
 from playwright.async_api import async_playwright
 from pydantic import ValidationError
 
-from wagecuck.agent_config import add_agent_arguments, agent_arguments, create_agent
+from wagecuck.agent_config import add_agent_arguments, create_agent
 from wagecuck.evaluation import (
     BrowserPool,
     add_concurrency_argument,
     default_report_path,
-    implementation_fingerprint,
     run_cases,
     write_report,
 )
-from wagecuck.job_inputs import JobInput, load_job_inputs, manifest_for
+from wagecuck.job_inputs import JobInput, load_job_inputs
 from wagecuck.models import ApplicationResult, Code, Profile, RunOptions
 from wagecuck.runner import ApplicationRunner
 
 FAILURE_EXPLANATIONS = {
     "ACCESS_DENIED": "The job site denied browser access.",
+    "AGENT_FAILED": "The configured model could not produce a valid answer plan.",
     "AUTH_REQUIRED": "The application requires an account or authenticated session.",
     "BROWSER_ERROR": "The browser failed while loading or processing the application.",
+    "CAPTCHA_KEY_MISSING": "A CAPTCHA was reached but CapSolver is not configured.",
+    "CAPTCHA_REQUIRED": "A CAPTCHA was reached before the application became ready.",
     "FIELD_FILL_FAILED": "One or more required controls rejected or did not retain a value.",
+    "FORM_NOT_FOUND": "No application form or supported entry control was found.",
     "FORM_NOT_RELOADED": "The application form could not be reconstructed for the fill probe.",
     "JOB_CLOSED": "The posting was closed or no longer accepted applications.",
     "REQUIRED_ANSWER_MISSING": "No usable profile or inferred answer was available for a required control.",
@@ -85,8 +86,8 @@ def _failure_groups(rows):
 def outcome_summary(report):
     """Summarize recorded results without changing their pass classification."""
     rows = report["results"]
-    if report.get("mode") in ("fill", "submit"):
-        expected_status = "ready" if report["mode"] == "fill" else "succeeded"
+    if report.get("mode") in ("dry-run", "fill", "submit"):
+        expected_status = "succeeded" if report["mode"] == "submit" else "ready"
         passed = [row for row in rows if row.get("status") == expected_status]
         failed = [row for row in rows if row.get("status") != expected_status]
         return {
@@ -111,8 +112,8 @@ def outcome_summary(report):
 
 def render_terminal_summary(report):
     summary = outcome_summary(report)
-    action = "Submitted" if report.get("mode") == "submit" else "Completed"
-    if report.get("mode") not in ("fill", "submit"):
+    action = "Submitted" if report.get("mode") == "submit" else "Ready without submission"
+    if report.get("mode") not in ("dry-run", "fill", "submit"):
         action = "Passed required fields"
     lines = [
         "",
@@ -136,12 +137,12 @@ def render_terminal_summary(report):
     return "\n".join(lines)
 
 
-def _render_dry_summary(report, report_name):
+def _render_offline_probe_summary(report, report_name):
     rows = report["results"]
     totals = Counter(row["code"] for row in rows)
     agent = report.get("agent", {})
     lines = [
-        "# Application dry-run coverage",
+        "# Legacy offline DOM probe coverage",
         "",
         (
             f"Checked: {report['checked_at']}. Dataset: {report.get('dataset_split', 'run')}. "
@@ -214,12 +215,12 @@ def _render_live_summary(report, report_name):
 def render_summary(report, report_name):
     lines = (
         _render_live_summary(report, report_name)
-        if report.get("mode") in ("fill", "submit")
-        else _render_dry_summary(report, report_name)
+        if report.get("mode") in ("dry-run", "fill", "submit")
+        else _render_offline_probe_summary(report, report_name)
     )
     summary = outcome_summary(report)
-    action = "Submitted" if report.get("mode") == "submit" else "Completed"
-    if report.get("mode") not in ("fill", "submit"):
+    action = "Submitted" if report.get("mode") == "submit" else "Ready without submission"
+    if report.get("mode") not in ("dry-run", "fill", "submit"):
         action = "Passed required fields"
     lines.extend(
         [
@@ -275,9 +276,10 @@ def _failed_result(job: JobInput, profile: Profile, mode: str, message: str):
     )
 
 
-async def run_live(jobs, profile, args, output, duplicates):
+async def run_live(jobs, profile, args, output, duplicates, dataset_split="run"):
+    execution_mode = "fill" if args.mode == "dry-run" else args.mode
     options = RunOptions(
-        mode=args.mode,
+        mode=execution_mode,
         headless=not args.headed,
         agent_fill=args.agent_fill,
         slow_mo_ms=args.slow_mo,
@@ -294,6 +296,10 @@ async def run_live(jobs, profile, args, output, duplicates):
         return {
             "schema_version": 1,
             "mode": args.mode,
+            "execution_mode": execution_mode,
+            "dataset_split": dataset_split,
+            "network_disabled_before_filling": False,
+            "final_submission_enabled": args.mode == "submit",
             "profile_id": profile.id,
             "started_at": started_at,
             "finished_at": datetime.now(UTC).isoformat() if len(completed) == len(jobs) else None,
@@ -308,6 +314,8 @@ async def run_live(jobs, profile, args, output, duplicates):
 
     def record(index, result):
         row = result.model_dump(mode="json")
+        row["execution_mode"] = row["mode"]
+        row["mode"] = args.mode
         row["input"] = jobs[index].as_dict()
         completed[index] = row
         write_report(output, payload())
@@ -358,73 +366,6 @@ async def run_live(jobs, profile, args, output, duplicates):
     return payload()
 
 
-def run_dry(jobs, dataset_split, args, output, duplicates):
-    root = Path(__file__).resolve().parents[1]
-    output.parent.mkdir(parents=True, exist_ok=True)
-    manifest = output.parent / f".{output.stem}-input-{uuid4().hex[:12]}.json"
-    manifest.write_text(json.dumps(manifest_for(jobs, dataset_split), indent=2), encoding="utf-8")
-    navigation = output.parent / f"{output.stem}-navigation-{uuid4().hex[:12]}.json"
-    scripts = Path(__file__).parent
-    aggregate_only = dataset_split == "validation"
-    try:
-        inspect_command = [
-            sys.executable,
-            str(scripts / "inspect_live.py"),
-            "--manifest",
-            str(manifest),
-            "--profile",
-            str(args.profile),
-            "--output",
-            str(navigation),
-            "--expected-split",
-            dataset_split,
-            "--concise-progress",
-            "--concurrency",
-            str(args.concurrency),
-        ]
-        if args.pool:
-            inspect_command.append("--pool")
-        if aggregate_only:
-            inspect_command.extend(("--aggregate-only", "--ephemeral-artifacts"))
-        subprocess.run(inspect_command, check=True)
-        probe_command = [
-            sys.executable,
-            str(scripts / "probe_live.py"),
-            "--reports",
-            str(navigation),
-            "--profile",
-            str(args.profile),
-            "--output",
-            str(output),
-            "--dataset-split",
-            dataset_split,
-            "--implementation-fingerprint",
-            implementation_fingerprint(root),
-            "--concise-progress",
-            "--concurrency",
-            str(args.concurrency),
-            *agent_arguments(args),
-        ]
-        if args.pool:
-            probe_command.append("--pool")
-        if aggregate_only:
-            probe_command.append("--aggregate-only")
-        subprocess.run(probe_command, check=True)
-    finally:
-        manifest.unlink(missing_ok=True)
-    report = json.loads(output.read_text(encoding="utf-8"))
-    actual = [row["id"] for row in report["results"]]
-    expected = [job.id for job in jobs]
-    if Counter(expected) != Counter(actual):
-        raise RuntimeError("Coverage report is incomplete: input/result IDs differ")
-    report.update(
-        input_files=[str(path.resolve()) for path in args.inputs],
-        duplicate_urls_removed=duplicates,
-    )
-    write_report(output, report)
-    return report
-
-
 def positive_limit(value):
     try:
         parsed = int(value)
@@ -435,10 +376,15 @@ def positive_limit(value):
     return parsed
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("inputs", type=Path, nargs="*")
-    parser.add_argument("--mode", choices=("dry-run", "fill", "submit"), default="dry-run")
+    parser.add_argument(
+        "--mode",
+        choices=("dry-run", "fill", "submit"),
+        default="dry-run",
+        help="dry-run uses live fill behavior with a synthetic profile and never submits",
+    )
     parser.add_argument("--split", choices=("training", "validation"), default=None)
     parser.add_argument("--profile", type=Path, default=Path("profiles/dummy/profile.json"))
     parser.add_argument("--output", type=Path)
@@ -458,7 +404,7 @@ def main():
     parser.set_defaults(headed=None)
     add_agent_arguments(parser)
     add_concurrency_argument(parser)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.summarize_only:
         if args.output is None or not args.output.is_file():
             parser.error("--summarize-only requires --output pointing to an existing JSON report")
@@ -469,7 +415,6 @@ def main():
         return 0
     if not args.inputs:
         parser.error("at least one job-search CSV or JSON input is required")
-    profile: Profile | None = None
     try:
         jobs, dataset_split, duplicates = load_job_inputs(
             args.inputs, expected_split=args.split, limit=args.limit
@@ -480,26 +425,25 @@ def main():
             slow_mo_ms=args.slow_mo,
             timeout_seconds=args.timeout,
         )
-        if args.mode != "dry-run":
-            profile = Profile.load(args.profile)
+        profile = Profile.load(args.profile)
     except (OSError, TypeError, ValidationError, ValueError) as exc:
         parser.error(str(exc))
-    if args.mode == "submit" and profile is not None and profile.synthetic:
+    if args.mode == "dry-run" and not profile.synthetic:
+        parser.error("dry-run requires a synthetic profile; use --mode fill for real data")
+    if args.mode == "submit" and profile.synthetic:
         parser.error("submit mode requires a non-synthetic profile")
     if args.output is None:
         args.output = default_report_path(f"{args.mode}-all", directory=Path("runs") / "reports")
     if any(args.output.resolve() == path.resolve() for path in args.inputs):
         parser.error("--output must differ from every input file")
-    if args.mode == "dry-run":
-        report = run_dry(jobs, dataset_split, args, args.output, duplicates)
-    else:
-        assert profile is not None
-        report = asyncio.run(run_live(jobs, profile, args, args.output, duplicates))
+    report = asyncio.run(
+        run_live(jobs, profile, args, args.output, duplicates, dataset_split=dataset_split)
+    )
     summarize(args.output)
     print(f"Report: {args.output.resolve()}", flush=True)
     print(render_terminal_summary(report), flush=True)
     summary = outcome_summary(report)
-    if args.mode == "dry-run" or summary["failed"] == 0:
+    if summary["failed"] == 0:
         return 0
     if any(row.get("status") == "unknown" for row in report["results"]):
         return 2

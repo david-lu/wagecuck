@@ -4,6 +4,8 @@ import asyncio
 import copy
 import json
 import os
+import random
+import re
 from pathlib import Path
 
 import httpx
@@ -146,20 +148,33 @@ class OpenAIMappingAgent(StructuredMappingAgent):
             if request_id:
                 self._record_request_id(request_id)
             if response.status_code >= 400:
-                category = self._http_error_category(response.status_code)
-                retryable = response.status_code == 429 or response.status_code >= 500
+                provider_type, provider_code = self._provider_error(response)
+                category = self._http_error_category(
+                    response.status_code, provider_code=provider_code, provider_type=provider_type
+                )
+                retry_after = self._retry_after(response)
+                retryable = category in ("rate_limited", "server_error")
+                if retry_after is not None and retry_after > self.timeout:
+                    retryable = False
                 if retryable and attempt + 1 < self.max_attempts:
                     self.retries += 1
                     self.failures[category] += 1
-                    await asyncio.sleep(self.retry_backoff * 2**attempt)
+                    delay = retry_after
+                    if delay is None:
+                        base = self.retry_backoff * 2**attempt
+                        delay = base + random.uniform(0, base / 4) if base else 0
+                    await asyncio.sleep(delay)
                     continue
                 self.record_error(
                     operation,
                     category,
                     status_code=response.status_code,
                     request_id=request_id,
+                    provider_code=provider_code,
+                    provider_type=provider_type,
+                    retry_after_seconds=retry_after,
                 )
-                raise ProviderResponseError(category)
+                raise ProviderResponseError(category, provider_code=provider_code)
             try:
                 return response.json(), request_id
             except (ValueError, TypeError) as exc:
@@ -168,8 +183,42 @@ class OpenAIMappingAgent(StructuredMappingAgent):
         raise AssertionError("retry loop did not return or raise")
 
     @staticmethod
-    def _http_error_category(status_code):
+    def _provider_error(response):
+        try:
+            error = response.json().get("error", {})
+        except (TypeError, ValueError):
+            return None, None
+        if not isinstance(error, dict):
+            return None, None
+
+        def safe(value):
+            if not isinstance(value, str) or not re.fullmatch(r"[a-zA-Z0-9_.-]{1,100}", value):
+                return None
+            return value
+
+        return safe(error.get("type")), safe(error.get("code"))
+
+    @staticmethod
+    def _retry_after(response):
+        value = response.headers.get("retry-after")
+        if value is None:
+            return None
+        try:
+            seconds = float(value)
+        except ValueError:
+            return None
+        return seconds if 0 <= seconds else None
+
+    @staticmethod
+    def _http_error_category(status_code, *, provider_code=None, provider_type=None):
         if status_code == 429:
+            if provider_type == "insufficient_quota" or provider_code in {
+                "credit_balance_exhausted",
+                "organization_spend_limit_exceeded",
+                "organization_usage_limit_exceeded",
+                "project_spend_limit_exceeded",
+            }:
+                return "quota_exhausted"
             return "rate_limited"
         if status_code >= 500:
             return "server_error"
@@ -183,9 +232,11 @@ class OpenAIMappingAgent(StructuredMappingAgent):
 class ProviderResponseError(Exception):
     """Sanitized provider failure; response bodies never enter exception text."""
 
-    def __init__(self, category):
+    def __init__(self, category, *, provider_code=None):
         self.category = category
-        super().__init__(f"Model provider failed: {category}.")
+        self.provider_code = provider_code
+        suffix = f" ({provider_code})" if provider_code else ""
+        super().__init__(f"Model provider failed: {category}{suffix}.")
 
 
 def add_agent_arguments(parser):
