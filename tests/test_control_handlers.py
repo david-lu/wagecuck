@@ -289,3 +289,111 @@ async def test_parser_and_handler_support_aria_choices_and_contenteditable(page)
     for action in actions:
         await fill(page, action)
     assert all(result.valid for result in await verify_action_results(page, actions))
+
+
+async def test_roleless_autocomplete_selects_and_verifies_committed_suggestion(page, profile):
+    await page.set_content("""<div class="application-field">
+      <label for="location-input">Current location</label>
+      <input id="location-input" name="location" class="location-input"
+        oninput="document.querySelector('.dropdown-container').hidden=false">
+      <input id="selected-location" name="selectedLocation" type="hidden">
+      <div class="dropdown-container" hidden>
+        <div class="dropdown-location" onclick="
+          document.querySelector('#location-input').value='Toronto, ON, CAN';
+          document.querySelector('#selected-location').value='toronto-on-can';
+          this.parentElement.hidden=true">Toronto, ON, CAN</div>
+      </div></div>""")
+    field = (await snapshot(page)).fields[0]
+    assert field.kind == "text"
+    assert field.control_type == "dynamic_combobox"
+    actions, unresolved = await WorkflowAgent().plan([field], profile)
+    assert not unresolved
+    assert actions[0].source == "facts:location"
+    await fill(page, actions[0])
+    assert await page.locator("#location-input").input_value() == "Toronto, ON, CAN"
+    assert await page.locator("#selected-location").input_value() == "toronto-on-can"
+    await verify_actions(page, actions)
+
+
+async def test_captcha_controls_are_excluded_from_application_fields(page):
+    await page.set_content("""<label>Email<input name="email" required></label>
+      <div class="g-recaptcha"><label>I'm not a robot
+        <input id="recaptcha-anchor" name="recaptcha-anchor" type="checkbox">
+      </label></div>""")
+    fields = (await snapshot(page)).fields
+    assert len(fields) == 1
+    assert fields[0].name == "email"
+
+
+async def test_generated_radio_names_share_explicit_fieldset_group(page):
+    await page.set_content("""<fieldset role=radiogroup aria-label="Authorized to work in the US?">
+      <div role=radio id=generated_yes aria-label=Yes aria-checked=false></div>
+      <div role=radio id=generated_no aria-label=No aria-checked=false></div>
+    </fieldset>""")
+    yes, no = (await snapshot(page)).fields
+    assert yes.group == no.group == "Authorized to work in the US?"
+    assert yes.group_id == no.group_id
+
+
+async def test_search_combobox_uses_keyboard_and_scoped_heading_when_for_target_is_missing(page):
+    await page.set_content("""<div class="ashby-application-form-field-entry">
+      <label class="ashby-application-form-question-title" for="generated-question-id">
+        Current Location</label>
+      <input role="combobox" aria-autocomplete="list" placeholder="Start typing..."
+        onkeydown="document.querySelector('[role=listbox]').hidden=false">
+      <div role="listbox" hidden><div role="option" onclick="
+        document.querySelector('[role=combobox]').value='Toronto, ON, CAN';
+        this.setAttribute('aria-selected','true');this.parentElement.hidden=true">
+        Toronto, ON, CAN</div></div></div>""")
+    field = (await snapshot(page)).fields[0]
+    assert field.label == "Current Location"
+    action = Action(field=field, value="Toronto, Ontario, Canada", source="facts:location")
+    await fill(page, action)
+    assert action.choice_labels == ["Toronto, ON, CAN"]
+    await verify_actions(page, [action])
+
+
+async def test_search_combobox_without_popup_retains_accepted_free_text(page):
+    await page.set_content("""<label>Current Location
+      <input role="combobox" aria-autocomplete="list" placeholder="Start typing...">
+      </label>""")
+    field = (await snapshot(page)).fields[0]
+    action = Action(field=field, value="Toronto, Ontario, Canada", source="facts:location")
+    await fill(page, action)
+    assert await page.get_by_role("combobox").input_value() == "Toronto, Ontario, Canada"
+    await verify_actions(page, [action])
+
+
+async def test_portal_multiselect_owns_active_menu_and_traverses_nested_choices(page):
+    await page.set_content("""<div class="application-field">
+      <label>How Did You Hear About Us?*<input id=source data-uxi-widget-type=selectinput
+        data-uxi-multiselect-id=source-widget onclick="openRoot()"></label></div>
+      <div class="phone-field"><ul role=listbox data-automation-id=selectedItemList>
+        <li role=option data-automation-id=selectedItem>Canada (+1)</li></ul></div>
+      <div id=portal></div><script>
+      function openRoot(){portal.innerHTML=`<div role=listbox data-automation-id=activeListContainer>
+        <div role=option onclick="openChild()">Job Board</div></div>`}
+      function openChild(){portal.innerHTML=`<div role=listbox data-automation-id=activeListContainer>
+        <div role=option onclick="commit()">Company Website</div></div>`}
+      function commit(){source.closest('.application-field').insertAdjacentHTML('beforeend',
+        '<div role="option" data-automation-id="selectedItem">Company Website</div>');portal.innerHTML=''}
+      </script>""")
+    field = (await snapshot(page)).fields[0]
+    assert field.control_type == "dynamic_combobox"
+    action = Action(field=field, value="", source="random:source", random_choice=True)
+    await fill(page, action)
+    assert action.value == "Company Website"
+    assert action.choice_labels == ["Company Website"]
+    await verify_actions(page, [action])
+
+
+async def test_roleless_country_phone_code_reads_preselected_pill(page, profile):
+    await page.set_content("""<div class="application-field"><label>Country Phone Code*
+      <input data-uxi-widget-type=selectinput data-uxi-multiselect-id=phone-code required>
+      </label><div role=option data-automation-id=selectedItem>Canada (+1)</div></div>""")
+    field = (await snapshot(page)).fields[0]
+    assert field.control_type == "dynamic_combobox"
+    assert field.filled
+    actions, unresolved = await WorkflowAgent().plan([field], profile)
+    assert not unresolved and actions[0].source == "facts:country"
+    assert (await verify_action_results(page, actions))[0].valid

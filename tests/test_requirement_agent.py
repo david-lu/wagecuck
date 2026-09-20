@@ -44,7 +44,8 @@ async def test_agent_detected_requirement_blocks_submission(portal, profile, opt
     assert result.code == Code.REQUIRED_ANSWER_MISSING
     assert result.unresolved == ["Professional license identifier"]
     assert not server.submissions
-    snap = json.loads((options.artifacts_dir / result.run_id / "step-01.json").read_text())
+    step = max((options.artifacts_dir / result.run_id).glob("step-*.json"))
+    snap = json.loads(step.read_text())
     license = next(f for f in snap["fields"] if f["name"] == "license")
     assert license["required"] and license["required_evidence"].startswith("agent:")
     assert "context" not in license

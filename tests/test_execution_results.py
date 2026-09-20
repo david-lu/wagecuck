@@ -363,6 +363,25 @@ async def test_choice_change_stops_batch_and_exposes_conditional_field(page):
     assert await page.locator("#email").input_value() == ""
 
 
+async def test_choice_rerender_with_same_logical_fields_continues_batch(page):
+    await page.set_content("""<form>
+      <label>Country<select id=country onchange="
+        [...this.options].filter(option => !option.selected).forEach(option => option.remove())">
+        <option value=us>United States</option><option value=ca>Canada</option>
+      </select></label>
+      <label>Email<input id=email type=email required></label>
+    </form>""")
+    initial = await snapshot(page)
+    actions = [
+        Action(field=initial.fields[0], value="Canada", source="facts:country"),
+        Action(field=initial.fields[1], value="alex@example.com", source="facts:email"),
+    ]
+    result = await execute_actions(page, actions, assessed_fields=initial.fields)
+    assert not result.needs_replan
+    assert await page.locator("#country").input_value() == "ca"
+    assert await page.locator("#email").input_value() == "alex@example.com"
+
+
 async def test_required_checkbox_group_validates_as_one_question(page):
     await page.set_content("""<form><fieldset><legend>Office locations *</legend>
       <label>Toronto<input type="checkbox" name="toronto" required></label>

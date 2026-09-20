@@ -287,7 +287,8 @@ async def test_pipeline_through_browser_and_field_report(portal, profile, option
     base, server = portal
     result = await ApplicationRunner(agent=Agent()).run(f"{base}/agent-pipeline", profile, options)
     assert result.code == (Code.OK if mode == "submit" else Code.INSPECTED), result
-    rows = json.loads((options.artifacts_dir / result.run_id / "analysis-01.json").read_text())
+    analysis = max((options.artifacts_dir / result.run_id).glob("analysis-*.json"))
+    rows = json.loads(analysis.read_text())
     assert len(rows) == 7
     identity = next(r for r in rows if r["label"] == "Applicant identity")
     assert identity["route"] == "agent_mapping"

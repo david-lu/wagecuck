@@ -55,7 +55,6 @@ async def test_inspect_does_not_fill(portal, profile, options):
         ("missing", Code.JOB_CLOSED),
         ("auth", Code.AUTH_REQUIRED),
         ("unknown", Code.REQUIRED_ANSWER_MISSING),
-        ("validation", Code.VALIDATION_FAILED),
         ("captcha", Code.CAPTCHA_REQUIRED),
     ],
 )
@@ -66,6 +65,18 @@ async def test_failures_do_not_submit(portal, profile, options, route, code):
     )
     assert result.code == code, result.model_dump()
     assert not server.submissions
+
+
+async def test_dry_run_reports_ready_when_only_a_preexisting_page_alert_remains(
+    portal, profile, options
+):
+    base, server = portal
+    result = await ApplicationRunner().run(
+        f"{base}/validation", profile, options.model_copy(update={"mode": "fill"})
+    )
+    assert result.code == Code.READY, result.model_dump()
+    assert result.evidence and "all required controls" in result.evidence[0]
+    assert not result.submission_attempted and not server.submissions
 
 
 async def test_duplicate_submission_fence(portal, profile, options):
@@ -92,6 +103,17 @@ async def test_uncertain_submission_is_not_retried(portal, profile, options):
 async def test_synthetic_remote_submission_blocked(profile, options):
     result = await ApplicationRunner().run("https://jobs.example.com/job/1", profile, options)
     assert result.code == Code.SYNTHETIC_PROFILE_BLOCKED
+
+
+async def test_fill_mode_reports_ready_when_captcha_is_deferred_to_submit(portal, profile, options):
+    base, server = portal
+    result = await ApplicationRunner().run(
+        f"{base}/captcha-form", profile, options.model_copy(update={"mode": "fill"})
+    )
+    assert result.status == "ready" and result.code == Code.READY
+    assert "CAPTCHA" in result.message
+    assert result.evidence and "CAPTCHA detected" in result.evidence[0]
+    assert not result.submission_attempted and not server.submissions
 
 
 async def test_capsolver_integrated_before_submit(portal, profile, options):

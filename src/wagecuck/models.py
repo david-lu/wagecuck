@@ -407,6 +407,7 @@ class Action(BaseModel):
     source: str
     # Per-run upload attempt state survives replanning; never persisted as profile data.
     upload_attempted: bool = Field(default=False, exclude=True)
+    upload_verified: bool = Field(default=False, exclude=True)
     upload_error: Code | None = Field(default=None, exclude=True)
     choice_labels: list[str] = Field(default_factory=list)
     random_choice: bool = False

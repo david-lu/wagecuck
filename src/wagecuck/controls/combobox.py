@@ -10,6 +10,8 @@ from wagecuck.models import Action, ApplicationError, Code, FormField, Option, S
 
 from .base import Target, normalize
 
+OPTION_WAIT_MS = 5000
+
 
 def accessible_name(label: str):
     clean = re.sub(r"[\s*✱]+$", "", label).strip()
@@ -60,10 +62,12 @@ async def combobox_value(target: Target):
     return await target.evaluate("""e => {
       let parent = e.parentElement;
       for (let depth = 0; parent && depth < 4; depth++, parent = parent.parentElement) {
-        if (parent.querySelectorAll('[role=combobox]').length > 1) break;
+        if (parent.matches('form, body, html') ||
+            parent.querySelectorAll('[role=combobox]').length > 1) break;
         const chosen = parent.querySelectorAll(
           '[class*="single-value"], [class*="singleValue"], '
           + '[class*="multi-value"], [class*="multiValue"], '
+          + '[data-automation-id="selectedItem"], '
           + '[data-value]:not([data-value=""]), [aria-selected="true"]'
         );
         const visible = [...chosen].filter(node => node.getClientRects().length &&
@@ -79,7 +83,7 @@ async def combobox_value(target: Target):
 
 def selected_value(value, action):
     if action.source == "facts:country":
-        value = re.sub(r"\s*\+\d{1,4}$", "", value)
+        value = re.sub(r"\s*(?:\(\s*)?\+\d{1,4}(?:\s*\))?$", "", value)
     return normalize(value)
 
 
@@ -92,7 +96,10 @@ def option_name(value, action):
             re.IGNORECASE,
         )
     return (
-        re.compile(r"^" + re.escape(value) + r"(?:\s*\+\d{1,4})?$", re.IGNORECASE)
+        re.compile(
+            r"^" + re.escape(value) + r"(?:\s*(?:\(\s*)?\+\d{1,4}(?:\s*\))?)?$",
+            re.IGNORECASE,
+        )
         if action.source == "facts:country"
         else value
     )
@@ -110,6 +117,13 @@ async def popup_scope(page, target, frame_index):
     owned = await owned_selector(target)
     if owned:
         return page.frames[frame_index].locator(owned)
+    # Portal-backed multiselects expose one active list while their selected
+    # pills remain in separate, always-visible listboxes.
+    if await target.get_attribute("data-uxi-multiselect-id"):
+        active = page.frames[frame_index].locator(
+            '[data-automation-id="activeListContainer"][role="listbox"]:visible'
+        )
+        return active
     # Some components omit ARIA ownership but keep one popup beside one control.
     parent = target.locator("..")
     for _ in range(4):
@@ -120,6 +134,12 @@ async def popup_scope(page, target, frame_index):
         boxes = parent.get_by_role("listbox", include_hidden=True)
         if await boxes.count() == 1:
             return boxes
+        roleless = parent.locator(
+            ".dropdown-container, [class*=autocomplete][class*=menu], "
+            "[class*=autocomplete][class*=result], [class*=suggestion]"
+        )
+        if await roleless.count() == 1:
+            return roleless
         parent = parent.locator("..")
     return None
 
@@ -129,7 +149,14 @@ async def option_locator(page, target: Target, action: Action | None = None, *, 
     scope = await popup_scope(page, target, index)
     if scope is None:
         scope = page.frames[index]
-    return scope.get_by_role("option", disabled=False).filter(visible=True)
+    # Keep one live locator across asynchronous popup rendering. Checking the
+    # role locator's count here races React portals and can permanently choose
+    # the fallback selector before role=option nodes mount.
+    return scope.locator(
+        '[role="option"]:not([aria-disabled="true"]), .dropdown-location, '
+        '[class*=dropdown-option], [class*=autocomplete-option], '
+        '[class*=suggestion-item], [data-option-index]'
+    ).filter(visible=True)
 
 
 async def open_popup(page, target, *, frame_index):
@@ -206,6 +233,8 @@ async def matches_combobox(page, target: Target, action: Action, expected):
             normalize(label) for label in action.choice_labels
         }):
             return True
+        if action.field.kind == "text" and action.choice_labels:
+            return False
         if any(
             selected_value(expected, action) == selected_value(value, action)
             for value in actual.splitlines()
@@ -235,50 +264,120 @@ async def write_combobox(page, target: Target, action: Action, value):
         target = await live_target(page, target, action)
         await open_popup(page, target, frame_index=action.field.frame)
     try:
+        search_backed = action.field.kind == "text" or (
+            await target.get_attribute("aria-autocomplete") == "list"
+        )
         if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
             query = "" if action.random_choice else value
             try:
-                await target.fill(query)
+                if search_backed and query:
+                    # Search autocompletes commonly debounce keyboard events and
+                    # ignore the single input event emitted by fill().
+                    await target.fill("")
+                    await target.press_sequentially(query, delay=20)
+                elif query:
+                    await target.fill(query)
             except PlaywrightError:
                 target = await live_target(page, target, action)
-                await target.fill(query)
+                if search_backed and query:
+                    await target.fill("")
+                    await target.press_sequentially(query, delay=20)
+                elif query:
+                    await target.fill(query)
             target = await live_target(page, target, action)
         options = await option_locator(page, target, action)
         if action.random_choice:
-            await options.first.wait_for(state="visible")
-            candidates = [
-                (index, label.strip())
-                for index, label in enumerate(await options.all_text_contents())
-                if label.strip()
-                and not re.fullmatch(
+            for _ in range(4):
+                options = await option_locator(page, target, action)
+                await options.first.wait_for(state="visible", timeout=OPTION_WAIT_MS)
+                candidates = [
+                    (index, label.strip())
+                    for index, label in enumerate(await options.all_text_contents())
+                    if label.strip()
+                    and not re.fullmatch(
+                        r"(?:please )?(?:select|choose)(?: an? option)?", normalize(label)
+                    )
+                ]
+                if not candidates:
+                    raise ApplicationError(
+                        Code.UNSUPPORTED_CONTROL, f"No source choices for {action.field.label}"
+                    )
+                index, label = random.choice(candidates)
+                await options.nth(index).click()
+                action.value = label
+                action.choice_labels = [label]
+                target = await live_target(page, target, action)
+                if (await combobox_value(target)).strip():
+                    return
+                # Hierarchical prompts replace the active list with child options.
+                await page.wait_for_timeout(100)
+                next_options = await option_locator(page, target, action)
+                if await next_options.count():
+                    continue
+                if await target.evaluate("e => e.tagName === 'INPUT' && !e.readOnly"):
+                    await open_popup(page, target, frame_index=action.field.frame)
+                    await target.fill(label)
+                    await target.press("ArrowDown")
+                    await target.press("Enter")
+                    if (await combobox_value(target)).strip():
+                        return
+                break
+            raise ApplicationError(
+                Code.UNSUPPORTED_CONTROL,
+                f"No committed source choice for {action.field.label}",
+            )
+        try:
+            await options.first.wait_for(state="visible", timeout=OPTION_WAIT_MS)
+        except PlaywrightTimeout:
+            # Some editable ARIA comboboxes use free text and never render a
+            # popup for an accepted value. Preserve it only when there is no
+            # owned or nearby popup that would require a committed selection.
+            if (
+                search_backed
+                and action.field.kind == "combobox"
+                and await popup_scope(page, target, action.field.frame) is None
+                and normalize(await target.input_value()) == normalize(str(value))
+            ):
+                return
+            raise
+        labels = [label.strip() for label in await options.all_text_contents()]
+        wanted = option_name(value, action)
+        exact = [
+            index for index, label in enumerate(labels)
+            if (
+                bool(wanted.fullmatch(label))
+                if isinstance(wanted, re.Pattern)
+                else normalize(label) == normalize(str(wanted))
+            )
+        ]
+        if len(exact) == 1:
+            option = options.nth(exact[0])
+        elif len(exact) > 1:
+            matching = options.nth(exact[0]).or_(options.nth(exact[1]))
+            for index in exact[2:]:
+                matching = matching.or_(options.nth(index))
+            option = await unambiguous_option(matching, action.field.label)
+        else:
+            substantive = [
+                index for index, label in enumerate(labels)
+                if label and not re.fullmatch(
                     r"(?:please )?(?:select|choose)(?: an? option)?", normalize(label)
                 )
             ]
-            if not candidates:
+            # Search-backed text autocompletes often canonicalize an address or
+            # location (for example, country/state abbreviations). A single result
+            # is unambiguous even when its display label differs from the query.
+            if search_backed and len(substantive) == 1:
+                option = options.nth(substantive[0])
+            else:
                 raise ApplicationError(
-                    Code.UNSUPPORTED_CONTROL, f"No source choices for {action.field.label}"
+                    Code.UNSUPPORTED_CONTROL,
+                    f"No unambiguous choice for {action.field.label}",
                 )
-            index, label = random.choice(candidates)
-            await options.nth(index).click()
-            action.value = label
-            action.choice_labels = [label]
-            target = await live_target(page, target, action)
-            if not (await combobox_value(target)).strip() and await target.evaluate(
-                "e => e.tagName === 'INPUT' && !e.readOnly"
-            ):
-                await open_popup(page, target, frame_index=action.field.frame)
-                await target.fill(label)
-                await target.press("ArrowDown")
-                await target.press("Enter")
-            return
-        matching = options.and_(
-            page.frames[action.field.frame].get_by_role(
-                "option", name=option_name(value, action), exact=True
-            )
-        )
-        await matching.first.wait_for(state="visible")
-        option = await unambiguous_option(matching, action.field.label)
+        selected_label = (await option.inner_text()).strip()
         await option.click()
+        if selected_label:
+            action.choice_labels = [selected_label]
         target = await live_target(page, target, action)
         if not (await combobox_value(target)).strip() and await target.evaluate(
             "e => e.tagName === 'INPUT' && !e.readOnly"

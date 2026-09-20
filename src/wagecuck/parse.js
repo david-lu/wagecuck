@@ -26,7 +26,15 @@
     const root = el.getRootNode();
     const owner = domPath(root.host) + '|form:' + domPath(el.form);
     // HTML radio groups share a name, form owner, and tree root, even across fieldsets.
-    if (kind === 'radio') return el.name ? owner + '|radio:' + el.name : 'control:' + domPath(el);
+    // Custom ATS radios sometimes give every option a generated name. An explicit
+    // fieldset/radiogroup is the stronger question boundary in that case.
+    if (kind === 'radio') {
+      if (el.matches('input[type="radio"]') && el.name) return owner + '|radio:' + el.name;
+      if (questionContainer?.matches('fieldset, [role="radiogroup"]')) {
+        return owner + '|question:' + domPath(questionContainer);
+      }
+      return el.name ? owner + '|radio:' + el.name : 'control:' + domPath(el);
+    }
     if (questionContainer) return owner + '|question:' + domPath(questionContainer);
     if (el.name) return owner + '|checkbox:' + el.name;
     return 'control:' + domPath(el);
@@ -34,10 +42,43 @@
   const referenced = (el) => (el.getAttribute('aria-labelledby') || '').split(/\s+/)
     .map(id => text(el.getRootNode().getElementById?.(id) || document.getElementById(id))).join(' ').trim();
   const container = (el) => el.closest('[data-field], [data-field-path], .application-question, .field, .form-field, .ashby-application-form-field-entry, .MuiFormControl-root');
+  const captchaOwned = (el) => {
+    const signature = [
+      el.id, el.name, el.className, el.getAttribute('data-sitekey'),
+      el.getAttribute('data-callback'), el.getAttribute('aria-label')
+    ].filter(Boolean).join(' ');
+    return /(?:^|[^a-z])(?:re)?captcha(?:[^a-z]|$)|hcaptcha|turnstile/i.test(signature) ||
+      !!el.closest('.g-recaptcha, .h-captcha, .cf-turnstile, [data-sitekey][class*=captcha]');
+  };
+  const dynamicPopup = (el) => {
+    if (el.getAttribute('aria-autocomplete') === 'list' || el.hasAttribute('list') ||
+        el.hasAttribute('aria-controls') || el.hasAttribute('aria-owns') ||
+        el.getAttribute('data-uxi-widget-type') === 'selectinput' ||
+        el.hasAttribute('data-uxi-multiselect-id')) return true;
+    let parent = el.parentElement;
+    for (let depth = 0; parent && depth < 5; depth++, parent = parent.parentElement) {
+      if (parent.matches('form, body, html')) break;
+      if (parent.querySelectorAll('input:not([type=hidden]), textarea, select, [role=combobox]').length > 1) break;
+      if (parent.querySelector(
+        '[role=listbox], .dropdown-container, [class*=autocomplete][class*=menu], ' +
+        '[class*=autocomplete][class*=result], [class*=suggestion]'
+      )) return true;
+    }
+    return false;
+  };
   const heading = (parent, el) => {
     if (!parent) return null;
+    const root = el.getRootNode();
+    const controls = parent.querySelectorAll(
+      'input:not([type=hidden]), textarea, select, [role=combobox], [contenteditable=true]'
+    );
     return [...parent.querySelectorAll('legend, label, .application-label, .question-label, .ashby-application-form-question-title, h3, h4')]
-      .find(node => !node.contains(el) && (!node.htmlFor || node.htmlFor === el.id) && !node.querySelector('input, select, textarea'));
+      .find(node => {
+        const target = node.htmlFor && root.getElementById?.(node.htmlFor);
+        const ownsOnlyControl = node.htmlFor && !target && controls.length === 1;
+        return !node.contains(el) && (!node.htmlFor || target === el || ownsOnlyControl) &&
+          !node.querySelector('input, select, textarea');
+      });
   };
   const contextHeading = (el) => {
     let parent = el.parentElement;
@@ -66,6 +107,9 @@
     return (labelled || el.getAttribute('aria-label') || fileLabel || native || contextual || el.getAttribute('placeholder') || el.name || el.id || '').slice(0, 600);
   };
   return elements.filter(el => {
+    // CAPTCHA widgets are challenges, not applicant questions. Challenge handling
+    // owns them and may hand the browser to CapSolver or the user.
+    if (captchaOwned(el)) return false;
     // Career-board search/filter widgets are not application fields.
     if (el.type === 'search' || el.closest('[role="search"]') || /^search(?:\b|[.])/i.test(label(el))) return false;
     if (el.matches(':disabled') || el.closest('[aria-disabled="true"]') || (el.readOnly && el.getAttribute('role') !== 'combobox') || el.type === 'hidden' || el.closest('[aria-hidden="true"]')) return false;
@@ -86,6 +130,7 @@
       : kind === 'radio' ? 'radio'
       : kind === 'range' ? 'range'
       : el.isContentEditable ? 'contenteditable_text'
+      : dynamicPopup(el) ? 'dynamic_combobox'
       : 'text_input';
     const groupEl = el.closest('fieldset, [role="radiogroup"], [role="group"]');
     const localHeading = questionHeading(container(el), el);
@@ -93,12 +138,13 @@
     const group = ['radio', 'checkbox'].includes(kind) ? text(localHeading) || (groupEl ? referenced(groupEl) : '') || groupEl?.getAttribute('aria-label') || text(groupHeading) : '';
     const lab = label(el);
     let renderedSelection = '';
-    if (kind === 'combobox') {
+    if (controlType === 'dynamic_combobox') {
       let parent = el.parentElement;
       for (let depth = 0; parent && depth < 3; depth++, parent = parent.parentElement) {
-        if (parent.querySelectorAll('[role=combobox]').length > 1) break;
+        if (parent.matches('form, body, html') ||
+            parent.querySelectorAll('[role=combobox]').length > 1) break;
         const selected = [...parent.querySelectorAll(
-          '[class*="single-value"], [class*="singleValue"], [class*="multi-value"], [class*="multiValue"]'
+          '[class*="single-value"], [class*="singleValue"], [class*="multi-value"], [class*="multiValue"], [data-automation-id="selectedItem"]'
         )].filter(node => visible(node));
         const committed = selected.filter(node => !selected.some(parent =>
           parent !== node && parent.contains(node)));
@@ -121,7 +167,7 @@
       input_mode: el.inputMode || '', pattern: el.pattern || '', minimum: el.min || '', maximum: el.max || '', step: el.step || '',
       min_length: el.hasAttribute('minlength') && el.minLength >= 0 ? el.minLength : null,
       max_length: el.hasAttribute('maxlength') && el.maxLength >= 0 ? el.maxLength : null,
-      group, group_id: groupIdentity(el, kind, localHeading ? container(el) : groupEl), fact_key: el.getAttribute('data-wagecuck-fact') || '',
+      group, group_id: groupIdentity(el, kind, groupEl || (localHeading ? container(el) : null)), fact_key: el.getAttribute('data-wagecuck-fact') || '',
       context, required_evidence: required ? 'DOM required marker or constraint' : /optional|not required/i.test(lab + ' ' + described) ? 'DOM optional marker' : '',
       requirement_status: required ? 'required' : /optional|not required/i.test(lab + ' ' + described) ? 'optional' : 'unknown',
       options: el.tagName === 'SELECT' ? [...el.options].filter(o => !o.matches(':disabled') && !o.closest('[hidden], [aria-hidden="true"], [aria-disabled="true"]') && o.value !== '').map(o => ({label: text(o), value: o.value})) : [],

@@ -104,6 +104,8 @@ class Handler(BaseHTTPRequestHandler):
             fields += '<label>What is your professional license number?*<input name="license" required></label>'
         if path == "/validation":
             extras = '<div role="alert">The application contains an invalid answer.</div>'
+        if path == "/decorative-apply":
+            extras = '<button type="button">Apply</button>'
         if path == "/radio":
             fields += """<fieldset><legend>Do you require sponsorship?</legend>
             <label>Yes<input type="radio" name="sponsor" value="yes" required></label>

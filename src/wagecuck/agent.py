@@ -8,6 +8,7 @@ live in focused modules.
 from __future__ import annotations
 
 import re
+from collections import Counter
 
 from .agent_client import OllamaMappingAgent, StructuredMappingAgent
 from .agent_types import (
@@ -52,17 +53,64 @@ class WorkflowAgent:
         self.fallback = fallback
         self.warnings: list[dict] = []
 
-    async def assess_required(self, fields: list[FormField]) -> None:
+    @staticmethod
+    def _requirement_identity(field: FormField) -> tuple:
+        return (
+            field.frame,
+            field.name,
+            field.label,
+            field.kind,
+            field.control_type,
+            field.group,
+            field.group_id,
+            field.context,
+        )
+
+    async def assess_required(
+        self, fields: list[FormField], cache: dict[tuple, tuple[bool, str, str]] | None = None
+    ) -> None:
         for field in fields:
             if field.required:
                 field.requirement_status = "required"
         assessor = getattr(self.fallback, "assess", None)
         if not assessor or not fields:
             return
-        apply_requirement_assessments(fields, await assessor(fields))
+        candidates = fields
+        if cache is not None:
+            counts = Counter(self._requirement_identity(field) for field in fields)
+            candidates = []
+            for field in fields:
+                key = self._requirement_identity(field)
+                cached = cache.get(key) if counts[key] == 1 else None
+                if cached is None:
+                    candidates.append(field)
+                    continue
+                required, status, evidence = cached
+                if not field.required:
+                    field.required = required
+                    field.requirement_status = status
+                    field.required_evidence = evidence
+            if not candidates:
+                return
+        apply_requirement_assessments(candidates, await assessor(candidates))
+        if cache is not None:
+            counts = Counter(self._requirement_identity(field) for field in fields)
+            for field in candidates:
+                key = self._requirement_identity(field)
+                if counts[key] == 1:
+                    cache[key] = (
+                        field.required,
+                        field.requirement_status,
+                        field.required_evidence,
+                    )
 
     async def plan(
-        self, fields: list[FormField], profile: Profile, *, agent_fill: bool = False
+        self,
+        fields: list[FormField],
+        profile: Profile,
+        *,
+        agent_fill: bool = False,
+        requirement_cache: dict[tuple, tuple[bool, str, str]] | None = None,
     ) -> tuple[list[Action], list[FormField]]:
         declared = declared_profile_values(profile)
         facts = resolve_profile_values(profile, declared)
@@ -132,7 +180,7 @@ class WorkflowAgent:
                 unresolved.extend(field for field in group_fields if field not in unresolved)
 
         try:
-            await self.assess_required(fields)
+            await self.assess_required(fields, requirement_cache)
         except ApplicationError as exc:
             if not (agent_fill and getattr(self.fallback, "infer", None)):
                 raise
@@ -393,6 +441,9 @@ class WorkflowAgent:
     def describe(fields, actions, unresolved):
         by_id = {(action.field.frame, action.field.id): action for action in actions}
         missing = {(field.frame, field.id) for field in unresolved}
+        missing_identities = {
+            WorkflowAgent._requirement_identity(field) for field in unresolved
+        }
         rows = []
         for field in fields:
             action = by_id.get((field.frame, field.id))
@@ -409,6 +460,7 @@ class WorkflowAgent:
                 if action
                 else "unresolved"
                 if (field.frame, field.id) in missing
+                or WorkflowAgent._requirement_identity(field) in missing_identities
                 else "already_filled_or_group_option"
             )
             rows.append(

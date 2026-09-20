@@ -60,6 +60,8 @@ async def upload_state(target: Target):
 
 
 async def matches_file(page, target: Target, action: Action, value):
+    if action.upload_verified:
+        return True
     if action.upload_error:
         return False
     state = await upload_state(target)
@@ -140,7 +142,37 @@ async def write_file(page, target: Target, action: Action, value):
             if await replacements.count() == 1:
                 await replacements.evaluate("(e, id) => e.dataset.wagecuckId = id", action.field.id)
             if not await target.count():
-                break  # The caller will parse the new form and rebind the document.
+                # Some upload widgets replace the file input with a filename and
+                # remove button. Exact, widget-scoped evidence verifies that the
+                # attachment was accepted; disappearance alone never does.
+                attached = False
+                if await scope.count() == 1:
+                    attached = await scope.evaluate(
+                        r"""(widget, filename) => {
+                          const visible = node => !!node.getClientRects().length &&
+                            getComputedStyle(node).visibility !== 'hidden';
+                          const nodes = [widget, ...widget.querySelectorAll('*')].filter(visible);
+                          const exactName = nodes.some(node => !node.childElementCount &&
+                            (node.textContent || '').trim() === filename);
+                          const removable = nodes.some(node =>
+                            node.matches('button, a, [role=button]') &&
+                            /\b(remove|delete|replace)\b/i.test(
+                              node.innerText || node.getAttribute('aria-label') || ''));
+                          const failed = nodes.some(node =>
+                            node.matches('[role=alert], .field-error, .error-message, [data-error]') &&
+                            (node.textContent || '').trim());
+                          return exactName && removable && !failed;
+                        }""",
+                        Path(value).name,
+                    )
+                if attached:
+                    action.upload_verified = True
+                    return
+                action.upload_error = Code.UPLOAD_UNVERIFIED
+                raise ApplicationError(
+                    Code.UPLOAD_UNVERIFIED,
+                    "Document input disappeared without attachment evidence.",
+                )
             state = await upload_state(target)
             current = (state, await _autofill_state(page))
             if current != previous:
@@ -163,11 +195,10 @@ async def write_file(page, target: Target, action: Action, value):
             ):
                 return
             await asyncio.sleep(0.1)
-        else:
-            action.upload_error = Code.UPLOAD_TIMEOUT
-            raise ApplicationError(
-                Code.UPLOAD_TIMEOUT, "Document processing did not settle in time."
-            )
+        action.upload_error = Code.UPLOAD_TIMEOUT
+        raise ApplicationError(
+            Code.UPLOAD_TIMEOUT, "Document processing did not settle in time."
+        )
     finally:
         page.remove_listener("request", started)
         page.remove_listener("requestfinished", finished)

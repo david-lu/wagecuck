@@ -45,10 +45,12 @@ def key_for(field, profile):
         return "application.preferred_location"
     if re.search(r"country.*currently work|current work country", q):
         return "application.current_work_country"
+    if re.search(r"country (?:phone|calling|dial)(?: code)?|(?:phone|calling|dial) country code", q):
+        return "country"
     if re.search(r"where are you (?:presently located|located|based)|what is your location", q):
         return "location" if field.kind in ("text", "textarea") else "country"
-    if q.startswith("current location no location found"):
-        return "city"
+    if q == "current location" or q.startswith("current location no location found"):
+        return "location"
     if re.search(
         r"how did you (?:hear about|find)|where did you (?:hear|find)|how (?:have you|did you first) hear|which channel led you to apply",
         q,
@@ -193,7 +195,9 @@ def action_for_key(field, fields, profile, key, *, values=None):
             "she her": ["She/Her", "She / Her", "She/Her/Hers", "She / Her / Hers"],
             "he him": ["He/Him", "He / Him", "He/Him/His", "He / Him / His"],
         }.get(pronouns, [])
-    if field.kind in ("radio", "checkbox", "select", "combobox"):
+    if field.kind in ("radio", "checkbox", "select", "combobox") or (
+        field.control_type == "dynamic_combobox" and field.options
+    ):
         handled, action = plan_answer(field, fields, Answer(value, key, labels))
         if action:
             action.source = f"facts:{key}"
@@ -245,7 +249,7 @@ def plan_source(field, fields, profile, source_choices=None):
             return True, (
                 Action(field=field, value=True, source=source) if choices[key] == field.id else None
             )
-        if field.kind == "combobox":
+        if field.kind == "combobox" or field.control_type == "dynamic_combobox":
             return True, Action(field=field, value="", source=source, random_choice=True)
         if field.kind in ("text", "textarea"):
             return True, Action(

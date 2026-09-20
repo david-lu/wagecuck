@@ -106,6 +106,25 @@ async def test_replacement_file_with_attachment_does_not_upload_again(page, prof
     assert await page.locator("#resume").evaluate("e=>e.files.length") == 0
 
 
+async def test_disappearing_file_input_with_scoped_attachment_evidence_verifies(page, profile):
+    await page.set_content("""<form><div class="field-wrapper">
+      <label>Resume<input type=file required onchange="attach(this)"></label>
+      <div class="attached" hidden><span id=filename></span>
+      <button type=button aria-label="Remove file">Remove</button></div></div></form>
+      <script>function attach(input) {
+        const attached=input.closest('.field-wrapper').querySelector('.attached');
+        attached.hidden=false;attached.querySelector('#filename').textContent=input.files[0].name;
+        input.remove();
+      }</script>""")
+    fields = await snapshot(page)
+    actions, _ = await WorkflowAgent().plan(fields.fields, profile)
+    result = await execute_actions(page, actions, assessed_fields=fields.fields)
+    upload_row = next(row for row in result.fields if row.action.field.kind == "file")
+    assert upload_row.verified
+    assert upload_row.action.upload_verified
+    assert upload_row.action.upload_error is None
+
+
 async def test_attachment_from_other_widget_or_wrong_file_does_not_verify(page, profile):
     await page.set_content(f"""<form>
 <div><label>Resume<input type=file required></label></div>
@@ -158,7 +177,10 @@ async def test_normal_runner_replans_after_resume_autofill(portal, profile, opti
     assert result.code == Code.READY, result.model_dump()
     assert 2 <= result.steps <= 3
     assert not server.submissions
-    assert any(row["status"] == "deferred" for row in result.answer_log)
+    assert any(
+        row["source"] == "document:resume" and row["status"] == "filled"
+        for row in result.answer_log
+    )
     assert not any(row["status"] == "failed" for row in result.answer_log)
     final = json.loads(
         (options.artifacts_dir / result.run_id / f"execution-{result.steps:02d}.json").read_text()

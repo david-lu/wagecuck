@@ -16,6 +16,13 @@ async def test_apply_modal_advances_to_account_gate(portal, profile, options):
     assert not server.submissions
 
 
+async def test_explicit_submit_wins_over_decorative_apply_button(portal, profile, options):
+    base, server = portal
+    result = await ApplicationRunner().run(f"{base}/decorative-apply", profile, options)
+    assert result.code == Code.OK
+    assert result.submitted and len(server.submissions) == 1
+
+
 async def test_capsolver_missing_key_does_not_mark_submission_attempt(
     portal, profile, options, monkeypatch
 ):

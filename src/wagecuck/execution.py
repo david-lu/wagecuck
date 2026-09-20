@@ -31,6 +31,42 @@ def field_identity(field: FormField) -> tuple:
     )
 
 
+def same_logical_fields(before: list[FormField], after: list[FormField]) -> bool:
+    """Ignore DOM order, generated IDs, and option-menu presentation changes."""
+    return Counter(map(field_identity, before)) == Counter(map(field_identity, after))
+
+
+def contract_change_requires_replan(
+    before: list[FormField], after: list[FormField], actions: list[Action]
+) -> bool:
+    """Replan changed requirements and newly actionable native choices.
+
+    Dynamic popup options appear and disappear during ordinary selection. Native
+    select options are a stable value contract: a change only needs a new plan when
+    no answer was planned or the planned answer is no longer available.
+    """
+    if not same_logical_fields(before, after):
+        return True
+    prior = {field_identity(field): field for field in before}
+    current = {field_identity(field): field for field in after}
+    planned = {field_identity(action.field): action for action in actions}
+    for key, old in prior.items():
+        new = current[key]
+        if (old.required, old.requirement_status) != (
+            new.required,
+            new.requirement_status,
+        ):
+            return True
+        old_options = tuple((option.label, option.value) for option in old.options)
+        new_options = tuple((option.label, option.value) for option in new.options)
+        if old.control_type != "native_select" or old_options == new_options:
+            continue
+        action = planned.get(key)
+        if action is None or match_option(action.value, new.options) is None:
+            return True
+    return False
+
+
 def form_signature(snap: Snapshot) -> tuple:
     """Describe actionable state without volatile DOM IDs or applicant values."""
     return (
@@ -328,6 +364,7 @@ async def execute_actions(
         ]
         if len(peers) == len(prior) == 1:
             action.upload_attempted = prior[0].upload_attempted
+            action.upload_verified = prior[0].upload_verified
             action.upload_error = prior[0].upload_error
             by_id.pop(field_id(prior[0].field), None)
             by_id[field_id(action.field)] = action
@@ -380,7 +417,9 @@ async def execute_actions(
             candidate = await settled_snapshot(page, polls=settle_polls)
             preserve_requirements(candidate.fields, assessed_fields or [])
             if current_fields and fields_changed(current_fields, candidate.fields):
-                if only_nodes_replaced(current_fields, candidate.fields):
+                if not contract_change_requires_replan(
+                    current_fields, candidate.fields, actions
+                ):
                     current_fields = candidate.fields
                     continue
                 structural_checkpoint = candidate
@@ -389,6 +428,24 @@ async def execute_actions(
             current_fields = candidate.fields
     after = structural_checkpoint or await settled_snapshot(page, polls=settle_polls)
     preserve_requirements(after.fields, assessed_fields or [])
+    if current_fields and contract_change_requires_replan(current_fields, after.fields, actions):
+        needs_replan = True
+    # Bind actions to the final nodes before verification and reporting. A framework
+    # may replace an input after its sibling loses focus without changing the logical
+    # form. Keeping the obsolete generated id would falsely report that field as
+    # unresolved even when the replacement retained the entered value.
+    rebound = {}
+    for action in by_id.values():
+        peers = [field for field in after.fields if identity(field) == identity(action.field)]
+        if len(peers) == 1:
+            replaced_after_fill = peers[0].id != action.field.id
+            action.field = peers[0].model_copy(
+                update={"fact_key": action.field.fact_key or peers[0].fact_key}
+            )
+            if replaced_after_fill and not peers[0].filled:
+                needs_replan = True
+        rebound[field_id(action.field)] = action
+    by_id = rebound
     observed = {field_id(field): field for field in after.fields}
     outcomes = []
     for check in await verify_action_results(page, list(by_id.values())):

@@ -26,7 +26,7 @@ from .browser import (
     snapshot,
 )
 from .captcha import CapSolver, deliver_token, detect_challenge
-from .execution import execute_actions, field_id, form_changed, form_signature
+from .execution import execute_actions, field_id, form_signature, same_logical_fields
 from .models import ApplicationError, ApplicationResult, Code, Profile, RunOptions
 from .reporting import execution_report
 from .store import Store, application_key
@@ -231,11 +231,20 @@ class ApplicationRunner:
         seen = {}
         entry_attempts = {}
         previous_actions = {}
+        requirement_cache = {}
         identity_sources = set()
         captcha_attempts = 0
         for step in range(options.max_steps):
             result.steps = step + 1
-            snap = await snapshot(page)
+            snap = None
+            for attempt in range(4):
+                try:
+                    snap = await snapshot(page)
+                    break
+                except PlaywrightError:
+                    if attempt == 3:
+                        raise
+                    await asyncio.sleep(0.15)
             # Initial hydration can expose a shell before the form or Apply control appears.
             if not snap.fields and (
                 step > 0
@@ -247,7 +256,13 @@ class ApplicationRunner:
                     if blocker(snap):
                         break
                     await asyncio.sleep(0.25)
-                    snap = await snapshot(page)
+                    try:
+                        snap = await snapshot(page)
+                    except PlaywrightError:
+                        # A delayed Apply handler may navigate while the old document
+                        # is being parsed. Retry the new document within this same
+                        # bounded hydration window.
+                        continue
                     if snap.fields or (
                         step == 0
                         and any(
@@ -329,9 +344,32 @@ class ApplicationRunner:
                 raise ApplicationError(
                     Code.NO_PROGRESS, "The form repeated the same state after bounded replanning."
                 )
-            actions, unresolved = await self.agent.plan(
-                snap.fields, profile, agent_fill=options.agent_fill
-            )
+            pending_documents = {
+                (field.frame, field.id)
+                for field in snap.fields
+                if field.kind == "file" and not field.filled
+            }
+            document_actions = []
+            if pending_documents:
+                deterministic_actions, _ = await WorkflowAgent().plan(snap.fields, profile)
+                document_actions = [
+                    action
+                    for action in deterministic_actions
+                    if (action.field.frame, action.field.id) in pending_documents
+                ]
+            if document_actions:
+                # Uploads can replace fields and trigger resume autofill. Perform
+                # that deterministic checkpoint before spending model calls on a
+                # form whose controls and values are about to change.
+                actions, unresolved = document_actions, []
+                event("document_preflight", fields=len(document_actions))
+            else:
+                actions, unresolved = await self.agent.plan(
+                    snap.fields,
+                    profile,
+                    agent_fill=options.agent_fill,
+                    requirement_cache=requirement_cache,
+                )
             for warning in self.agent.warnings:
                 event("agent_warning", **warning)
             for field in snap.fields:
@@ -405,10 +443,10 @@ class ApplicationRunner:
                 raise ApplicationError(code, f"Application stopped: {code.value}.")
             # Replaced nodes and changed options/requirements need a fresh plan;
             # normal successful filling does not count as a structural change.
-            if execution.needs_replan or form_changed(snap, after):
+            if execution.needs_replan or not same_logical_fields(snap.fields, after.fields):
                 continue
             report = execution_report(
-                execution, self.agent.describe(snap.fields, actions, unresolved)
+                execution, self.agent.describe(after.fields, actions, unresolved)
             )
             (directory / f"execution-{step + 1:02d}.json").write_text(
                 json.dumps(report, indent=2), encoding="utf-8"
@@ -418,6 +456,7 @@ class ApplicationRunner:
                 outcome
                 for outcome in execution.fields
                 if (field_id(outcome.action.field) in active_ids or outcome.action.upload_error)
+                and outcome.action.field.required
                 and not outcome.verified
             ]
             if failed:
@@ -438,9 +477,15 @@ class ApplicationRunner:
                 for question in report["fields"]
                 if question["code"] == Code.VALIDATION_FAILED.value
             ]
-            if invalid or after.errors:
+            if invalid:
                 raise ApplicationError(
                     Code.VALIDATION_FAILED, "The page reported form validation errors.", invalid
+                )
+            if after.errors:
+                event("page_validation_warning", count=len(after.errors))
+                result.evidence.append(
+                    f"The page displayed {len(after.errors)} validation or status alert(s); "
+                    "all required controls were independently verified."
                 )
             if not report["required_fill_pass"]:
                 raise ApplicationError(
@@ -458,18 +503,23 @@ class ApplicationRunner:
                     re.IGNORECASE,
                 )
             ]
-            submit_controls = [
+            definitive_submit_controls = [
                 c
                 for c in after.controls
                 if c.action == "submit"
                 or (
                     re.fullmatch(
-                        r"submit(?: (?:your )?application)?|send(?: application)?|apply|apply now",
+                        r"submit(?: (?:your )?application)?|send(?: application)?",
                         c.label,
                         re.IGNORECASE,
                     )
                     and c.kind != "a"
                 )
+            ]
+            submit_controls = definitive_submit_controls or [
+                c
+                for c in after.controls
+                if re.fullmatch(r"apply|apply now", c.label, re.IGNORECASE) and c.kind != "a"
             ]
             if next_controls and not submit_controls:
                 if len(next_controls) != 1:
@@ -510,13 +560,17 @@ class ApplicationRunner:
                 await self._wait_for_user(page, result, event, confirmation(after))
                 return
             if options.mode == "fill":
-                if challenge:
-                    raise ApplicationError(
-                        Code.CAPTCHA_REQUIRED,
-                        "Fields filled; CAPTCHA solving is reserved for submit mode.",
-                    )
                 result.status, result.code = "ready", Code.READY
-                result.message = "Application filled and ready; final submit was not clicked."
+                if challenge:
+                    result.evidence.append(
+                        "CAPTCHA detected; submit mode will solve it immediately before submission."
+                    )
+                    result.message = (
+                        "Application fields are ready; CAPTCHA remains for submit mode and "
+                        "final submit was not clicked."
+                    )
+                else:
+                    result.message = "Application filled and ready; final submit was not clicked."
                 return
             if profile.synthetic and urlsplit(page.url).hostname not in (
                 "localhost",

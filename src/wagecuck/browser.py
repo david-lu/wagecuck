@@ -166,7 +166,7 @@ async def fill(page: Page, action: Action):
     target = locator(page, field)
     try:
         handler = _control_handler(action)
-        if field.kind == "combobox" and action.random_choice:
+        if field.control_type == "dynamic_combobox" and action.random_choice:
             value = ""  # The concrete canonical answer is assigned after selecting an option.
         else:
             action.value = normalize_field_value(field, action.value)
@@ -213,6 +213,9 @@ async def verify_action_results(page: Page, actions: list[Action]) -> list[Field
     results = []
     for action in actions:
         try:
+            if action.field.kind == "file" and action.upload_verified:
+                results.append(FieldVerification(action, True, True))
+                continue
             target = locator(page, action.field)
             if not await target.count():
                 results.append(
