@@ -109,11 +109,10 @@ function fieldAnswerSchema(field) {
     url: 'https?:\\/\\/\\S+',
   };
   const body = patterns[field.type] || (['textarea', 'contenteditable'].includes(field.type) ? '[\\s\\S]+' : '[^\\r\\n]+');
-  const length = field.maxLength > 0 ? `(?=[\\s\\S]{1,${field.maxLength}}$)` : '';
   return {
     anyOf: [
       { type: 'string', enum: [''] },
-      { type: 'string', description: fieldDescription(field), ...(field.type === 'email' ? { format: 'email' } : {}), pattern: `^${length}${body}$` },
+      { type: 'string', description: fieldDescription(field), ...(field.type === 'email' ? { format: 'email' } : {}), ...(field.maxLength > 0 ? { maxLength: field.maxLength } : {}), pattern: `^${body}$` },
     ],
   };
 }
@@ -176,7 +175,14 @@ export function buildBatchRequest({ settings: value, targets, page }) {
   };
   const properties = Object.fromEntries(targets.map(target => [target.id, answerObjectSchema(target.field)]));
   const schema = { type: 'object', properties, required: targets.map(target => target.id), additionalProperties: false };
-  return requestWithContext(settings, instructions, context, 'batch_answers', schema, Math.min(16384, Math.max(4096, targets.length * 320)));
+  const reasoningModel = /^gpt-(?:5|6)(?:[.-]|$)/.test(settings.model);
+  const answerTokens = Math.max(4096, targets.length * 512);
+  // Reasoning tokens count against max_output_tokens, even though they are not in the JSON answer.
+  // GPT-4.1 models have a 32,768-token output limit; current GPT-5/6 models allow more.
+  const maxOutputTokens = reasoningModel ? 25_000 + answerTokens : Math.min(32_768, answerTokens);
+  const request = requestWithContext(settings, instructions, context, 'batch_answers', schema, maxOutputTokens);
+  if (/^gpt-6(?:\.1)?-(?:astra|sol|luna)(?:-|$)/.test(settings.model)) request.reasoning = { effort: 'low' };
+  return request;
 }
 
 export function parseBatchResponse(raw, targets) {
@@ -293,10 +299,14 @@ export function errorToPublic(error) {
   return { code: 'UNEXPECTED_ERROR', message: 'Something went wrong. Please try again or check the extension diagnostics.' };
 }
 
-function apiFailure(status, code) {
+function apiFailure(status, providerError = {}) {
+  const { code, param } = providerError && typeof providerError === 'object' ? providerError : {};
   if (status === 401) return new AgentError('AUTHENTICATION', 'The OpenAI API key was rejected. Check it in extension settings.');
   if (status === 403) return new AgentError('ACCESS_DENIED', 'This API key cannot access this model. Check your OpenAI project and model settings.');
   if (status === 429) return new AgentError('RATE_LIMIT', code === 'insufficient_quota' ? 'OpenAI API quota is exhausted. Check API billing; ChatGPT subscriptions do not include API usage.' : 'OpenAI rate limit reached. Wait a moment, then try again.');
+  if (code === 'invalid_json_schema' || param === 'text.format.schema') return new AgentError('INVALID_SCHEMA', 'OpenAI rejected the generated field schema. Reload the updated extension, scan again, and retry.');
+  if (code === 'model_not_found' || param === 'model' || status === 404) return new AgentError('MODEL_UNAVAILABLE', 'The selected model is unavailable to this API key. Choose another model in AI settings.');
+  if (param === 'max_output_tokens') return new AgentError('OUTPUT_LIMIT', 'The selected model cannot accept this output limit. Choose another model in AI settings.');
   if (status === 400 || status === 404) return new AgentError('API_REQUEST', 'OpenAI rejected the request. Check the model ID and whether it supports structured output and PDF input.');
   return new AgentError('API_ERROR', 'OpenAI could not complete this request. Please try again later.');
 }
@@ -333,9 +343,9 @@ async function requestOutput({ request, settings, signal, onState, fetchImpl, ti
     clearTimeout(headerTimeout);
     headerTimeout = null;
     if (!response.ok) {
-      let code;
-      try { code = (await response.json())?.error?.code; } catch { /* Provider errors never reach logs or page. */ }
-      throw apiFailure(response.status, code);
+      let providerError;
+      try { providerError = (await response.json())?.error; } catch { /* Provider errors never reach logs or page. */ }
+      throw apiFailure(response.status, providerError);
     }
     let raw = '';
     let completed = false;
@@ -350,7 +360,10 @@ async function requestOutput({ request, settings, signal, onState, fetchImpl, ti
       } else if (event.type === 'response.failed' || event.type === 'error') {
         throw new AgentError('API_ERROR', 'OpenAI could not complete this request. Please try again later.');
       } else if (event.type === 'response.incomplete') {
-        throw new AgentError('INCOMPLETE_RESPONSE', 'The answer was cut short by the model or a token limit. Nothing was inserted. Try a shorter answer.');
+        const reason = event.response?.incomplete_details?.reason;
+        throw new AgentError('INCOMPLETE_RESPONSE', reason === 'max_output_tokens'
+          ? 'The model used its output token budget before finishing. Nothing was inserted. Try another model or write fields individually.'
+          : 'The model stopped before finishing. Nothing was inserted. Try again.');
       } else if (event.type === 'response.completed') {
         if (event.response?.status && event.response.status !== 'completed') throw new AgentError('INCOMPLETE_RESPONSE', 'The model did not finish its answer. Nothing was inserted.');
         raw = completedOutput(event.response) || raw;

@@ -60,8 +60,9 @@ test('WRITE ALL builds required, field-specific schema and uses one API call', a
   assert.match(schema.properties[targets[1].id].description, /Email address/);
   const narrativePattern = schema.properties[targets[0].id].properties.answer.anyOf[1].pattern;
   const emailPattern = schema.properties[targets[1].id].properties.answer.anyOf[1].pattern;
+  assert.equal(schema.properties[targets[0].id].properties.answer.anyOf[1].maxLength, 120);
   assert.match('A concise answer.', new RegExp(narrativePattern));
-  assert.doesNotMatch('x'.repeat(121), new RegExp(narrativePattern));
+  assert.doesNotMatch(narrativePattern, /\(\?=/);
   assert.match('jordan@example.test', new RegExp(emailPattern));
   assert.doesNotMatch('not an email', new RegExp(emailPattern));
   assert.deepEqual(schema.properties[targets[2].id].properties.answer.anyOf[1], {
@@ -82,6 +83,17 @@ test('WRITE ALL builds required, field-specific schema and uses one API call', a
   assert.deepEqual(result.map(item => item.answer), ['I built similar tools.', 'jordan@example.test', '5']);
   const invalid = parseBatchResponse(JSON.stringify({ [targets[0].id]: { answer: 'Fine', missingInformation: '' }, [targets[1].id]: { answer: 'not-an-email', missingInformation: '' } }), targets);
   assert.equal(invalid[1].error.code, 'INVALID_ANSWER');
+});
+
+test('WRITE ALL reserves enough output for a 28-field form and reasoning', () => {
+  const targets = Array.from({ length: 28 }, (_, index) => ({ id: `0:wc-field-${index + 1}`, field }));
+  const reasoningRequest = buildBatchRequest({ settings: { ...settings, model: 'gpt-6.1-sol' }, targets, page });
+  assert.equal(reasoningRequest.max_output_tokens, 25_000 + 28 * 512);
+  assert.deepEqual(reasoningRequest.reasoning, { effort: 'low' });
+  assert.equal(reasoningRequest.text.format.schema.required.length, 28);
+  const classicRequest = buildBatchRequest({ settings: { ...settings, model: 'gpt-4.1-mini' }, targets, page });
+  assert.equal(classicRequest.max_output_tokens, 28 * 512);
+  assert.equal(classicRequest.reasoning, undefined);
 });
 
 test('checkboxes and dropdowns use boolean and exact-option schemas', () => {
@@ -204,7 +216,7 @@ test('completed response can provide answer when there were no deltas', async ()
 });
 
 test('authentication, quota and provider errors are actionable and never expose provider text', async () => {
-  for (const [status, code, expected] of [[401, 'invalid_api_key', 'AUTHENTICATION'], [429, 'insufficient_quota', 'RATE_LIMIT'], [400, 'bad_request', 'API_REQUEST'], [503, 'server_error', 'API_ERROR']]) {
+  for (const [status, code, expected] of [[401, 'invalid_api_key', 'AUTHENTICATION'], [429, 'insufficient_quota', 'RATE_LIMIT'], [400, 'invalid_json_schema', 'INVALID_SCHEMA'], [404, 'model_not_found', 'MODEL_UNAVAILABLE'], [400, 'bad_request', 'API_REQUEST'], [503, 'server_error', 'API_ERROR']]) {
     let calls = 0;
     await assert.rejects(generateAnswer({ settings, field, page, fetchImpl: async () => {
       calls++;
@@ -224,6 +236,12 @@ test('stream refusals, failures, incomplete answers, and dropped connections nev
   ]) {
     await assert.rejects(generateAnswer({ settings, field, page, fetchImpl: async () => streamResponse([event]) }), error => error.code === code);
   }
+});
+
+test('output-limit errors identify the cause without inserting partial answers', async () => {
+  await assert.rejects(generateAnswer({ settings, field, page, fetchImpl: async () => streamResponse([
+    { type: 'response.incomplete', response: { incomplete_details: { reason: 'max_output_tokens' } } },
+  ]) }), error => error.code === 'INCOMPLETE_RESPONSE' && /output token budget/.test(error.message));
 });
 
 test('missing personal facts produce a helpful error, not invented input', () => {
