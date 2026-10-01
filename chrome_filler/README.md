@@ -7,11 +7,11 @@ A standalone Chrome extension inside wagecuck. It puts a **✦ Write** button at
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and select this `chrome_filler` folder.
 3. Pin **Wagecuck · AI Input Filler** from Chrome’s extensions menu.
-4. Click its icon and follow the setup banner: **Connect AI** with your OpenAI API key, then add your résumé or background in **About you**. You can upload PDF, TXT, or Markdown, paste résumé text, or import a wagecuck profile JSON.
+4. Click its icon and follow the setup banner: **Connect AI** with your OpenAI API key, then add your résumé or background in **About you**. You can upload PDF, TXT, or Markdown, paste résumé text, or import the shared `../profiles/actual/profile.json` after you have completed it.
 5. In **Your voice**, choose a tone or write your preferences: for example, “Write professionally in two short paragraphs. Mention my interest in accessible products. Avoid buzzwords.” Tone changes keep your other instructions. Edits save automatically; the footer shows saving or saved status, and **Save** is available when you need it.
 6. Reload an already-open application page, then click **✦ Write** on a field. Review the result before submitting.
 
-No build step or backend is needed. The extension has its own settings and does not read wagecuck’s `.env`. API usage is billed to your OpenAI API account. The default model is `gpt-4.1-mini`; you can enter another model ID that supports the Responses API, structured output, and PDF input if using a PDF résumé.
+No build step or backend is needed. The extension has its own settings and does not read wagecuck’s `.env`. Importing a shared profile copies its content into Chrome storage; re-import it after editing the file. API usage is billed to your OpenAI API account. The default model is `gpt-4.1-mini`; you can enter another model ID that supports the Responses API, structured output, and PDF input if using a PDF résumé.
 
 This creates a fresh API generation session for each field using the [OpenAI Responses API](https://developers.openai.com/api/docs/guides/text). It does not open or automate the ChatGPT website.
 

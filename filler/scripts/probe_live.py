@@ -25,6 +25,7 @@ from wagecuck.browser import (
     snapshot,
 )
 from wagecuck.captcha import detect_challenge
+from wagecuck.cli import profiles_directory
 from wagecuck.evaluation import (
     BrowserPool,
     add_concurrency_argument,
@@ -318,7 +319,7 @@ async def probe_cases(cases, browser_type, profile, args, metadata_template, *, 
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reports", type=Path, nargs="+", required=True)
-    parser.add_argument("--profile", type=Path, default=Path("profiles/dummy/profile.json"))
+    parser.add_argument("--profile", type=Path, default=profiles_directory() / "dummy/profile.json")
     parser.add_argument("--output", type=Path)
     parser.add_argument(
         "--dataset-split", choices=("training", "validation", "run"), default="training"

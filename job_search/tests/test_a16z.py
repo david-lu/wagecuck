@@ -61,7 +61,7 @@ def detail(job_id="123"):
 
 def test_source_is_enabled_for_cli_and_existing_search_profile():
     profile = SearchProfile.load(
-        Path(__file__).parents[1] / "profiles" / "los-angeles-or-remote.json"
+        Path(__file__).parents[2] / "profiles" / "dummy" / "search.json"
     )
     assert "a16z" in SITES and "a16z" in SearchCriteria("software engineer").sites
     assert "a16z" in profile.sites

@@ -20,7 +20,7 @@ Fill a job application and watch the browser:
 .venv\Scripts\wagecuck.exe run "JOB_APPLICATION_URL" --show-browser --output runs\application.json
 ```
 
-Runs use the synthetic `profiles/dummy/profile.json` unless `--profile` supplies another short profile name or JSON path. For example, `--profile ryan` loads `profiles/ryan/profile.json`. The default mode fills supported steps, verifies the answers, stops before final submission, and closes the browser.
+Runs use the shared synthetic `../profiles/dummy/profile.json` unless `--profile` supplies another short profile name or JSON path. For example, `--profile actual` loads `../profiles/actual/profile.json`. The default mode fills supported steps, verifies the answers, stops before final submission, and closes the browser.
 
 Optional resume autofill helpers are skipped. Required attachments are uploaded first; the app waits for upload/autofill activity to settle, rereads the form, then fills mapped answers from your profile and verifies them. A stored attachment is recognized even if the site replaces its file input. Processing waits are bounded; `UPLOAD_TIMEOUT` means the site did not settle. The offline corpus probe reports `UPLOAD_UNVERIFIED` when its network block prevents an upload from completing.
 
@@ -64,9 +64,11 @@ test pages.
 
 ## Profile and keys
 
-`profiles/dummy/profile.json` is the canonical synthetic testing profile used by the CLI and evaluation scripts. Everything under `profiles/` except its placeholder is ignored by Git, so profile data and résumés cannot be committed. Document paths are relative to the profile JSON. Pass a separate profile explicitly when using truthful applicant data.
+`../profiles/dummy/profile.json` is the canonical synthetic testing profile used by the CLI and evaluation scripts. Real applicant details and résumés belong in the Git-ignored `../profiles/actual/` directory. Document paths are relative to the profile JSON. Pass `--profile actual` when using truthful applicant data.
 
-Generate or reset the local dummy profile and résumé:
+The previous mixed-content file is preserved as `../profiles/actual/profile-draft.json`. Review its fictional details and save a verified `../profiles/actual/profile.json` before using `--profile actual` for live filling.
+
+Generate or reset the shared dummy profile and résumé:
 
 ```powershell
 .venv\Scripts\wagecuck.exe demo-profile
@@ -134,14 +136,14 @@ Run the training corpus without submitting applications:
 For an ordinary batch dry run, pass one or more `job_search` CSV or JSON outputs directly:
 
 ```powershell
-.venv\Scripts\python.exe scripts/run_all.py ..\job_search\results\RUN\04-selected.csv --mode dry-run --profile profiles\dummy\profile.json --output runs\reports\dry-run.json --pool --concurrency 4
+.venv\Scripts\python.exe scripts/run_all.py ..\job_search\results\RUN\04-selected.csv --mode dry-run --profile ..\profiles\dummy\profile.json --output runs\reports\dry-run.json --pool --concurrency 4
 ```
 
 Use the same command for live fills or submissions by changing `--mode`. Live submission requires
 a truthful, non-synthetic profile:
 
 ```powershell
-.venv\Scripts\python.exe scripts/run_all.py ..\job_search\results\RUN\04-selected.csv --mode submit --profile profiles\real\profile.json --output runs\reports\submitted.json --agent-provider openai --agent-fill --pool --concurrency 2
+.venv\Scripts\python.exe scripts/run_all.py ..\job_search\results\RUN\04-selected.csv --mode submit --profile ..\profiles\actual\profile.json --output runs\reports\submitted.json --agent-provider openai --agent-fill --pool --concurrency 2
 ```
 
 `--mode dry-run` uses the same navigation, upload, dynamic-control, inference, and validation path

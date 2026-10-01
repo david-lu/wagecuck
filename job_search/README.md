@@ -33,8 +33,19 @@ directory or its parent. The model defaults to `gpt-5.4-mini`; override with
 | `fill-fields` | Any job CSV and field definitions | The same rows with generated scalar or array fields |
 
 Every command requires `--output`. CSV operations require distinct input and output
-paths. There are no reserved filenames, workflow profiles, or prescribed operation
-order. Use `wagecuck-search COMMAND --help` for all options.
+paths. Use `wagecuck-search COMMAND --help` for all options. The `search` and `filter`
+commands can read shared preferences from `../profiles/{name}/search.json` with
+`--profile NAME`:
+
+```powershell
+wagecuck-search search --profile actual --output jobs.csv
+wagecuck-search filter jobs.csv --profile actual --output selected.csv
+```
+
+The search profile provides the first configured search query and selected sites for
+`search`, and salary, location, and other configured filters for `filter`. Explicit
+command line options override profile defaults. Search does not read applicant facts
+or résumés from `profile.json`.
 
 Search broadly:
 

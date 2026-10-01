@@ -5,12 +5,17 @@ from types import SimpleNamespace
 import pytest
 
 from wagecuck import cli
-from wagecuck.cli import resolve_profile_path
+from wagecuck.cli import profiles_directory, resolve_profile_path
 from wagecuck.demo import generate_profile
 
 
 def test_short_profile_name_resolves_under_profiles():
-    assert resolve_profile_path("ryan") == Path("profiles/ryan/profile.json")
+    assert resolve_profile_path("ryan") == profiles_directory() / "ryan/profile.json"
+
+
+def test_named_profile_uses_shared_directory_from_other_working_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert resolve_profile_path("dummy") == profiles_directory() / "dummy/profile.json"
 
 
 def test_explicit_profile_path_is_preserved():

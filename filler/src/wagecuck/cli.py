@@ -12,12 +12,18 @@ from .models import Profile, RunOptions
 from .runner import ApplicationRunner
 
 
+def profiles_directory() -> Path:
+    """Use the shared repository profiles when running from this checkout."""
+    shared = Path(__file__).resolve().parents[3] / "profiles"
+    return shared if shared.is_dir() else Path.cwd() / "profiles"
+
+
 def resolve_profile_path(reference: str | Path) -> Path:
     """Resolve a short profile name while preserving explicit filesystem paths."""
     path = Path(reference)
     if path.exists() or path.suffix or len(path.parts) > 1:
         return path
-    return Path("profiles") / path / "profile.json"
+    return profiles_directory() / path / "profile.json"
 
 
 def emit_result(payload: dict, output: Path | None) -> None:
@@ -33,7 +39,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="wagecuck")
     commands = parser.add_subparsers(dest="command", required=True)
     demo = commands.add_parser("demo-profile", help="Generate a synthetic profile and resume PDF")
-    demo.add_argument("--output", type=Path, default=Path("profiles/dummy"))
+    demo.add_argument("--output", type=Path, default=profiles_directory() / "dummy")
     server = commands.add_parser("demo-server", help="Serve local test application forms")
     server.add_argument("--port", type=int, default=8765)
     run = commands.add_parser("run", help="Process one job application URL")
@@ -41,7 +47,7 @@ def main(argv=None):
     run.add_argument(
         "--profile",
         default="dummy",
-        help=("Profile name or path to a profile JSON file (default: profiles/dummy/profile.json)"),
+        help=("Profile name or path to a profile JSON file (default: shared profiles/dummy/profile.json)"),
     )
     mode = run.add_mutually_exclusive_group()
     mode.add_argument("--mode", choices=("inspect", "fill", "submit"), default="fill")

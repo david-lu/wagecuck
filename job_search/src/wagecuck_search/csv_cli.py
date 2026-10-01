@@ -25,6 +25,7 @@ from .operations import (
     save_report,
     validate_csv,
 )
+from .profiles import SearchProfile, resolve_search_profile_path
 
 
 def read_json(path):
@@ -37,8 +38,8 @@ def parser(action):
         description="Run one operation using the paths you supply; no workflow or preset filenames.",
     )
     if action == "search":
-        command.add_argument("--query", "--job-title", required=True, dest="job_title")
-        command.add_argument("--sites", choices=SITES, nargs="+", default=list(SITES))
+        command.add_argument("--query", "--job-title", dest="job_title")
+        command.add_argument("--sites", choices=SITES, nargs="+")
         command.add_argument("--max-pages", type=int, default=200)
         command.add_argument("--max-per-site", type=int, default=10000)
         command.add_argument("--site-timeout-seconds", type=float, default=900)
@@ -50,6 +51,8 @@ def parser(action):
         command.add_argument("--field-type", nargs=2, action="append", default=[],
                              metavar=("FIELD", "TYPE"), help="Declare an imported column: " + ", ".join(FIELD_TYPES))
     command.add_argument("--output", type=Path, required=True, help="Output CSV path")
+    if action in ("search", "filter"):
+        command.add_argument("--profile", help="Shared profile name or search.json path")
     command.add_argument("--agent-model")
     command.add_argument("--agent-endpoint")
     command.add_argument("--agent-timeout", type=float, default=60)
@@ -75,22 +78,23 @@ def parser(action):
         for flag in ("--field", "--all", "--none"):
             command.add_argument(flag, action="append", default=[], help=argparse.SUPPRESS)
         command.add_argument("--filters", type=Path, help="JSON field-to-predicate mapping")
-        command.add_argument("--include-unknown", action=argparse.BooleanOptionalAction, default=False,
+        command.add_argument("--include-unknown", action=argparse.BooleanOptionalAction, default=None,
                              help="Keep rows with missing or unclassified filter values")
         command.add_argument("--location-prompt")
         command.add_argument("--min-salary", type=float)
         command.add_argument("--max-salary", type=float)
-        command.add_argument("--salary-basis", choices=("minimum", "maximum"), default="maximum")
-        command.add_argument("--salary-currency", default="USD")
+        command.add_argument("--salary-basis", choices=("minimum", "maximum"))
+        command.add_argument("--salary-currency")
         command.add_argument("--salary-period", choices=("year", "month", "week", "day", "hour"),
-                             default="year")
+                             default=None)
     return command
 
 
-def predicates_from_args(args):
-    predicates = read_json(args.filters)
-    if not isinstance(predicates, dict):
+def predicates_from_args(args, profile_filters=None, array_filters=None, criteria_filters=False):
+    supplied = read_json(args.filters)
+    if not isinstance(supplied, dict):
         raise ValueError("--filters must be a JSON object")
+    predicates = dict(profile_filters or {}) | supplied
     predicates = filter_definitions(predicates)
     for mode, pairs, legacy in (
         ("any", args.filter, args.field),
@@ -113,7 +117,8 @@ def predicates_from_args(args):
             else:
                 predicates[name] = spec
     predicates = filter_definitions(predicates)
-    if not predicates and not args.location_prompt and args.min_salary is None and args.max_salary is None:
+    if (not predicates and not array_filters and not criteria_filters and not args.location_prompt
+            and args.min_salary is None and args.max_salary is None):
         raise ValueError("Provide --filter FIELD PROMPT, --filters FILE, or a salary/location filter")
     if "location" in predicates and args.location_prompt:
         raise ValueError("Use either --filter location or --location-prompt")
@@ -123,6 +128,30 @@ def predicates_from_args(args):
 def main(action, argv):
     command = parser(action)
     args = command.parse_args(argv)
+    profile = None
+    if action in ("search", "filter") and args.profile:
+        try:
+            profile = SearchProfile.load(resolve_search_profile_path(args.profile))
+        except (OSError, ValueError, TypeError) as exc:
+            command.error(f"Cannot load search profile: {exc}")
+    if action == "search":
+        args.job_title = args.job_title or (profile.search_queries[0] if profile else None)
+        if not args.job_title:
+            command.error("--query is required unless --profile is supplied")
+        args.sites = args.sites or (profile.sites if profile else SITES)
+    if action == "filter":
+        preferences = profile.criteria_options if profile else {}
+        for key, default in (
+            ("include_unknown", False), ("salary_basis", "maximum"),
+            ("salary_currency", "USD"), ("salary_period", "year"),
+            ("min_salary", None),
+        ):
+            if getattr(args, key) is None:
+                setattr(args, key, preferences.get(key, default))
+        if args.location_prompt is None and profile:
+            args.location_prompt = profile.location_prompt
+        if args.max_salary is None and profile:
+            args.max_salary = profile.max_salary
     agent_options = dict(model=args.agent_model, endpoint=args.agent_endpoint, timeout=args.agent_timeout)
 
     def progress(event):
@@ -140,11 +169,24 @@ def main(action, argv):
             if not args.input.is_file():
                 raise ValueError(f"Input CSV not found: {args.input}")
         if action == "filter":
-            predicates = predicates_from_args(args)
+            preferences = profile.criteria_options if profile else {}
+            predicates = predicates_from_args(
+                args, preferences.get("field_filters"), preferences.get("array_filters"),
+                any(key in preferences for key in (
+                    "seniority", "internship", "sponsors_visa", "workplace", "employment_type",
+                    "keywords", "exclude_keywords", "exclude_companies", "posted_within_days",
+                )),
+            )
+            other_preferences = {
+                key: value for key, value in preferences.items()
+                if key not in {"field_filters", "include_unknown", "min_salary", "salary_basis",
+                               "salary_currency", "salary_period"}
+            }
             criteria = SearchCriteria(
                 "generated jobs", field_filters=predicates, include_unknown=args.include_unknown,
                 min_salary=args.min_salary, salary_basis=args.salary_basis,
                 salary_currency=args.salary_currency, salary_period=args.salary_period,
+                **other_preferences,
             )
             # Catch misspelled fields and malformed input before constructing paid API clients.
             read_filter_jobs(args.input, criteria, array_columns=args.array_column, field_types=field_types)
@@ -152,7 +194,7 @@ def main(action, argv):
                 args.input, args.output, criteria, array_columns=args.array_column, field_types=field_types,
                 progress=progress, location_prompt=args.location_prompt, max_salary=args.max_salary,
                 agent=OpenAILocationAgent(**agent_options) if args.location_prompt else None,
-                filter_agent=OpenAIFieldFilterAgent(**agent_options) if any("prompt" in spec for spec in predicates.values()) else None,
+                filter_agent=OpenAIFieldFilterAgent(**agent_options) if criteria.array_filters or any("prompt" in spec for spec in predicates.values()) else None,
             )
         definitions = extraction_definitions(read_json(args.fields))
         if definitions and not 1 <= args.field_workers <= 8:

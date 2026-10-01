@@ -9,7 +9,15 @@ __pycache__/
 runs/
 *.sqlite*
 .env
-filler/profiles/*
-!filler/profiles/.gitkeep
+profiles/*
+!profiles/README.md
+!profiles/dummy/
+profiles/dummy/*
+!profiles/dummy/search.json
+!profiles/dummy/profile.json
+!profiles/dummy/alex-morgan-resume.pdf
+!profiles/actual/
+profiles/actual/*
+!profiles/actual/.gitkeep
 research-cache/
 

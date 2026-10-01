@@ -12,6 +12,7 @@ from playwright.async_api import async_playwright
 
 from wagecuck import ApplicationRunner, Profile, RunOptions
 from wagecuck.agent import WorkflowAgent
+from wagecuck.cli import profiles_directory
 from wagecuck.evaluation import (
     BrowserPool,
     add_concurrency_argument,
@@ -122,7 +123,7 @@ async def main():
         action="store_true",
         help="Print one short progress line per case instead of full JSON rows",
     )
-    parser.add_argument("--profile", type=Path, default=Path("profiles/dummy/profile.json"))
+    parser.add_argument("--profile", type=Path, default=profiles_directory() / "dummy/profile.json")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--limit", type=int)
     add_concurrency_argument(parser)

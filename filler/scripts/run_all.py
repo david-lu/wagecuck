@@ -14,6 +14,7 @@ from playwright.async_api import async_playwright
 from pydantic import ValidationError
 
 from wagecuck.agent_config import add_agent_arguments, create_agent
+from wagecuck.cli import profiles_directory
 from wagecuck.evaluation import (
     BrowserPool,
     add_concurrency_argument,
@@ -386,7 +387,7 @@ def main(argv=None):
         help="dry-run uses live fill behavior with a synthetic profile and never submits",
     )
     parser.add_argument("--split", choices=("training", "validation"), default=None)
-    parser.add_argument("--profile", type=Path, default=Path("profiles/dummy/profile.json"))
+    parser.add_argument("--profile", type=Path, default=profiles_directory() / "dummy/profile.json")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--summarize-only", action="store_true")
     parser.add_argument("--limit", type=positive_limit)

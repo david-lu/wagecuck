@@ -29,6 +29,17 @@ FILTER_KEYS = {
 }
 
 
+def resolve_search_profile_path(reference: str | Path) -> Path:
+    """Resolve a named search profile from the shared repository directory."""
+    path = Path(reference)
+    if path.exists() or path.suffix or len(path.parts) > 1:
+        return path
+    shared = Path(__file__).resolve().parents[3] / "profiles"
+    if not shared.is_dir():
+        shared = Path.cwd() / "profiles"
+    return shared / path / "search.json"
+
+
 def _strings(value, name):
     if not isinstance(value, list) or not value:
         raise ValueError(f"{name} must be a nonempty list")
