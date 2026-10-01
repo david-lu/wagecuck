@@ -33,7 +33,6 @@ ANSWER = (
     "to testing to help deliver robotics software that works for the people using it."
 )
 KEY = "sk-test-synthetic-never-a-real-key"
-WAITING = re.compile("Waiting for LLM|Writing your answer|Thinking about your answer|Reading page context", re.I)
 SETTINGS = {
     "enabled": True,
     "apiKey": KEY,
@@ -169,6 +168,7 @@ class BrowserSuite:
         expect(self.page.locator("#wc-ai-root")).to_have_count(1)
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
         self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.page.get_by_role("button", name=re.compile("Fill with AI: .*Why do you want to work here", re.I), include_hidden=True)).to_have_count(1)
         expect(self.button("Why do you want to work here")).to_be_visible()
 
     def fresh_labels(self):
@@ -178,6 +178,7 @@ class BrowserSuite:
         expect(self.page.locator("#wc-ai-root")).to_have_count(1)
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
         self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.page.get_by_role("button", name=re.compile("Fill with AI: .*Legal first name", re.I), include_hidden=True)).to_have_count(1)
         expect(self.button("Legal first name")).to_be_visible()
 
     @staticmethod
@@ -211,10 +212,22 @@ class BrowserSuite:
 
     def button(self, label, frame=None):
         scope = frame or self.page
-        return scope.get_by_role("button", name=re.compile(r"Fill with AI: .*" + re.escape(label), re.I), include_hidden=True)
+        button = scope.get_by_role("button", name=re.compile(r"Fill with AI: .*" + re.escape(label), re.I), include_hidden=True)
+        if button.count() == 1:
+            button.evaluate("node => node.dispatchEvent(new PointerEvent('pointerenter'))")
+        return button
 
     def resume_button(self, label):
-        return self.page.get_by_role("button", name=f"Attach resume: {label}", exact=True, include_hidden=True)
+        button = self.page.get_by_role("button", name=f"Attach resume: {label}", exact=True, include_hidden=True)
+        if button.count() == 1:
+            button.evaluate("node => node.dispatchEvent(new PointerEvent('pointerenter'))")
+        return button
+
+    def undo_button(self, label):
+        button = self.page.get_by_role("button", name=f"Undo generated answer: {label}", exact=True, include_hidden=True)
+        if button.count() == 1:
+            button.evaluate("node => node.dispatchEvent(new PointerEvent('pointerenter'))")
+        return button
 
     @staticmethod
     def saved_resume():
@@ -252,7 +265,8 @@ class BrowserSuite:
 
     def discovery(self):
         self.fresh()
-        assert self.page.locator("#wc-ai-root .wc-field-outline").count() == self.page.locator("#wc-ai-root .wc-fill-button").count()
+        assert self.page.locator("#wc-ai-root .wc-field-outline").count() == 0
+        assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
         for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "Accessible interfaces", "Backend systems", "Which area best matches your background", "Preferred engineering area", "How do you collaborate with operators"):
             expect(self.button(label)).to_have_count(1)
         for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Consent checkbox", "Custom focus dropdown", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
@@ -284,16 +298,18 @@ class BrowserSuite:
         self.page.locator("#name").scroll_into_view_if_needed()
         assert self.page.evaluate("window.scrollY > 0")
         expect(self.button("Full name")).to_be_visible()
-        expect(self.page.locator("#wc-ai-root .wc-field-outline").first).to_be_visible()
+        assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
 
     def manual_scan_gate(self):
         self.seed()
         self.mock()
         self.page.goto(self.url)
+        self.page.locator("#name").evaluate("node => { node.style.outline = '1px dashed red'; node.style.outlineOffset = '4px'; }")
         scan = self.page.locator("#wc-ai-root .wc-scan-button")
         expect(scan).to_be_visible()
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
         expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
+        assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(255, 0, 0)"
         scan.evaluate("node => node.click()")
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
         popup = self.context.new_page()
@@ -305,20 +321,79 @@ class BrowserSuite:
             expect(self.button("Why do you want to work here")).to_be_visible()
             expect(popup.locator("#page-status")).to_contain_text("ready to write")
             count = self.page.locator("#wc-ai-root .wc-fill-button").count()
-            expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(count)
-            color = self.page.locator("#wc-ai-root .wc-field-outline").first.evaluate("node => getComputedStyle(node).borderTopColor")
+            assert count > 0
+            expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
+            color = self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor")
             assert color == "rgb(139, 92, 246)", color
+            assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineOffset") == "2px"
             self.page.reload()
             expect(self.page.locator("#wc-ai-root .wc-scan-button")).to_be_visible()
             expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
             expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
             self.page.locator("#wc-ai-root .wc-scan-button").click()
             expect(self.button("Why do you want to work here")).to_be_visible()
+            self.page.locator("#name").evaluate("node => { node.style.outlineColor = 'blue'; }")
             self.page.evaluate("history.pushState({}, '', '?newApplication=1'); document.body.appendChild(document.createElement('div'))")
             expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
             expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
+            assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(0, 0, 255)"
         finally:
             popup.close()
+
+    def direct_highlight_restores_page_styles(self):
+        self.seed()
+        self.page.goto(self.url)
+        self.page.locator("#name").evaluate("node => { node.style.outline = '1px dashed red'; node.style.outlineOffset = '4px'; }")
+        self.page.locator("#motivation").evaluate("node => { node.style.borderColor = 'green'; }")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.button("Full name")).to_have_count(1)
+        assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
+        assert self.page.locator("#motivation").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
+        self.page.evaluate("history.pushState({}, '', '?nextApplication=1'); document.body.appendChild(document.createElement('div'))")
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+        assert self.page.locator("#name").evaluate("node => ({color:getComputedStyle(node).outlineColor, style:getComputedStyle(node).outlineStyle, offset:getComputedStyle(node).outlineOffset})") == {
+            "color": "rgb(255, 0, 0)", "style": "dashed", "offset": "4px",
+        }
+        assert self.page.locator("#motivation").evaluate("node => node.style.getPropertyValue('outline')") == ""
+        assert self.page.locator("#motivation").evaluate("node => getComputedStyle(node).borderColor") == "rgb(0, 128, 0)"
+
+    def hover_only_field_buttons(self):
+        self.seed()
+        self.mock(answer="Jordan Example")
+        self.page.goto(self.url)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        button = self.page.get_by_role("button", name="Fill with AI: Full name", exact=True, include_hidden=True)
+        expect(button).to_have_count(1)
+        assert not button.is_visible(), "Field button should be hidden until hover or focus"
+        self.page.locator("#name").hover()
+        expect(button).to_be_visible()
+        self.page.mouse.move(0, 0)
+        expect(button).to_be_hidden()
+        self.page.locator("#name").hover()
+        button.click()
+        expect(self.page.locator("#name")).to_have_value("Jordan Example")
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
+
+    def scan_state_and_frame_only_fill_all(self):
+        self.seed()
+        self.mock(delay=25)
+        self.page.goto(self.url.replace("application.html", "frame_only.html"))
+        scan = self.page.locator("#wc-ai-root .wc-scan-button")
+        expect(scan).to_be_visible()
+        self.page.evaluate("""() => {
+          window.scanButtonStates = [];
+          const button = document.querySelector('#wc-ai-root').shadowRoot.querySelector('.wc-scan-button');
+          new MutationObserver(() => window.scanButtonStates.push(button.textContent)).observe(button, {childList:true,characterData:true,subtree:true});
+        }""")
+        scan.click()
+        expect(scan).to_have_text("Scan again")
+        assert "Scanning…" in self.page.evaluate("window.scanButtonStates")
+        assert self.page.locator("#wc-ai-root .wc-fill-button").count() == 0
+        fill_all = self.page.locator("#wc-ai-root .wc-do-all-button")
+        expect(fill_all).to_be_visible()
+        fill_all.click()
+        expect(self.page.frame_locator('iframe[title="Application questions"]').locator("#frame-answer")).to_have_value(ANSWER)
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
 
     def do_all_fills_scanned_empty_fields(self):
         self.seed()
@@ -419,6 +494,7 @@ class BrowserSuite:
         self.page.locator('[aria-labelledby="upload-label-greenhouse-resume"]').scroll_into_view_if_needed()
         self.page.evaluate("window.dispatchEvent(new Event('scroll'))")
         expect(self.resume_button("Resume/CV")).to_be_visible()
+        assert self.page.locator('[aria-labelledby="upload-label-greenhouse-resume"] button').first.evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
         self.resume_button("Resume/CV").click()
         expect(self.page.locator('[aria-labelledby="upload-label-greenhouse-resume"]')).to_contain_text("resume.pdf")
         assert [event["type"] for event in self.page.evaluate("window.fixtureEvents.filter(event => event.id === 'greenhouse-resume')")] == ["input", "change"]
@@ -453,7 +529,7 @@ class BrowserSuite:
         context = json.loads(next(part["text"] for part in request["input"][0]["content"] if part["type"] == "input_text"))
         assert context["targetField"]["type"] == "select"
         assert [option["value"] for option in context["targetField"]["options"]] == ["frontend", "design-systems", "backend"]
-        assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["enum"] == ["frontend", "design-systems", "backend"]
+        assert request["text"]["format"]["schema"]["properties"]["answer"]["enum"] == ["frontend", "design-systems", "backend"]
         assert self.page.evaluate("window.fixtureSubmitted") is False
 
     def do_all_stop_cancels_every_frame(self):
@@ -466,8 +542,12 @@ class BrowserSuite:
         while len(self.worker.evaluate("self.__qaRequests")) < 1 and time.monotonic() < deadline:
             self.page.wait_for_timeout(100)
         assert len(self.worker.evaluate("self.__qaRequests")) == 1
-        self.page.get_by_role("button", name="Stop", exact=True).click()
-        expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("FILL ALL stopped")
+        stop = self.page.locator("#wc-ai-root .wc-do-all-button")
+        expect(stop).to_have_text(re.compile("Filling.*Stop"))
+        stop.click()
+        expect(stop).to_have_text("Stopping…")
+        expect(stop).to_have_text("FILL ALL")
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
         expect(self.page.locator("#name")).to_have_value("")
         expect(self.page.locator("#email")).to_have_value("")
         expect(self.page.frame_locator('iframe[title="Same origin questions"]').locator("#frame-answer")).to_have_value("")
@@ -604,12 +684,14 @@ class BrowserSuite:
 
     def paragraph_and_context(self):
         self.fresh()
+        self.mock(delay=1200)
         self.button("Why do you want to work here").click()
-        expect(self.toast()).to_contain_text(WAITING)
-        expect(self.button("Why do you want to work here")).to_have_attribute("aria-busy", "true")
+        busy = self.page.get_by_role("button", name=re.compile("Cancel writing: Why do you want to work here"), include_hidden=True)
+        expect(busy).to_have_attribute("aria-busy", "true")
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
         self.screenshot("waiting-for-llm")
         expect(self.page.locator("#motivation")).to_have_value(ANSWER)
-        expect(self.toast()).to_contain_text(re.compile("filled|ready|review", re.I))
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
         self.screenshot("filled-paragraph")
         events = self.page.evaluate("window.fixtureEvents")
         assert {event["type"] for event in events if event["id"] == "motivation"} >= {"input", "change"}
@@ -626,7 +708,7 @@ class BrowserSuite:
         assert "never-send-hidden-parent" not in payload_text
         assert "NEVER_SEND_HIDDEN_PAGE_TEXT" not in payload_text
         assert requests[0]["payload"].get("store") is False
-        self.page.get_by_role("button", name="Undo", exact=True).click()
+        self.undo_button("Why do you want to work here at Northstar Robotics?").click()
         expect(self.page.locator("#motivation")).to_have_value("")
 
     def email_and_contenteditable(self):
@@ -634,7 +716,7 @@ class BrowserSuite:
         self.mock(answer="jordan@example.test")
         self.button("Email address").click()
         expect(self.page.locator("#email")).to_have_value("jordan@example.test")
-        self.page.get_by_role("button", name="Dismiss", exact=True).click()
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
         biography = "I build accessible, dependable software for operations teams.\n\nI collaborate with designers and operators."
         self.mock(answer=biography)
         self.page.locator("#bio").evaluate("node => node.scrollIntoView({block:'center'})")
@@ -666,7 +748,7 @@ class BrowserSuite:
         assert context["targetField"]["type"] == "checkbox"
         assert "Which kinds of work" in context["targetField"]["context"]
         assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["type"] == "boolean"
-        self.page.get_by_role("button", name="Undo", exact=True).click()
+        self.undo_button("Accessible interfaces").click()
         expect(self.page.locator("#accessible-work")).not_to_be_checked()
 
         self.mock()
@@ -681,9 +763,9 @@ class BrowserSuite:
             {"value": "frontend", "label": "Frontend engineering"},
             {"value": "design-systems", "label": "Design systems"},
         ]
-        options = request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["enum"]
+        options = request["text"]["format"]["schema"]["properties"]["answer"]["enum"]
         assert options == ["frontend", "design-systems"]
-        self.page.get_by_role("button", name="Undo", exact=True).click()
+        self.undo_button("Which area best matches your background?").click()
         expect(self.page.locator("#focus-area")).to_have_value("")
         assert self.page.locator("#consent").is_checked() is False
         assert self.page.evaluate("window.fixtureSubmitted") is False
@@ -692,9 +774,8 @@ class BrowserSuite:
         self.fresh()
         self.page.locator('input[name="survey-age"]').first.scroll_into_view_if_needed()
         expect(self.button("What is your age range?")).to_have_count(1)
-        outline = self.button("What is your age range?").evaluate("node => node.previousElementSibling.getBoundingClientRect().toJSON()")
-        question = self.page.locator(".application-question").evaluate("node => node.getBoundingClientRect().toJSON()")
-        assert abs(outline["width"] - question["width"]) < 2 and abs(outline["height"] - question["height"]) < 2
+        question = self.page.locator(".application-question")
+        assert question.evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
         self.button("What is your age range?").click()
         expect(self.page.locator('input[name="survey-age"][value="Prefer not to answer"]')).to_be_checked()
         assert self.page.locator('input[name="survey-age"]:checked').count() == 1
@@ -705,7 +786,7 @@ class BrowserSuite:
         assert radio["type"] == "radio" and radio["label"] == "What is your age range?"
         assert [option["value"] for option in radio["options"]] == ["17 or younger", "18-20", "21-29", "30-39", "40-49", "50-59", "60 or older", "Prefer not to answer"]
         assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["enum"] == [option["value"] for option in radio["options"]]
-        self.page.get_by_role("button", name="Undo", exact=True).click()
+        self.undo_button("What is your age range?").click()
         assert self.page.locator('input[name="survey-age"]:checked').count() == 0
         expect(self.page.locator('input[name="interview-time"][value="morning"]')).to_be_checked()
 
@@ -713,9 +794,10 @@ class BrowserSuite:
         self.fresh()
         self.mock(delay=5000)
         self.button("Why do you want to work here").click()
-        expect(self.toast()).to_contain_text(WAITING)
-        self.page.get_by_role("button", name="Cancel", exact=True).click()
-        expect(self.toast()).to_contain_text(re.compile("cancel", re.I))
+        busy = self.page.get_by_role("button", name=re.compile("Cancel writing: Why do you want to work here"), include_hidden=True)
+        expect(busy).to_have_attribute("aria-busy", "true")
+        busy.click()
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
         expect(self.page.locator("#motivation")).to_have_value("")
         expect(self.button("Why do you want to work here")).to_be_enabled()
         self.page.wait_for_timeout(800)
@@ -726,25 +808,23 @@ class BrowserSuite:
         self.fresh()
         self.mock(delay=1200)
         self.button("Why do you want to work here").click()
-        expect(self.toast()).to_contain_text(WAITING)
+        expect(self.page.get_by_role("button", name=re.compile("Cancel writing: Why do you want to work here"), include_hidden=True)).to_have_attribute("aria-busy", "true")
         self.page.locator("#motivation").fill("My own answer while waiting.")
-        expect(self.toast()).to_contain_text(re.compile("changed|edited|overwrite", re.I), timeout=7000)
         expect(self.page.locator("#motivation")).to_have_value("My own answer while waiting.")
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
         self.fresh()
         self.button("Why do you want to work here").click()
         expect(self.page.locator("#motivation")).to_have_value(ANSWER)
         self.page.locator("#motivation").fill("A deliberate edit after the generated answer.")
-        undo = self.page.get_by_role("button", name="Undo", exact=True)
-        if undo.count():
-            undo.click()
+        expect(self.page.get_by_role("button", name="Undo generated answer: Why do you want to work here at Northstar Robotics?", exact=True, include_hidden=True)).to_have_count(0)
         expect(self.page.locator("#motivation")).to_have_value("A deliberate edit after the generated answer.")
         self.fresh()
         self.mock(delay=1200)
         self.button("Why do you want to work here").click()
-        expect(self.toast()).to_contain_text(WAITING)
+        expect(self.page.get_by_role("button", name=re.compile("Cancel writing: Why do you want to work here"), include_hidden=True)).to_have_attribute("aria-busy", "true")
         self.page.locator("label[for=motivation]").evaluate("node => node.textContent = 'What salary do you expect?'")
-        expect(self.toast()).to_contain_text("The question changed")
         expect(self.page.locator("#motivation")).to_have_value("")
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
 
     def error_and_retry(self):
         self.fresh()
@@ -801,7 +881,7 @@ class BrowserSuite:
         self.mock(delay=5000)
         self.page.locator("#motivation").fill("My original draft.")
         self.button("Why do you want to work here").click()
-        expect(self.toast()).to_contain_text(WAITING)
+        expect(self.page.get_by_role("button", name=re.compile("Cancel writing: Why do you want to work here"), include_hidden=True)).to_have_attribute("aria-busy", "true")
         self.page.wait_for_timeout(600)
         self.seed(enabled=False)
         expect(self.page.locator(".wc-fill-button")).to_have_count(0)
@@ -1099,7 +1179,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
+                "manual_scan_gate", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "do_all_fills_scanned_empty_fields", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

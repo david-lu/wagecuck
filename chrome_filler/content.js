@@ -6,6 +6,8 @@
   const SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]';
   const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox', 'radio', 'file']);
   const records = new Map();
+  const highlighted = new Map();
+  const HIGHLIGHT_STYLES = [['outline', '2px solid #8b5cf6'], ['outline-offset', '2px']];
   const comboboxOptions = new WeakMap();
   const roots = new Set([document]);
   let enabled = true;
@@ -20,6 +22,8 @@
   let scanButton;
   let doAllButton;
   let batch = null;
+  let batchFeedback = '';
+  let batchFeedbackTimer;
   let scanPending = false;
   let buttonLayer;
   let toastLayer;
@@ -31,13 +35,14 @@
     .wc-scan-button { all:initial; box-sizing:border-box; position:fixed; right:16px; bottom:16px; z-index:1; display:flex; align-items:center; justify-content:center; min-height:38px; padding:0 15px; border:1px solid #6d28d9; border-radius:10px; background:#7c3aed; color:#fff; box-shadow:0 4px 16px #3b176b55; font:650 13px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; }
     .wc-scan-button:hover { background:#6d28d9; }
     .wc-scan-button:focus-visible { outline:3px solid #c4b5fd; outline-offset:3px; }
+    .wc-scan-button[disabled] { opacity:.72; cursor:progress; }
     .wc-do-all-button { all:initial; box-sizing:border-box; position:fixed; right:16px; bottom:62px; z-index:1; min-height:38px; padding:0 15px; border:1px solid #4c1d95; border-radius:10px; background:#5b21b6; color:#fff; box-shadow:0 4px 16px #3b176b55; font:700 13px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; }
     .wc-do-all-button:hover { background:#4c1d95; }
     .wc-do-all-button:focus-visible { outline:3px solid #c4b5fd; outline-offset:3px; }
     .wc-do-all-button[disabled] { opacity:.55; cursor:default; }
     .wc-do-all-button[hidden] { display:none; }
-    .wc-field-outline { box-sizing:border-box; position:fixed; border:2px solid #8b5cf6; border-radius:7px; box-shadow:0 0 0 3px #8b5cf633; pointer-events:none; }
-    .wc-fill-button { all:initial; box-sizing:border-box; position:fixed; display:flex; align-items:center; justify-content:center; gap:5px; width:80px; height:28px; padding:0 8px; border:1px solid #b6ca83; border-radius:8px; background:#eaf5c7; color:#263415; box-shadow:0 1px 4px #18241418; font:650 12px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; transition:background .15s,box-shadow .15s; }
+    .wc-fill-button { all:initial; box-sizing:border-box; position:fixed; display:flex; align-items:center; justify-content:center; gap:5px; width:80px; height:28px; padding:0 8px; border:1px solid #b6ca83; border-radius:8px; background:#eaf5c7; color:#263415; box-shadow:0 1px 4px #18241418; font:650 12px/1 system-ui,sans-serif; cursor:pointer; opacity:0; visibility:hidden; pointer-events:none; transition:background .15s,box-shadow .15s,opacity .12s; }
+    .wc-fill-button[data-show=true] { opacity:1; visibility:visible; pointer-events:auto; }
     .wc-fill-button:hover { background:#d9eda1; box-shadow:0 2px 7px #18241430; }
     .wc-fill-button:focus-visible, .wc-toast button:focus-visible { outline:3px solid #586e2e; outline-offset:2px; }
     .wc-fill-button[aria-busy=true] { background:#f4f1e9; border-color:#d5d0c5; }
@@ -47,7 +52,6 @@
     .wc-toasts { position:fixed; left:16px; bottom:16px; display:flex; flex-direction:column; gap:10px; width:min(360px,calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; padding:3px; pointer-events:none; }
     .wc-toast { padding:14px 15px; border:1px solid #d8d7cd; border-radius:13px; background:#fcfbf7; color:#292d22; box-shadow:0 8px 35px #18241422; font:13px/1.5 system-ui,sans-serif; pointer-events:auto; animation:wc-in .18s ease-out; }
     .wc-toast[data-kind=error] { border-color:#dfbbb1; background:#fff8f5; }
-    .wc-toast[data-kind=success] { border-color:#ccd99c; }
     .wc-toast-title { display:flex; align-items:center; gap:8px; font-weight:650; }
     .wc-toast-detail { margin-top:4px; color:#64695b; overflow-wrap:anywhere; }
     .wc-toast-actions { display:flex; gap:8px; margin-top:10px; }
@@ -72,11 +76,15 @@
     scanButton.textContent = 'Scan page';
     scanButton.setAttribute('aria-label', 'Scan page for fillable fields');
     scanButton.addEventListener('click', event => {
-      if (!event.isTrusted) return;
+      if (!event.isTrusted || scanPending) return;
       scanPending = true;
-      activateScan();
-      chrome.runtime.sendMessage({ type: 'WC_SCAN_TAB' }).catch(() => {}).finally(() => {
+      updateScanButton();
+      if (doAllButton) doAllButton.hidden = true;
+      chrome.runtime.sendMessage({ type: 'WC_SCAN_TAB' }).then(result => {
+        if (result?.error) toast('Couldn’t scan this page', result.error, 'error', [], 12000);
+      }).catch(() => toast('Couldn’t scan this page', 'Reload the page and try again.', 'error', [], 12000)).finally(() => {
         scanPending = false;
+        updateScanButton();
         if (scanned) scan();
       });
     });
@@ -89,19 +97,40 @@
     doAllButton.hidden = true;
     doAllButton.addEventListener('click', event => {
       if (!event.isTrusted || doAllButton.disabled) return;
+      if (batch) {
+        batch.stopping = true;
+        updateBatchButton();
+        chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => toast('Couldn’t stop FILL ALL', 'Reload the page and try again.', 'error', [], 12000));
+        return;
+      }
       chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB' }).then(result => {
         if (result?.error) toast('Couldn’t start FILL ALL', result.error, 'error', [], 12000);
       }).catch(() => toast('Couldn’t start FILL ALL', 'Reload the page and try again.', 'error', [], 12000));
     });
     toastLayer = document.createElement('div');
     toastLayer.className = 'wc-toasts';
-    toastLayer.setAttribute('aria-live', 'polite');
+    toastLayer.setAttribute('aria-live', 'assertive');
     toastLayer.setAttribute('aria-relevant', 'additions text');
     shadow.append(style, buttonLayer);
     if (window.top === window) shadow.append(scanButton, doAllButton);
     shadow.append(toastLayer);
     document.documentElement.append(host);
-    for (const record of records.values()) buttonLayer.append(record.outline, record.button);
+    for (const record of records.values()) buttonLayer.append(record.button);
+  }
+
+  function updateScanButton() {
+    if (!scanButton) return;
+    scanButton.disabled = scanPending;
+    scanButton.setAttribute('aria-busy', String(scanPending));
+    scanButton.textContent = scanPending ? 'Scanning…' : scanned ? 'Scan again' : 'Scan page';
+    scanButton.setAttribute('aria-label', scanPending ? 'Scanning page for fillable fields' : scanned ? 'Scan page again for fillable fields' : 'Scan page for fillable fields');
+  }
+
+  function updateBatchButton() {
+    if (!doAllButton) return;
+    doAllButton.disabled = scanPending || Boolean(batch?.stopping);
+    doAllButton.textContent = batch ? batch.stopping ? 'Stopping…' : 'Filling… · Stop' : batchFeedback || 'FILL ALL';
+    doAllButton.setAttribute('aria-label', batch ? batch.stopping ? 'Stopping FILL ALL' : 'Stop FILL ALL' : 'FILL ALL: fill empty scanned fields');
   }
 
   function readValue(field) {
@@ -205,6 +234,73 @@
     if (isReactSelect(field)) return comboboxShell(field).querySelector('.select__control');
     if (field.type === 'file') return resumeVisualTarget(field) || field;
     return field.type === 'radio' ? globalThis.WCFieldContext.radioDetails(field).container || field : field;
+  }
+
+  function highlightVisual(visual) {
+    const existing = highlighted.get(visual);
+    if (existing) { existing.count++; return; }
+    const previous = HIGHLIGHT_STYLES.map(([property]) => ({
+      property, value: visual.style.getPropertyValue(property), priority: visual.style.getPropertyPriority(property),
+    }));
+    for (const [property, value] of HIGHLIGHT_STYLES) visual.style.setProperty(property, value, 'important');
+    const applied = HIGHLIGHT_STYLES.map(([property]) => ({
+      value: visual.style.getPropertyValue(property), priority: visual.style.getPropertyPriority(property),
+    }));
+    highlighted.set(visual, { count: 1, previous, applied });
+  }
+
+  function unhighlightVisual(visual) {
+    const state = highlighted.get(visual);
+    if (!state || --state.count > 0) return;
+    highlighted.delete(visual);
+    for (let index = 0; index < state.previous.length; index++) {
+      const { property, value, priority } = state.previous[index];
+      const applied = state.applied[index];
+      if (visual.style.getPropertyValue(property) !== applied.value || visual.style.getPropertyPriority(property) !== applied.priority) continue;
+      if (value) visual.style.setProperty(property, value, priority);
+      else visual.style.removeProperty(property);
+    }
+  }
+
+  function updateHoverButton(record) {
+    record.button.dataset.show = String(Boolean(record.hoverTarget || record.hoverButton || record.active || record.starting || record.visual.matches(':hover, :focus-within') || record.button.matches(':focus')));
+  }
+
+  function clearUndo(record) {
+    if (!record.undo) return;
+    clearTimeout(record.undo.timer);
+    record.undo = null;
+  }
+
+  function bindHoverButton(record) {
+    const visual = record.visual;
+    const button = record.button;
+    const showTarget = () => { clearTimeout(record.hideTimer); record.hoverTarget = true; updateHoverButton(record); };
+    const leaveTarget = () => { record.hoverTarget = false; record.hideTimer = setTimeout(() => updateHoverButton(record), 180); };
+    const showButton = () => { clearTimeout(record.hideTimer); record.hoverButton = true; updateHoverButton(record); };
+    const leaveButton = () => { record.hoverButton = false; record.hideTimer = setTimeout(() => updateHoverButton(record), 180); };
+    visual.addEventListener('pointerenter', showTarget);
+    visual.addEventListener('pointerleave', leaveTarget);
+    visual.addEventListener('focusin', showTarget);
+    visual.addEventListener('focusout', leaveTarget);
+    button.addEventListener('pointerenter', showButton);
+    button.addEventListener('pointerleave', leaveButton);
+    button.addEventListener('focus', showButton);
+    button.addEventListener('blur', leaveButton);
+    record.unbindHover = () => {
+      clearTimeout(record.hideTimer);
+      visual.removeEventListener('pointerenter', showTarget);
+      visual.removeEventListener('pointerleave', leaveTarget);
+      visual.removeEventListener('focusin', showTarget);
+      visual.removeEventListener('focusout', leaveTarget);
+      button.removeEventListener('pointerenter', showButton);
+      button.removeEventListener('pointerleave', leaveButton);
+      button.removeEventListener('focus', showButton);
+      button.removeEventListener('blur', leaveButton);
+      record.hoverTarget = false;
+      record.hoverButton = false;
+    };
+    updateHoverButton(record);
   }
 
   function resumeQuestionLabel(field) {
@@ -343,7 +439,11 @@
           const visual = visualTarget(field);
           if (record.visual !== visual) {
             resizeObserver.unobserve(record.visual);
+            record.unbindHover();
+            unhighlightVisual(record.visual);
             record.visual = visual;
+            highlightVisual(visual);
+            bindHoverButton(record);
             resizeObserver.observe(visual);
           }
           record.button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${resumeLabelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
@@ -358,21 +458,27 @@
         button.textContent = field.type === 'file' ? 'Attach PDF' : '✦ Write';
         button.title = field.type === 'file' ? `Attach saved resume to ${resumeLabelFor(field)}` : `Write an answer for ${labelFor(field)}`;
         button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${resumeLabelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
-        const outline = document.createElement('div');
-        outline.className = 'wc-field-outline';
-        outline.setAttribute('aria-hidden', 'true');
-        const record = { field, visual: visualTarget(field), button, outline, id, active: null, starting: false };
-        button.addEventListener('click', event => { if (event.isTrusted) startFill(record); });
+        const record = { field, visual: visualTarget(field), button, id, active: null, starting: false };
+        button.addEventListener('click', event => {
+          if (!event.isTrusted) return;
+          if (record.active) record.active.cancel();
+          else if (record.undo) void undoFill(record);
+          else void startFill(record);
+        });
         records.set(field, record);
-        buttonLayer.append(outline, button);
+        highlightVisual(record.visual);
+        bindHoverButton(record);
+        buttonLayer.append(button);
         resizeObserver.observe(record.visual);
       }
     }
     for (const [field, record] of records) {
       if (!fields.has(field)) {
         record.active?.cancel('Field is no longer available.');
+        clearUndo(record);
         record.button.remove();
-        record.outline.remove();
+        record.unbindHover();
+        unhighlightVisual(record.visual);
         resizeObserver.unobserve(record.visual);
         records.delete(field);
       }
@@ -381,8 +487,8 @@
       if (root instanceof ShadowRoot && !root.host.isConnected) roots.delete(root);
     }
     if (doAllButton) {
-      doAllButton.hidden = records.size === 0;
-      doAllButton.disabled = !!batch || scanPending;
+      doAllButton.hidden = window.top !== window || scanPending;
+      updateBatchButton();
     }
     schedulePosition();
   }
@@ -398,18 +504,22 @@
     if (batch) {
       const ending = batch;
       batch = null;
-      ending.progress?.element.remove();
       clearInterval(ending.heartbeat);
       ending.keepalive?.disconnect();
       chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => {});
     }
     scanPending = false;
+    clearTimeout(batchFeedbackTimer);
+    batchFeedback = '';
     if (doAllButton) doAllButton.hidden = true;
+    updateScanButton();
     for (const [field, record] of records) {
       record.active?.cancel(reason || 'The page scan ended.');
+      clearUndo(record);
       resizeObserver.unobserve(record.visual);
       record.button.remove();
-      record.outline.remove();
+      record.unbindHover();
+      unhighlightVisual(record.visual);
     }
     records.clear();
   }
@@ -419,6 +529,7 @@
     scanned = true;
     scannedUrl = location.href;
     scan();
+    updateScanButton();
     return { count: records.size, scanned, enabled };
   }
 
@@ -430,14 +541,8 @@
   function positionButtons() {
     positionFrame = null;
     for (const record of records.values()) {
-      const { field, visual, button, outline } = record;
+      const { field, visual, button } = record;
       const rect = visual.getBoundingClientRect();
-      const outlineVisible = rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight && isVisible(visual);
-      outline.style.display = outlineVisible ? 'block' : 'none';
-      outline.style.left = `${rect.left}px`;
-      outline.style.top = `${rect.top}px`;
-      outline.style.width = `${rect.width}px`;
-      outline.style.height = `${rect.height}px`;
       const choice = field.tagName === 'SELECT' || isReactSelect(field) || ['checkbox', 'radio', 'file'].includes(field.type);
       const compact = !choice && (rect.width < 240 || rect.height < 36);
       const width = field.type === 'file' ? 100 : compact ? 45 : 80;
@@ -447,8 +552,11 @@
       let y = field.type === 'radio' ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
       button.dataset.compact = String(compact);
       if (!button.hasAttribute('aria-busy')) {
-        const text = field.type === 'file' ? hasAnswer(field) ? 'PDF attached' : 'Attach PDF' : compact ? '✦ AI' : hasAnswer(field) ? '✦ Rewrite' : '✦ Write';
+        if (record.undo && readValue(field) !== record.undo.answer) clearUndo(record);
+        const text = field.type === 'file' ? hasAnswer(field) ? 'PDF attached' : 'Attach PDF' : record.undo ? '↶ Undo' : compact ? '✦ AI' : hasAnswer(field) ? '✦ Rewrite' : '✦ Write';
         if (button.textContent !== text) button.textContent = text;
+        button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${resumeLabelFor(field)}` : record.undo ? `Undo generated answer: ${labelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
+        if (record.undo) button.title = `Undo the generated answer for ${labelFor(field)}`;
       }
       button.style.width = `${width}px`;
       button.style.height = `${height}px`;
@@ -467,15 +575,17 @@
       button.style.display = visible ? 'flex' : 'none';
       button.style.left = `${Math.max(2, Math.min(innerWidth - width - 2, x))}px`;
       button.style.top = `${y}px`;
+      updateHoverButton(record);
     }
   }
 
-  function toast(title, detail = '', kind = 'info', actions = [], duration = 0) {
+  function toast(title, detail = '', kind = 'error', actions = [], duration = 0) {
+    if (kind !== 'error') throw new Error('Toasts are reserved for errors.');
     ensureUI();
     const element = document.createElement('div');
     element.className = 'wc-toast';
     element.dataset.kind = kind;
-    element.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+    element.setAttribute('role', 'alert');
     const heading = document.createElement('div');
     heading.className = 'wc-toast-title';
     const titleNode = document.createElement('span');
@@ -548,6 +658,22 @@
     target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
+  async function undoFill(record) {
+    const undo = record.undo;
+    if (!undo) return;
+    clearUndo(record);
+    const field = record.field;
+    if (!field.isConnected || readValue(field) !== undo.answer) { schedulePosition(); return; }
+    try {
+      await writeValue(field, undo.original);
+      if (readValue(field) !== undo.original) throw new Error('The website did not restore the previous answer.');
+      logUI('ui.undo', undo.requestId);
+    } catch (error) {
+      toast('Couldn’t undo this answer', error.message || 'Edit the field manually.', 'error', [], 14000);
+    }
+    schedulePosition();
+  }
+
   function logUI(event, requestId, code = '') {
     chrome.runtime.sendMessage({ type: 'WC_LOG_EVENT', event, metadata: { requestId, ...(code ? { code } : {}) } }).catch(() => {});
   }
@@ -573,18 +699,12 @@
     const field = record.field;
     const signature = targetSignature(fieldInfo(field));
     const sourceUrl = location.href;
-    if (hasAnswer(field)) {
-      toast('Resume already attached', 'This upload already has a file. Remove it on the website before attaching a different one.', 'info', [], 10000);
-      return { status: 'skipped' };
-    }
+    if (hasAnswer(field)) return { status: 'skipped' };
     record.starting = true;
     try {
       const response = await chrome.runtime.sendMessage({ type: 'WC_GET_RESUME_FOR_UPLOAD' });
       const status = attachResume(record, response?.resumeFile, signature, sourceUrl);
-      if (status === 'filled') {
-        logUI('ui.filled', crypto.randomUUID());
-        toast('Resume attached', 'Review the uploaded PDF before submitting your application.', 'success', [], 12000);
-      }
+      if (status === 'filled') logUI('ui.filled', crypto.randomUUID());
       return { status };
     } catch (error) {
       toast('Couldn’t attach resume', error.message || 'Upload the PDF manually.', 'error', [{ label: 'Edit profile', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) }], 16000);
@@ -612,11 +732,11 @@
     if (!scanned || scannedUrl !== location.href || !records.has(record.field) || record.active || !isEligible(record.field)) return;
     if (record.field.type === 'file') return startResumeAttach(record);
     if (!configured) {
-      toast('One quick step before you start', 'Connect your OpenAI account using an API key, then add your background.', 'info', [{ label: 'Set up AI', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) }], 14000);
+      toast('Set up AI to fill this field', 'Connect your OpenAI account using an API key, then add your background.', 'error', [{ label: 'Set up AI', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) }], 14000);
       return { status: 'failed', code: 'NOT_CONFIGURED' };
     }
     if ([...records.values()].filter(item => item.active).length >= 3) {
-      toast('Three answers are already in progress', 'Wait for an answer or cancel one before starting another.', 'info', [], 10000);
+      toast('Couldn’t start another answer', 'Three answers are already in progress. Wait for one to finish or stop one first.', 'error', [], 10000);
       return { status: 'failed', code: 'BUSY' };
     }
     const field = record.field;
@@ -624,11 +744,11 @@
       record.starting = true;
       try {
         if (!(await discoverComboboxOptions(field)).length) {
-          toast('Dropdown needs a manual choice', 'This menu did not expose a usable set of options. Choose from it on the page.', 'info', [], 14000);
+          toast('Couldn’t fill this dropdown', 'This menu did not expose a usable set of options. Choose from it on the page.', 'error', [], 14000);
           return { status: 'skipped' };
         }
       } catch {
-        toast('Dropdown needs a manual choice', 'The website did not expose this menu’s options. Choose from it on the page.', 'info', [], 14000);
+        toast('Couldn’t fill this dropdown', 'The website did not expose this menu’s options. Choose from it on the page.', 'error', [], 14000);
         return { status: 'skipped' };
       } finally { record.starting = false; }
       if (!scanned || scannedUrl !== location.href || records.get(field) !== record || !isEligible(field)) return;
@@ -653,8 +773,8 @@
     const editTargets = field.type === 'radio' ? globalThis.WCFieldContext.radioGroup(field) : [field];
     editTargets.forEach(target => target.addEventListener('input', onEdit));
     function onEdit() { edited = true; }
-    const waiting = toast('Writing your answer', `${labelFor(field)} · You can keep typing; your edits will be preserved.`, 'info', [{ label: 'Cancel', run: () => cancel() }]);
     record.button.setAttribute('aria-busy', 'true');
+    record.button.setAttribute('aria-label', `Cancel writing: ${labelFor(field)}`);
     record.button.textContent = '';
     const spinner = document.createElement('span');
     spinner.className = 'wc-spinner';
@@ -663,9 +783,9 @@
     workingLabel.className = 'wc-button-status';
     workingLabel.textContent = 'Writing';
     record.button.append(workingLabel);
-    record.button.title = 'Writing an answer…';
+    record.button.title = 'Writing an answer. Click to stop.';
     const interval = setInterval(() => {
-      waiting.title.textContent = `${writing ? 'Writing your answer' : 'Thinking about your answer'} · ${Math.floor((Date.now() - start) / 1000)}s`;
+      record.button.title = `${writing ? 'Writing' : 'Thinking'} · ${Math.floor((Date.now() - start) / 1000)}s. Click to stop.`;
     }, 1000);
     const timeout = setTimeout(() => cancel('The answer took too long. Please try again.'), 130000);
     function cleanup() {
@@ -673,12 +793,12 @@
       finished = true;
       clearInterval(interval);
       clearTimeout(timeout);
-      waiting.element.remove();
       editTargets.forEach(target => target.removeEventListener('input', onEdit));
       record.active = null;
       record.button.removeAttribute('aria-busy');
       record.button.textContent = '✦ Write';
       record.button.title = `Write an answer for ${labelFor(field)}`;
+      updateHoverButton(record);
       schedulePosition();
       port.disconnect();
       return true;
@@ -689,9 +809,10 @@
       cleanup();
       settle({ status: 'cancelled' });
       logUI('ui.cancelled', requestId);
-      toast(reason ? 'Answer stopped' : 'Cancelled', reason || 'Your text has not been changed.', 'info', [], 7000);
+      if (/too long/i.test(reason)) toast('Answer timed out', reason, 'error', [], 14000);
     }
     record.active = { cancel };
+    updateHoverButton(record);
     port.onDisconnect.addListener(() => {
       if (!finished) {
         const message = chrome.runtime.lastError?.message;
@@ -704,7 +825,8 @@
       if (finished || message.requestId !== requestId) return;
       if (message.type === 'state') {
         writing = message.state === 'writing';
-        waiting.title.textContent = writing ? 'Writing your answer' : 'Thinking about your answer';
+        workingLabel.textContent = writing ? 'Writing' : 'Thinking';
+        record.button.title = `${writing ? 'Writing' : 'Thinking'} an answer. Click to stop.`;
         return;
       }
       if (message.type === 'error') {
@@ -719,19 +841,17 @@
       cleanup();
       if (!enabled || !isEligible(field)) {
         settle({ status: 'skipped' });
-        toast('Field is no longer available', 'The answer was not inserted. Rescan from the extension icon.', 'info', [], 12000);
+        toast('Couldn’t fill this field', 'The field is no longer available. Scan the page again.', 'error', [], 12000);
         return;
       }
       if (edited || readValue(field) !== original) {
         settle({ status: 'skipped' });
         logUI('ui.edit_preserved', requestId);
-        toast('Your edits were preserved', 'You changed this field while the AI was writing. Click AI again to use your latest text.', 'info', [], 14000);
         return;
       }
       if (location.href !== sourceLocation || targetSignature(fieldInfo(field)) !== targetSignature(targetInfo)) {
         settle({ status: 'skipped' });
         logUI('ui.edit_preserved', requestId, 'FIELD_CHANGED');
-        toast('The question changed', 'The page or field changed while the AI was writing. Click AI again for the current question.', 'info', [], 14000);
         return;
       }
       const answer = normalizedAnswer(field, message.answer);
@@ -742,7 +862,6 @@
       }
       if ((['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT' || isReactSelect(field)) && answer === original) {
         settle({ status: 'skipped' });
-        toast('No change needed', field.type === 'checkbox' ? 'The answer is to leave this box as it is.' : 'This option is already selected.', 'info', [], 10000);
         return;
       }
       try {
@@ -754,19 +873,12 @@
         }
         logUI('ui.filled', requestId);
         settle({ status: 'filled' });
-        const actions = isReactSelect(field) ? [] : [{ label: 'Undo', run: async element => {
-          if (field.isConnected && readValue(field) === answer) {
-            await writeValue(field, original);
-            logUI('ui.undo', requestId);
-            element.remove();
-            toast('Undone', 'Your previous text has been restored.', 'info', [], 5000);
-          } else {
-            logUI('ui.edit_preserved', requestId, 'UNDO_CONFLICT');
-            element.remove();
-            toast('Your edits were preserved', 'The field changed after filling, so undo did not replace your edits.', 'info', [], 10000);
-          }
-        } }];
-        toast('Answer filled', 'Review the answer before submitting your form.', 'success', actions, 25000);
+        if (!isReactSelect(field)) {
+          const undo = { original, answer, requestId };
+          undo.timer = setTimeout(() => { if (record.undo === undo) { clearUndo(record); schedulePosition(); } }, 25000);
+          record.undo = undo;
+        }
+        schedulePosition();
       } catch (error) {
         settle({ status: 'failed' });
         logUI('ui.insert_failed', requestId, 'INSERT_FAILED');
@@ -774,9 +886,7 @@
       }
     });
     try {
-      waiting.detail.textContent = `Reading the full page for “${labelFor(field)}”…`;
       port.postMessage({ type: 'generate', requestId, field: targetInfo, page: collectPage() });
-      waiting.detail.textContent = `${labelFor(field)} · Your edits will be preserved.`;
     } catch {
       cleanup();
       settle({ status: 'failed' });
@@ -811,12 +921,10 @@
       const record = [...records.values()].find(item => item.id === target.id);
       if (record) targets.set(target.id, { record, signature: targetSignature(target.field) });
     }
-    batch = { id: message.runId, sourceUrl: location.href, targets, progress: null };
+    clearTimeout(batchFeedbackTimer);
+    batchFeedback = '';
+    batch = { id: message.runId, sourceUrl: location.href, targets, stopping: false };
     if (window.top === window) {
-      batch.progress = toast('FILL ALL', `Filling ${message.count} ${message.count === 1 ? 'field' : 'fields'}...`, 'info', [{ label: 'Stop', run: () => {
-        chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => {});
-        if (batch?.progress) batch.progress.detail.textContent = 'Stopping...';
-      } }]);
       const keepalive = chrome.runtime.connect({ name: 'wc-batch' });
       batch.keepalive = keepalive;
       const heartbeat = () => { try { keepalive.postMessage({ type: 'heartbeat', runId: message.runId }); } catch { /* The worker has disconnected. */ } };
@@ -826,7 +934,7 @@
       });
       heartbeat();
     }
-    if (doAllButton) doAllButton.disabled = true;
+    updateBatchButton();
     return { started: true };
   }
 
@@ -894,14 +1002,18 @@
     if (!batch || batch.id !== message.runId) return { finished: false };
     const ending = batch;
     batch = null;
-    ending.progress?.element.remove();
     clearInterval(ending.heartbeat);
     ending.keepalive?.disconnect();
-    if (doAllButton) doAllButton.disabled = false;
+    updateBatchButton();
     if (window.top === window) {
       const { filled = 0, failed = 0, skipped = 0, unchecked = 0 } = message.summary || {};
-      const detail = message.errorMessage || `${filled} filled${unchecked ? `, ${unchecked} left unchecked` : ''}${failed ? `, ${failed} could not be filled` : ''}${skipped ? `, ${skipped} skipped` : ''}. ${message.fieldError ? `${message.fieldError} ` : ''}Review the answers before submitting.`;
-      toast(message.stopped ? 'FILL ALL stopped' : message.errorMessage ? 'FILL ALL failed' : 'FILL ALL finished', detail, message.errorMessage ? 'error' : filled ? 'success' : 'info', [], 20000);
+      const userStopped = message.stopped && (!message.errorMessage || ['FILL ALL stopped.', 'Generation cancelled.'].includes(message.errorMessage));
+      const detail = userStopped ? '' : message.errorMessage || message.fieldError || (failed ? `${failed} ${failed === 1 ? 'field could' : 'fields could'} not be filled.` : '');
+      if (detail) toast('FILL ALL needs attention', `${detail} ${filled ? `${filled} filled. ` : ''}${skipped ? `${skipped} skipped. ` : ''}${unchecked ? `${unchecked} left unchecked. ` : ''}Review the form before submitting.`, 'error', [], 20000);
+      if (!detail) batchFeedback = message.stopped ? 'Stopped' : `${filled} filled`;
+      updateBatchButton();
+      clearTimeout(batchFeedbackTimer);
+      batchFeedbackTimer = setTimeout(() => { batchFeedback = ''; if (!batch) updateBatchButton(); }, 3000);
     }
     return { finished: true };
   }

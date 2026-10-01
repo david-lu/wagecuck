@@ -37,7 +37,9 @@ test('prompt preserves the entire page, profile, resume, question and writing pr
   assert.deepEqual(context.targetField, field);
   assert.ok(request.instructions.includes(settings.writingInstructions));
   assert.match(request.instructions, /untrusted reference data/);
-  assert.match(request.instructions, /Do not invent personal facts/);
+  assert.match(request.instructions, /make up a short, believable answer based on the user's background/);
+  assert.match(request.instructions, /Do not leave open-ended or preference fields empty/);
+  assert.match(request.instructions, /Never invent identity, contact information/);
   assert.equal(request.stream, true);
   assert.equal(request.store, false);
   assert.equal(request.model, 'gpt-4.1-mini');
@@ -58,9 +60,10 @@ test('FILL ALL builds required, field-specific schema and uses one API call', as
   assert.deepEqual(Object.keys(schema.properties), schema.required);
   assert.match(schema.properties[targets[0].id].description, /Why this role/);
   assert.match(schema.properties[targets[1].id].description, /Email address/);
-  const narrativePattern = schema.properties[targets[0].id].properties.answer.anyOf[1].pattern;
+  const narrativePattern = schema.properties[targets[0].id].properties.answer.pattern;
   const emailPattern = schema.properties[targets[1].id].properties.answer.anyOf[1].pattern;
-  assert.equal(schema.properties[targets[0].id].properties.answer.anyOf[1].maxLength, 120);
+  assert.equal(schema.properties[targets[0].id].properties.answer.maxLength, 120);
+  assert.deepEqual(schema.properties[targets[0].id].properties.missingInformation.enum, ['']);
   assert.match('A concise answer.', new RegExp(narrativePattern));
   assert.doesNotMatch(narrativePattern, /\(\?=/);
   assert.match('jordan@example.test', new RegExp(emailPattern));
@@ -70,6 +73,7 @@ test('FILL ALL builds required, field-specific schema and uses one API call', as
     minimum: 0, maximum: 20, multipleOf: 1,
   });
   assert.ok(request.instructions.includes(settings.writingInstructions));
+  assert.match(request.instructions, /Give every open-ended or preference field a plausible profile-based answer/);
   assert.equal(request.store, false);
   assert.equal(request.stream, true);
   const batch = JSON.stringify({ [targets[0].id]: { answer: 'I built similar tools.', missingInformation: '' }, [targets[1].id]: { answer: 'jordan@example.test', missingInformation: '' }, [targets[2].id]: { answer: 5, missingInformation: '' } });
@@ -109,7 +113,7 @@ test('checkboxes, dropdowns, and radio groups use exact choice schemas', () => {
   ], page });
   const fields = request.text.format.schema.properties;
   assert.equal(fields['0:wc-field-1'].properties.answer.anyOf[1].type, 'boolean');
-  assert.deepEqual(fields['0:wc-field-2'].properties.answer.anyOf[1].enum, ['frontend', 'design-systems']);
+  assert.deepEqual(fields['0:wc-field-2'].properties.answer.enum, ['frontend', 'design-systems']);
   assert.deepEqual(fields['0:wc-field-3'].properties.answer.anyOf[1].enum, ['21-29', '30-39', 'Prefer not to answer']);
   assert.match(fields['0:wc-field-2'].description, /Frontend engineering = frontend/);
   assert.match(fields['0:wc-field-3'].description, /What is your age range/);
