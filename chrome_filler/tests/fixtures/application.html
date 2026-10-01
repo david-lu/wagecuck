@@ -9,7 +9,7 @@
     main { max-width: 840px; margin: auto; }
     section { padding: 24px; background: white; border: 1px solid #d7deeb; border-radius: 12px; margin-bottom: 20px; }
     label { display: block; font-weight: 650; margin: 16px 0 6px; }
-    input, textarea, [contenteditable] { width: 100%; border: 1px solid #a5b4cb; border-radius: 6px; font: inherit; padding: 12px; }
+    input, textarea, select, [contenteditable] { width: 100%; border: 1px solid #a5b4cb; border-radius: 6px; font: inherit; padding: 12px; }
     textarea { min-height: 135px; }
     input[type=checkbox], input[type=radio] { width: auto; }
     .spacer { height: 850px; }
@@ -30,6 +30,16 @@
         <textarea id="motivation" name="motivation" aria-describedby="motivation-help"></textarea>
         <label for="bio">Brief professional biography</label><div id="bio" contenteditable="true" role="textbox" aria-label="Brief professional biography"></div>
         <label for="experience">Years of experience</label><input id="experience" type="number" min="0" max="10" value="5">
+        <fieldset id="work-interests"><legend>Which kinds of work have you done?</legend>
+          <label><input id="accessible-work" type="checkbox" name="accessible_work"> Accessible interfaces</label>
+          <label><input id="backend-work" type="checkbox" name="backend_work"> Backend systems</label>
+          <label><input id="existing-work" type="checkbox" checked> Design systems</label>
+        </fieldset>
+        <label for="focus-area">Which area best matches your background?</label>
+        <select id="focus-area"><option value="">Choose an area</option><option value="frontend">Frontend engineering</option><option value="design-systems">Design systems</option><option value="backend" disabled>Backend engineering</option></select>
+        <label for="existing-focus">Already chosen focus</label>
+        <select id="existing-focus"><option value="">Choose an area</option><option value="frontend" selected>Frontend engineering</option><option value="design-systems">Design systems</option></select>
+        <label for="custom-focus">Custom focus dropdown</label><input id="custom-focus" role="combobox" aria-haspopup="listbox" aria-expanded="false">
         <div id="shadow-question"></div>
         <label for="password">Account password</label><input id="password" type="password" value="never-send-this-password">
         <input id="hidden" type="hidden" value="never-send-this-hidden-token">

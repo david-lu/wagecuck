@@ -86,7 +86,7 @@ async function startFillAllTab(tabId) {
     if (!run.started) {
       if (batchRuns.get(tabId) === run) batchRuns.delete(tabId);
       await Promise.allSettled(run.frames.map(frameId => withDeadline(chrome.tabs.sendMessage(tabId, {
-        type: 'WC_BATCH_DONE', runId: run.id, stopped: true, summary: { filled: 0, skipped: 0, failed: 0 }, errorMessage: '',
+        type: 'WC_BATCH_DONE', runId: run.id, stopped: true, summary: { filled: 0, skipped: 0, failed: 0, unchecked: 0 }, errorMessage: '',
       }, { frameId }))));
     }
   }
@@ -100,7 +100,7 @@ async function stopFillAllTab(tabId) {
 }
 
 async function runBatch(tabId, run, targets, page) {
-  let summary = { filled: 0, skipped: 0, failed: 0 };
+  let summary = { filled: 0, skipped: 0, failed: 0, unchecked: 0 };
   let errorMessage = '';
   let fieldError = '';
   try {
@@ -119,6 +119,7 @@ async function runBatch(tabId, run, targets, page) {
         summary.filled += result?.filled || 0;
         summary.skipped += result?.skipped || 0;
         summary.failed += result?.failed || 0;
+        summary.unchecked += result?.unchecked || 0;
         fieldError ||= result?.firstError || '';
       } catch { summary.failed += local.length; }
     }
@@ -211,7 +212,7 @@ chrome.runtime.onConnect.addListener(port => {
           if (!post(port, { type: 'state', state, requestId: operation.requestId })) operation.controller.abort();
         } });
         if (!disconnected && !operation.controller.signal.aborted) post(port, { type: 'result', answer, requestId: operation.requestId });
-        await logEvent('generation.completed', { requestId: operation.requestId, durationMs: Date.now() - started, answerChars: answer.length });
+        await logEvent('generation.completed', { requestId: operation.requestId, durationMs: Date.now() - started, answerChars: String(answer).length });
       } catch (error) {
         const publicError = errorToPublic(error);
         if (!disconnected) post(port, { type: 'error', ...publicError, requestId: operation.requestId });

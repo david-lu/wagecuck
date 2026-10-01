@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/config.js';
+import { DEFAULT_SETTINGS, EMPTY_PROFILE_FACTS, loadSettings, saveSettings } from './lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 const PROFESSIONAL = 'Write professionally, clearly, and in the first person.';
@@ -8,6 +8,7 @@ const MAX_TEXT_LENGTH = 100000;
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 const DRAFT_KEY = 'wcPopupDraft';
 const AUTOSAVE_MS = 650;
+const PROFILE_FACT_KEYS = Object.keys(EMPTY_PROFILE_FACTS);
 let settings = { ...DEFAULT_SETTINGS };
 let resumeFile = null;
 let loaded = false;
@@ -37,6 +38,7 @@ function collectSettings() {
     apiKey: $('api-key').value.trim(),
     model: $('model').value.trim(),
     profile: $('profile').value.trim(),
+    profileFacts: Object.fromEntries(PROFILE_FACT_KEYS.map(key => [key, $(`fact-${key}`).value.trim()])),
     writingInstructions: $('writing-instructions').value.trim(),
     resumeText: $('resume-text').value.trim(),
     resumeFile,
@@ -57,18 +59,19 @@ function sameResume(a, b) {
 
 function sameSettings(a, b) {
   const comparable = (value) => typeof value === 'string' ? value.trim() : value;
-  return ['enabled', 'apiKey', 'model', 'profile', 'writingInstructions', 'resumeText', 'debug'].every((key) => comparable(a[key]) === comparable(b[key])) && sameResume(a.resumeFile, b.resumeFile);
+  return ['enabled', 'apiKey', 'model', 'profile', 'writingInstructions', 'resumeText', 'debug'].every((key) => comparable(a[key]) === comparable(b[key])) &&
+    PROFILE_FACT_KEYS.every(key => comparable(a.profileFacts?.[key] || '') === comparable(b.profileFacts?.[key] || '')) && sameResume(a.resumeFile, b.resumeFile);
 }
 
 function updateSetup() {
   const banner = $('setup-banner');
-  const connected = Boolean(settings.apiKey);
-  const hasBackground = Boolean($('profile').value.trim() || $('resume-text').value.trim() || resumeFile);
+  const connected = Boolean($('api-key').value.trim());
+  const hasBackground = Boolean($('profile').value.trim() || $('resume-text').value.trim() || resumeFile || PROFILE_FACT_KEYS.some(key => $(`fact-${key}`).value.trim()));
   banner.classList.toggle('ready', connected && hasBackground);
-  $('setup-action').hidden = connected && hasBackground;
-  $('setup-title').textContent = connected && hasBackground ? 'Ready to write' : connected ? 'Make your answers personal' : 'Start with a quick connection';
-  $('setup-description').textContent = !connected ? 'Connect AI, then add a little about yourself.' : !hasBackground ? 'Add a résumé or a few facts about yourself.' : 'Click “Write” or “AI” beside a field on the page.';
-  $('setup-action').textContent = connected ? 'Add background' : 'Connect AI';
+  banner.hidden = connected && hasBackground;
+  $('setup-title').textContent = connected ? 'Make your answers personal' : 'Connect AI to start';
+  $('setup-description').textContent = !connected ? 'Add your API key to start writing.' : 'Add your resume or a few profile details.';
+  $('setup-action').textContent = connected ? 'Edit profile' : 'AI settings';
 }
 
 function updateFooter() {
@@ -132,6 +135,7 @@ function renderSettings(view = settings) {
   $('api-key').value = view.apiKey;
   $('model').value = view.model;
   $('profile').value = view.profile;
+  for (const key of PROFILE_FACT_KEYS) $(`fact-${key}`).value = view.profileFacts?.[key] || '';
   $('writing-instructions').value = view.writingInstructions;
   $('resume-text').value = view.resumeText;
   $('debug-toggle').checked = view.debug;
@@ -140,16 +144,16 @@ function renderSettings(view = settings) {
   updateToneChips();
 }
 
-function selectTab(name, focus = false) {
-  for (const tabName of ['profile', 'writing', 'connection']) {
-    const active = name === tabName;
-    const tab = $(`tab-${tabName}`);
-    tab.setAttribute('aria-selected', String(active));
-    tab.tabIndex = active ? 0 : -1;
-    $(`panel-${tabName}`).hidden = !active;
+function showScreen(name, focus = false) {
+  const home = name === 'home';
+  $('home-screen').hidden = !home;
+  $('settings-form').hidden = home;
+  for (const panel of ['profile', 'connection']) $(`panel-${panel}`).hidden = name !== panel;
+  if (!home) {
+    $('save-label').textContent = name === 'profile' ? 'Save profile' : 'Save settings';
+    $(`panel-${name}`).querySelector('.form-scroll').scrollTop = 0;
   }
-  document.querySelector('.panels').scrollTop = 0;
-  if (focus) $(`tab-${name}`).focus();
+  if (focus) (home ? $('open-profile') : $(`back-${name}`)).focus();
 }
 
 async function withTimeout(promise, milliseconds = 7000) {
@@ -169,7 +173,6 @@ async function refreshPage(rescan = false) {
   pageTabId = null;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  doAll.hidden = true;
   doAll.disabled = true;
   $('page-indicator').classList.remove('ready');
   $('page-status').textContent = rescan ? 'Scanning page…' : 'Checking page…';
@@ -198,8 +201,7 @@ async function refreshPage(rescan = false) {
     const count = Number.isFinite(status?.count) ? Math.max(0, status.count) : 0;
     $('page-status').textContent = !enabled ? 'AI filling is paused.' : !status.scanned ? 'Scan page to highlight fillable fields.' : count ? `${count} ${count === 1 ? 'field' : 'fields'} ready to write` : 'No fillable fields found. Try scanning again after the page loads.';
     $('page-indicator').classList.toggle('ready', enabled && status.scanned && count > 0);
-    doAll.hidden = !(enabled && status.scanned && count > 0);
-    doAll.disabled = doAll.hidden;
+    doAll.disabled = !(enabled && status.scanned && count > 0);
   } catch {
     $('page-status').textContent = 'Open an application page, or refresh it.';
   } finally {
@@ -212,7 +214,7 @@ function validateDraft(draft, manual) {
   if (!/^[a-zA-Z0-9._:-]{1,120}$/.test(draft.model)) {
     $('model').setAttribute('aria-invalid', 'true');
     lastError = draft.model ? 'Use a valid OpenAI model name.' : 'Enter an OpenAI model name.';
-    if (manual) { selectTab('connection'); $('advanced-settings').open = true; $('model').focus(); }
+    if (manual) { showScreen('connection'); $('model').focus(); }
     updateFooter();
     return false;
   }
@@ -220,7 +222,7 @@ function validateDraft(draft, manual) {
   if (draft.apiKey && (draft.apiKey.length < 8 || /\s/.test(draft.apiKey))) {
     $('api-key').setAttribute('aria-invalid', 'true');
     lastError = 'Paste the full API key without spaces.';
-    if (manual) { selectTab('connection'); $('api-key').focus(); }
+    if (manual) { showScreen('connection'); $('api-key').focus(); }
     updateFooter();
     return false;
   }
@@ -374,6 +376,22 @@ function scrubProfile(value) {
   return value;
 }
 
+function fillImportedFacts(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+  const facts = value.facts && typeof value.facts === 'object' ? value.facts : value;
+  const application = value.application && typeof value.application === 'object' ? value.application : {};
+  const text = item => typeof item === 'string' ? item.trim() : '';
+  const name = text(facts.full_name) || text(facts.name) || [text(facts.first_name), text(facts.last_name)].filter(Boolean).join(' ');
+  const candidates = {
+    fullName: name, email: text(facts.email), phone: text(facts.phone),
+    location: text(facts.location) || text(facts.city), headline: text(application.headline) || text(facts.headline),
+    linkedin: text(facts.linkedin) || text(facts.linkedin_url), portfolio: text(facts.website) || text(facts.portfolio),
+  };
+  for (const [key, candidate] of Object.entries(candidates)) {
+    if (candidate && !$(`fact-${key}`).value.trim()) $(`fact-${key}`).value = candidate.slice(0, 500);
+  }
+}
+
 async function importProfile(event) {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -386,14 +404,17 @@ async function importProfile(event) {
     const text = await file.text();
     if (text.includes('\0')) throw new Error('Please upload a plain text profile.');
     let imported = text;
+    let cleanedProfile = null;
     if (extension === 'json') {
       let parsed;
       try { parsed = JSON.parse(text); } catch { throw new Error('That JSON profile is invalid. Check the file and try again.'); }
       if (!parsed || typeof parsed !== 'object') throw new Error('The JSON profile must contain an object or array.');
-      imported = JSON.stringify(scrubProfile(parsed), null, 2);
+      cleanedProfile = scrubProfile(parsed);
+      imported = JSON.stringify(cleanedProfile, null, 2);
     }
     if (imported.length > MAX_TEXT_LENGTH) throw new Error('Keep profile text under 100,000 characters.');
     $('profile').value = imported;
+    if (cleanedProfile) fillImportedFacts(cleanedProfile);
     markChanged();
     setStatus('profile-import-status', extension === 'json' ? 'Profile imported. File paths and secret fields were excluded.' : 'Profile imported. You can edit it below.');
   } catch (error) {
@@ -455,35 +476,30 @@ async function clearLogs() {
   }
 }
 
-for (const tab of document.querySelectorAll('[role="tab"]')) {
-  tab.addEventListener('click', () => selectTab(tab.id.replace('tab-', '')));
-  tab.addEventListener('keydown', (event) => {
-    const names = ['profile', 'writing', 'connection'];
-    const index = names.indexOf(tab.id.replace('tab-', ''));
-    const next = { ArrowRight: (index + 1) % 3, ArrowLeft: (index + 2) % 3, Home: 0, End: 2 }[event.key];
-    if (next !== undefined) { event.preventDefault(); selectTab(names[next], true); }
-  });
-}
+$('open-profile').addEventListener('click', () => showScreen('profile', true));
+$('open-connection').addEventListener('click', () => showScreen('connection', true));
+$('back-profile').addEventListener('click', () => showScreen('home', true));
+$('back-connection').addEventListener('click', () => showScreen('home', true));
 
 $('settings-form').addEventListener('submit', save);
 $('settings-form').addEventListener('input', (event) => { if (event.target.type !== 'file') markChanged(); });
+$('settings-form').addEventListener('change', (event) => { if (event.target.tagName === 'SELECT') markChanged(); });
 $('enable-toggle').addEventListener('change', persistEnabled);
 $('setup-action').addEventListener('click', () => {
-  const connected = Boolean(settings.apiKey);
-  selectTab(connected ? 'profile' : 'connection');
-  (connected ? $('resume-upload-button') : $('api-key')).focus();
+  const connected = Boolean($('api-key').value.trim());
+  showScreen(connected ? 'profile' : 'connection', true);
 });
 $('rescan-button').addEventListener('click', () => refreshPage(true));
 $('do-all-button').addEventListener('click', async () => {
   if (!pageTabId) return;
   const button = $('do-all-button');
   button.disabled = true;
-  $('page-status').textContent = 'Starting DO ALL…';
+  $('page-status').textContent = 'Starting WRITE ALL…';
   try {
     const result = await withTimeout(chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB', tabId: pageTabId }));
-    $('page-status').textContent = result?.started ? `DO ALL started on ${result.count} empty ${result.count === 1 ? 'field' : 'fields'}. Watch the page for progress.` : result?.error || 'Could not start DO ALL.';
+    $('page-status').textContent = result?.started ? `WRITE ALL started on ${result.count} empty ${result.count === 1 ? 'field' : 'fields'}. Watch the page for progress.` : result?.error || 'Could not start WRITE ALL.';
   } catch {
-    $('page-status').textContent = 'Could not start DO ALL. Reload the page and try again.';
+    $('page-status').textContent = 'Could not start WRITE ALL. Reload the page and try again.';
   } finally {
     button.disabled = false;
   }
@@ -535,7 +551,7 @@ async function initialize() {
     }
     renderSettings(restored || settings);
     loaded = true;
-    selectTab(settings.apiKey ? 'profile' : 'connection');
+    showScreen('home');
     updateSetup();
     updateFooter();
     if (restored && !sameSettings(collectSettings(), settings)) {

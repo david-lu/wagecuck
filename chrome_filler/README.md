@@ -1,23 +1,22 @@
 # AI Input Filler
 
-A standalone Chrome extension inside wagecuck. Click **Scan page** to reveal purple outlines and **✦ Write** buttons beside eligible fields (**✦ AI** on small fields). Click a field button to draft and insert an answer using your profile, résumé, writing preferences, and the entire rendered page. Fields with existing text show **Rewrite**. **DO ALL** drafts answers for empty scanned text fields in one agent request across available frames, skips anything you already typed, and never submits the form. Scanning does not call the AI; navigation clears the scan until you scan the new page.
+The popup opens on a simple **SCAN PAGE** then **WRITE ALL** flow. Scanning reveals purple outlines and individual Write buttons on supported form fields. WRITE ALL drafts answers for unanswered fields across available frames in one agent request, including factual checkboxes and native dropdowns. Review the results before submitting; the extension never submits the form.
 
 ## Install in Chrome
 
-1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and select this `chrome_filler` folder.
-3. Pin **Wagecuck · AI Input Filler** from Chrome’s extensions menu.
-4. Click its icon and follow the setup banner: **Connect AI** with your OpenAI API key, then add your résumé or background in **About you**. You can upload PDF, TXT, or Markdown, paste résumé text, or import the shared `../profiles/actual/profile.json` after you have completed it.
-5. In **Your voice**, choose a tone or write your preferences. New settings default to a casual, first-person voice. For example: “Keep it conversational and specific. Mention my interest in accessible products. Avoid buzzwords.” Tone changes keep your other instructions. Edits save automatically; the footer shows saving or saved status, and **Save** is available when you need it.
-6. Reload an already-open application page. Click **Scan page** on the page or in the extension popup to reveal purple outlines and **✦ Write** buttons on supported fields. Click **DO ALL** on the page or in the popup to fill all empty supported text fields. Use **Stop** to cancel the run. Review each result before submitting.
+1. Open `chrome://extensions`, enable **Developer mode**, and use **Load unpacked** to select `chrome_filler`.
+2. Pin the extension and open its popup. Choose **Edit profile** to add your resume, name, contact details, location, work eligibility, veteran status, free-form Notes, and writing preferences. Use **Save profile**; edits also save automatically.
+3. Open **AI settings** to enter your OpenAI API key and choose a model ID, then click **Save settings**.
+4. Reload an already-open application page. In the popup, click **SCAN PAGE**, then **WRITE ALL**. You can also click individual Write buttons beside highlighted fields. The button on the page is labeled **DO ALL** and runs the same batch flow. Review each answer before submitting.
 
 No build step or backend is needed. The extension has its own settings and does not read wagecuck’s `.env`. Importing a shared profile copies its content into Chrome storage; re-import it after editing the file. API usage is billed to your OpenAI API account. The default model is `gpt-4.1-mini`; you can enter another model ID that supports the Responses API, structured output, and PDF input if using a PDF résumé.
 
-Individual **Write** clicks create one API request per field; **DO ALL** creates one request for the scanned empty fields using the [OpenAI Responses API](https://developers.openai.com/api/docs/guides/text). It does not open or automate the ChatGPT website.
+Individual **Write** clicks create one API request per field; **WRITE ALL** (called **DO ALL** on the page) creates one request for the scanned unanswered fields using the [OpenAI Responses API](https://developers.openai.com/api/docs/guides/text). It does not open or automate the ChatGPT website.
 
 ## What it handles
 
 - Visible, editable text, email, phone, URL, and number inputs; textareas; and contenteditable fields, including fields added after page load and fields in open shadow roots.
+- Native single-select dropdowns and factual checkboxes. The agent sees each dropdown's available labels and values, returns an exact listed value, and uses true or false for checkboxes. A false answer leaves an unchecked box unchanged. Already selected choices are preserved by DO ALL.
 - Paragraph questions such as “Why do you want to work here at Northstar?” with company and role details from the page and experience from your profile.
 - Explicit and nested labels, multiple accessibility labels, floating labels, nearby questions, fieldset legends, grouped headings, table headers, and definition lists. Placeholder, title, and readable field identifiers provide fallbacks. Help text and writing limits are included as context while neighboring fields' values are excluded.
 - The complete rendered page text, including offscreen sections, a field inventory, and snapshots from available same-origin and cross-origin frames. Hidden markup, scripts, existing form values, and extension controls are excluded. Only the target field’s existing value is included. URL query strings and fragments are omitted.
@@ -25,7 +24,7 @@ Individual **Write** clicks create one API request per field; **DO ALL** creates
 - Preservation of edits made while generation is running. Undo also preserves edits made after filling.
 - Native input and change events for framework forms. A field's **Write** button fills that field; **DO ALL** fills all supported empty fields from one response. Neither clicks Next or Submit.
 
-Password, search, payment, identity-number, verification-code, hidden, disabled, and read-only fields are excluded. DO ALL only fills empty supported text fields; résumé uploads, checkboxes, selects, and consent remain manual. Its structured output schema names every scanned field and includes that field's label, type, and applicable format and length constraints. Each returned value is validated again before insertion. The model uses provided personal facts by default. If the saved profile or writing instructions explicitly permit it, it can draft invented details for open-ended answers; review those details before use. It does not invent identity, contact details, education, licenses, employment dates, work location, work authorization, sponsorship needs, referrals, or consent.
+Password, search, payment, identity-number, verification-code, hidden, disabled, and read-only fields are excluded. Résumé uploads, consent and agreement checkboxes, multi-select lists, and custom JavaScript dropdowns remain manual. DO ALL uses one request for supported unanswered controls. Its structured output schema names every scanned field and includes that field's label, type, and applicable format, length, or choice constraints. Each returned value is validated again before insertion. The model uses provided personal facts by default. If the saved profile or writing instructions explicitly permit it, it can draft invented details for open-ended answers; review those details before use. It does not invent identity, contact details, education, licenses, employment dates, work location, work authorization, sponsorship needs, referrals, or consent.
 
 ## Résumé and data
 
@@ -37,9 +36,9 @@ Page context is not silently shortened. Oversized context is rejected before the
 
 ## Diagnostics
 
-Open **Connect AI → Advanced settings → Troubleshooting** to refresh, copy, or clear the last 100 operation records. Logs contain request IDs, state outcomes, timings, field types, character counts, and error codes. They exclude keys, profile/résumé contents, page text and URLs, field labels, and generated answers. Detailed diagnostics also enable console output in the extension service worker, accessible from `chrome://extensions`.
+Open **AI settings > Diagnostics > Troubleshooting** to refresh, copy, or clear the last 100 operation records. Logs contain request IDs, state outcomes, timings, field types, character counts, and error codes. They exclude keys, profile and resume contents, page text and URLs, field labels, and generated answers. Detailed diagnostics also enable console output in the extension service worker, accessible from `chrome://extensions`.
 
-Generation has a bounded timeout and no automatic retries. Use the toast’s retry button after fixing your key, billing, model access, or missing profile information. The extension’s on/off switch immediately removes page buttons and cancels running sessions. Model selection lives in Advanced settings.
+Generation has a bounded timeout and no automatic retries. Use the toast’s retry button after fixing your key, billing, model access, or missing profile information. The extension’s on/off switch immediately removes page buttons and cancels running sessions. Model selection lives in AI settings.
 
 ## Test
 

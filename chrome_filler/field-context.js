@@ -236,7 +236,7 @@
       const label = cleanText(value);
       if (label) return { label: label.slice(0, 500), sources: [source] };
     }
-    return { label: 'Text field', sources: ['fallback'] };
+    return { label: field.tagName === 'SELECT' ? 'Dropdown' : field.type === 'checkbox' ? 'Checkbox' : 'Text field', sources: ['fallback'] };
   }
 
   function labelFor(field) {
@@ -261,10 +261,13 @@
         if (text || group.matches(LOCAL_CONTAINER)) break;
       }
     }
+    const options = field.tagName === 'SELECT' ? [...field.options]
+      .filter(option => option.value.trim() && !option.disabled && !option.hidden && !option.closest('optgroup[disabled]'))
+      .map(option => ({ value: option.value, label: cleanText(option.textContent).slice(0, 200) || option.value })) : undefined;
     return {
       label: details.label,
-      type: field.tagName === 'TEXTAREA' || field.isContentEditable ? 'textarea' : field.type || 'text',
-      placeholder: field.getAttribute('placeholder') || '',
+      type: field.tagName === 'SELECT' ? 'select' : field.tagName === 'TEXTAREA' || field.isContentEditable ? 'textarea' : field.type || 'text',
+      placeholder: field.getAttribute('placeholder') || (field.tagName === 'SELECT' ? cleanText([...field.options].find(option => !option.value.trim())?.textContent) : '') || '',
       required: Boolean(field.required || field.getAttribute('aria-required') === 'true'),
       maxLength: field.maxLength > 0 ? field.maxLength : null,
       min: field.getAttribute('min') || null,
@@ -272,7 +275,8 @@
       step: field.getAttribute('step') || null,
       pattern: field.getAttribute('pattern') || null,
       context: unique(context).join('\n').slice(0, 2400),
-      currentValue: 'value' in field ? field.value : field.innerText || '',
+      currentValue: field.type === 'checkbox' ? String(field.checked) : 'value' in field ? field.value : field.innerText || '',
+      options,
       name: field.getAttribute('name') || '',
       id: field.id || '',
       autocomplete: field.getAttribute('autocomplete') || '',
@@ -302,5 +306,11 @@
     return /^(?:(?:keyword|site|job|role|position|opening|posting|candidate) )?search(?: (?:jobs|roles|openings|positions|postings|candidates|results|by .+|for .+))?\s*[.…]*$/i.test(label) || /^filter(?: (?:jobs|roles|openings|positions|postings|results|by .+))?\s*[.…]*$/i.test(label);
   }
 
-  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, isSensitiveField, isSearchField });
+  function isConsentField(field) {
+    if (field.type !== 'checkbox') return false;
+    const description = words(`${labelFor(field)} ${fieldInfo(field).context}`);
+    return /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature)\b/i.test(description);
+  }
+
+  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, isSensitiveField, isSearchField, isConsentField });
 })();

@@ -4,7 +4,7 @@ import { AgentError, buildBatchRequest, buildRequest, combinePageSnapshots, erro
 import { DEFAULT_SETTINGS, loadSettings, MAX_RESUME_BYTES, normalizeSettings, saveSettings } from '../lib/config.js';
 import { MAX_LOGS, logEvent, redactMetadata } from '../lib/logging.js';
 
-const settings = { ...DEFAULT_SETTINGS, apiKey: 'test-only-key', profile: 'Frontend developer with five years of experience.', resumeText: 'Worked at Example Studio.', writingInstructions: 'Use a friendly tone. Mention accessibility.' };
+const settings = { ...DEFAULT_SETTINGS, apiKey: 'test-only-key', profile: 'Frontend developer with five years of experience.', profileFacts: { ...DEFAULT_SETTINGS.profileFacts, fullName: 'Jordan Example', veteranStatus: 'No' }, resumeText: 'Worked at Example Studio.', writingInstructions: 'Use a friendly tone. Mention accessibility.' };
 const field = { label: 'Why do you want to work here at Acme?', type: 'textarea', placeholder: '', required: true, maxLength: 2000, context: 'Application essay', currentValue: '' };
 const page = { title: 'Acme application', url: 'https://example.test/apply', text: 'Acme creates accessible education software.\nHiring a frontend developer.\nPage end marker.', fields: [field] };
 const answer = 'I want to help Acme make education more accessible.';
@@ -32,6 +32,7 @@ test('prompt preserves the entire page, profile, resume, question and writing pr
   const context = JSON.parse(request.input[0].content[0].text);
   assert.equal(context.entirePage.text, page.text);
   assert.equal(context.userProfile, settings.profile);
+  assert.deepEqual(context.profileFacts, settings.profileFacts);
   assert.equal(context.resumeText, settings.resumeText);
   assert.deepEqual(context.targetField, field);
   assert.ok(request.instructions.includes(settings.writingInstructions));
@@ -51,6 +52,7 @@ test('WRITE ALL builds required, field-specific schema and uses one API call', a
     { id: '2:wc-field-8', field: { ...field, label: 'Years of experience', type: 'number', min: '0', max: '20', step: '1' } },
   ];
   const request = buildBatchRequest({ settings, targets, page });
+  assert.deepEqual(JSON.parse(request.input[0].content[0].text).profileFacts, settings.profileFacts);
   const schema = request.text.format.schema;
   assert.deepEqual(schema.required, targets.map(target => target.id));
   assert.deepEqual(Object.keys(schema.properties), schema.required);
@@ -80,6 +82,25 @@ test('WRITE ALL builds required, field-specific schema and uses one API call', a
   assert.deepEqual(result.map(item => item.answer), ['I built similar tools.', 'jordan@example.test', '5']);
   const invalid = parseBatchResponse(JSON.stringify({ [targets[0].id]: { answer: 'Fine', missingInformation: '' }, [targets[1].id]: { answer: 'not-an-email', missingInformation: '' } }), targets);
   assert.equal(invalid[1].error.code, 'INVALID_ANSWER');
+});
+
+test('checkboxes and dropdowns use boolean and exact-option schemas', () => {
+  const checkbox = { ...field, label: 'Accessible interfaces', type: 'checkbox', currentValue: 'false', maxLength: null };
+  const dropdown = { ...field, label: 'Preferred focus', type: 'select', currentValue: '', maxLength: null, options: [
+    { value: 'frontend', label: 'Frontend engineering' }, { value: 'design-systems', label: 'Design systems' },
+  ] };
+  const request = buildBatchRequest({ settings, targets: [
+    { id: '0:wc-field-1', field: checkbox }, { id: '0:wc-field-2', field: dropdown },
+  ], page });
+  const fields = request.text.format.schema.properties;
+  assert.equal(fields['0:wc-field-1'].properties.answer.anyOf[1].type, 'boolean');
+  assert.deepEqual(fields['0:wc-field-2'].properties.answer.anyOf[1].enum, ['frontend', 'design-systems']);
+  assert.match(fields['0:wc-field-2'].description, /Frontend engineering = frontend/);
+  assert.equal(parseResponseAnswer(JSON.stringify({ answer: false, missingInformation: '' }), checkbox), false);
+  assert.equal(parseResponseAnswer(JSON.stringify({ answer: true, missingInformation: '' }), checkbox), true);
+  assert.equal(parseResponseAnswer(JSON.stringify({ answer: 'design-systems', missingInformation: '' }), dropdown), 'design-systems');
+  assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: 'backend', missingInformation: '' }), dropdown), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => buildRequest({ settings, field: { ...checkbox, label: 'I consent to the terms' }, page }), error => error.code === 'CONSENT_FIELD');
 });
 
 test('PDF resume is passed as input_file with filename and full base64 data URL', () => {

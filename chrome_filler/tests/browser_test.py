@@ -106,11 +106,14 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
       const contextText = payload.input?.[0]?.content?.find(part => part.type === 'input_text')?.text || '{}';
       const context = JSON.parse(contextText);
       const target = context.targetField || {};
-      if (target.type === 'email') output = self.__qaEmail;
+      const choice = (field, batch = false) => field.type === 'checkbox' ? /accessible interfaces/i.test(field.label || '')
+        : field.type === 'select' ? (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
+        : field.type === 'number' && batch ? 5 : field.type === 'email' ? self.__qaEmail : self.__qaAnswer;
+      if (target.type) output = choice(target);
       if (self.__qaMode === 'invalid') output = 'Not an email address';
       const structured = JSON.stringify(Array.isArray(context.targetFields)
         ? Object.fromEntries(context.targetFields.map(field => [field.fieldId, {
-            answer: field.type === 'email' ? self.__qaEmail : field.type === 'number' ? 5 : self.__qaAnswer, missingInformation: '',
+            answer: choice(field, true), missingInformation: '',
           }]))
         : {answer:output, missingInformation:''});
       const completed = {id:'resp_synthetic', object:'response', status:'completed', output:[
@@ -239,9 +242,9 @@ class BrowserSuite:
     def discovery(self):
         self.fresh()
         assert self.page.locator("#wc-ai-root .wc-field-outline").count() == self.page.locator("#wc-ai-root .wc-fill-button").count()
-        for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "How do you collaborate with operators"):
+        for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "Accessible interfaces", "Backend systems", "Which area best matches your background", "How do you collaborate with operators"):
             expect(self.button(label)).to_have_count(1)
-        for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Resume file", "Consent checkbox", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
+        for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Resume file", "Consent checkbox", "Custom focus dropdown", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
             expect(self.button(label)).to_have_count(0)
         count = self.page.locator(".wc-fill-button").count()
         self.page.evaluate("document.body.appendChild(document.createElement('div'))")
@@ -279,7 +282,7 @@ class BrowserSuite:
         popup = self.context.new_page()
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
-            expect(popup.locator("#rescan-button")).to_have_text("Scan page")
+            expect(popup.locator("#rescan-button")).to_contain_text("SCAN PAGE")
             expect(popup.locator("#page-status")).to_contain_text("Scan page to highlight")
             popup.locator("#rescan-button").click()
             expect(self.button("Why do you want to work here")).to_be_visible()
@@ -316,7 +319,7 @@ class BrowserSuite:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
             expect(popup.locator("#do-all-button")).to_be_visible()
             popup.locator("#do-all-button").click()
-            expect(popup.locator("#page-status")).to_contain_text("DO ALL started")
+            expect(popup.locator("#page-status")).to_contain_text("WRITE ALL started")
             expect(self.page.locator("#email")).to_have_value("jordan@example.test")
             expect(self.page.locator("#motivation")).to_have_value(ANSWER)
             expect(self.page.locator("#bio")).to_have_js_property("innerText", ANSWER)
@@ -324,6 +327,12 @@ class BrowserSuite:
             expect(self.page.frame_locator("#cross-frame").locator("#frame-answer")).to_have_value(ANSWER)
             expect(self.page.locator("#name")).to_have_value("My own name")
             expect(self.page.locator("#experience")).to_have_value("5")
+            expect(self.page.locator("#accessible-work")).to_be_checked()
+            expect(self.page.locator("#backend-work")).not_to_be_checked()
+            expect(self.page.locator("#existing-work")).to_be_checked()
+            expect(self.page.locator("#focus-area")).to_have_value("frontend")
+            expect(self.page.locator("#existing-focus")).to_have_value("frontend")
+            expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("left unchecked")
             assert self.page.locator("#upload").evaluate("node => node.files.length") == 0
             assert self.page.locator("#consent").is_checked() is False
             assert self.page.evaluate("window.fixtureSubmitted") is False
@@ -334,6 +343,9 @@ class BrowserSuite:
             assert len(context["targetFields"]) == len(schema["required"])
             assert set(schema["required"]) == set(schema["properties"])
             assert any(field["type"] == "email" for field in context["targetFields"])
+            assert any(field["type"] == "checkbox" for field in context["targetFields"])
+            assert any(field["type"] == "select" for field in context["targetFields"])
+            assert all(field["label"] != "Consent checkbox" for field in context["targetFields"])
             assert all("answer" in entry["properties"] for entry in schema["properties"].values())
             expect(do_all).to_be_enabled()
             self.page.locator("#motivation").fill("")
@@ -373,8 +385,12 @@ class BrowserSuite:
             self.page.wait_for_timeout(100)
         assert len(self.worker.evaluate("self.__qaRequests")) == 1
         self.page.locator("#motivation").fill("My own answer")
+        self.page.locator("#focus-area").select_option("design-systems")
+        self.page.locator("#accessible-work").check()
         expect(self.page.locator("#email")).to_have_value("jordan@example.test")
         expect(self.page.locator("#motivation")).to_have_value("My own answer")
+        expect(self.page.locator("#focus-area")).to_have_value("design-systems")
+        expect(self.page.locator("#accessible-work")).to_be_checked()
         expect(self.page.frame_locator("#cross-frame").locator("#frame-answer")).to_have_value(ANSWER)
         assert len(self.worker.evaluate("self.__qaRequests")) == 1
         assert self.page.evaluate("window.fixtureSubmitted") is False
@@ -539,6 +555,39 @@ class BrowserSuite:
         assert self.page.evaluate("window.overriddenSetterCalls") == 0
         assert {item["type"] for item in self.page.evaluate("window.fixtureEvents") if item["id"] == "name"} >= {"input", "change"}
 
+    def checkbox_and_dropdown_choices(self):
+        self.fresh()
+        self.page.locator("#accessible-work").scroll_into_view_if_needed()
+        self.button("Accessible interfaces").click()
+        expect(self.page.locator("#accessible-work")).to_be_checked()
+        assert {event["type"] for event in self.page.evaluate("window.fixtureEvents") if event["id"] == "accessible-work"} >= {"input", "change"}
+        request = self.worker.evaluate("self.__qaRequests")[0]["payload"]
+        context = json.loads(request["input"][0]["content"][0]["text"])
+        assert context["targetField"]["type"] == "checkbox"
+        assert "Which kinds of work" in context["targetField"]["context"]
+        assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["type"] == "boolean"
+        self.page.get_by_role("button", name="Undo", exact=True).click()
+        expect(self.page.locator("#accessible-work")).not_to_be_checked()
+
+        self.mock()
+        self.page.locator("#focus-area").scroll_into_view_if_needed()
+        self.button("Which area best matches your background").click()
+        expect(self.page.locator("#focus-area")).to_have_value("frontend")
+        assert {event["type"] for event in self.page.evaluate("window.fixtureEvents") if event["id"] == "focus-area"} >= {"input", "change"}
+        request = self.worker.evaluate("self.__qaRequests")[0]["payload"]
+        context = json.loads(request["input"][0]["content"][0]["text"])
+        assert context["targetField"]["type"] == "select"
+        assert context["targetField"]["options"] == [
+            {"value": "frontend", "label": "Frontend engineering"},
+            {"value": "design-systems", "label": "Design systems"},
+        ]
+        options = request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["enum"]
+        assert options == ["frontend", "design-systems"]
+        self.page.get_by_role("button", name="Undo", exact=True).click()
+        expect(self.page.locator("#focus-area")).to_have_value("")
+        assert self.page.locator("#consent").is_checked() is False
+        assert self.page.evaluate("window.fixtureSubmitted") is False
+
     def cancellation(self):
         self.fresh()
         self.mock(delay=5000)
@@ -659,36 +708,53 @@ class BrowserSuite:
         popup.set_default_timeout(7000)
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
+            expect(popup.locator("#home-screen")).to_be_visible()
+            expect(popup.locator("#panel-profile")).to_be_hidden()
+            popup.locator("#open-profile").click()
+            expect(popup.locator("#panel-profile")).to_be_visible()
             expect(popup.locator("#profile")).to_have_value(SETTINGS["profile"])
+            popup.locator("#fact-fullName").fill("Jordan Example")
+            popup.locator("#fact-email").fill("jordan@example.test")
+            popup.locator("#fact-phone").fill("+1 604 555 0100")
+            popup.locator("#fact-location").fill("Vancouver, Canada")
+            popup.locator("#fact-veteranStatus").select_option("No")
             popup.locator("#profile").fill("Jordan Example. I enjoy accessible robotics.")
-            popup.locator("#tab-writing").click()
             popup.locator("#writing-instructions").fill("Use a warm professional voice. Mention teamwork.")
-            popup.locator("#tab-profile").click()
             self.upload(popup, "resume-upload", str(FIXTURES / "resume.txt"))
             expect(popup.locator("#resume-text")).to_have_value(re.compile("Jordan Example"))
-            popup.locator("#tab-connection").click()
+            expect(popup.locator("#save-label")).to_have_text("Save profile")
+            popup.locator("#save-button").click()
+            expect(popup.locator("#save-status")).to_contain_text(re.compile("saved", re.I))
+            settings = self.stored_settings()
+            assert settings["profile"] == "Jordan Example. I enjoy accessible robotics."
+            assert settings["profileFacts"]["location"] == "Vancouver, Canada"
+            assert settings["profileFacts"]["veteranStatus"] == "No"
+            assert settings["writingInstructions"] == "Use a warm professional voice. Mention teamwork."
+            assert "Jordan Example" in settings["resumeText"]
+            self.screenshot("popup-profile", popup)
+
+            popup.locator("#back-profile").click()
+            expect(popup.locator("#home-screen")).to_be_visible()
+            popup.locator("#open-connection").click()
+            expect(popup.locator("#panel-connection")).to_be_visible()
             expect(popup.locator("#api-key")).to_have_attribute("type", "password")
             popup.locator("#reveal-key").click()
             expect(popup.locator("#api-key")).to_have_attribute("type", "text")
             expect(popup.locator("#api-key")).to_have_value(KEY)
             popup.locator("#reveal-key").click()
-            self.expand(popup, "advanced-settings")
             popup.locator("#model").fill("gpt-5-mini")
+            expect(popup.locator("#save-label")).to_have_text("Save settings")
             popup.locator("#save-button").click()
             expect(popup.locator("#save-status")).to_contain_text(re.compile("saved", re.I))
-            settings = self.worker.evaluate("async () => (await chrome.storage.local.get('wcSettings')).wcSettings")
-            assert settings["profile"] == "Jordan Example. I enjoy accessible robotics."
-            assert settings["writingInstructions"] == "Use a warm professional voice. Mention teamwork."
-            assert "Jordan Example" in settings["resumeText"]
             self.screenshot("popup-connection", popup)
             popup.reload()
-            popup.locator("#tab-writing").click()
-            expect(popup.locator("#writing-instructions")).to_have_value(settings["writingInstructions"])
-            self.screenshot("popup-writing", popup)
-            popup.locator("#tab-profile").click()
-            expect(popup.locator("#profile")).to_have_value(settings["profile"])
-            self.screenshot("popup-profile", popup)
-            popup.locator("#tab-connection").click()
+            expect(popup.locator("#home-screen")).to_be_visible()
+            popup.locator("#open-profile").click()
+            expect(popup.locator("#fact-fullName")).to_have_value("Jordan Example")
+            expect(popup.locator("#fact-veteranStatus")).to_have_value("No")
+            popup.locator("#back-profile").click()
+            popup.locator("#open-connection").click()
+            expect(popup.locator("#model")).to_have_value("gpt-5-mini")
             self.expand(popup, "advanced-settings")
             self.expand(popup, "troubleshooting")
             popup.locator("#log-refresh").click()
@@ -696,6 +762,14 @@ class BrowserSuite:
             popup.locator("#log-clear").click()
         finally:
             popup.close()
+        self.page.bring_to_front()
+        self.mock()
+        self.button("Why do you want to work here").click()
+        expect(self.page.locator("#motivation")).to_have_value(ANSWER)
+        payload = self.worker.evaluate("self.__qaRequests")[0]["payload"]
+        context = json.loads(next(part["text"] for part in payload["input"][0]["content"] if part["type"] == "input_text"))
+        assert context["profileFacts"]["veteranStatus"] == "No"
+        assert context["profileFacts"]["location"] == "Vancouver, Canada"
 
     def popup_validation_and_resume(self):
         self.fresh()
@@ -704,13 +778,13 @@ class BrowserSuite:
         popup.set_default_timeout(7000)
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
-            popup.locator("#tab-connection").click()
-            self.expand(popup, "advanced-settings")
+            popup.locator("#open-connection").click()
             popup.locator("#model").fill("")
             popup.locator("#save-button").click()
             expect(popup.locator("#save-status")).to_contain_text(re.compile("model|required|enter", re.I))
             popup.locator("#model").fill("gpt-5-mini")
-            popup.locator("#tab-profile").click()
+            popup.locator("#back-connection").click()
+            popup.locator("#open-profile").click()
             self.upload(popup, "resume-upload", {"name":"bad.exe", "mimeType":"application/octet-stream", "buffer":b"not a resume"})
             expect(popup.locator("#resume-status")).to_contain_text(re.compile("support|format|text|PDF|TXT", re.I))
             popup.locator("#resume-remove").click()
@@ -729,40 +803,42 @@ class BrowserSuite:
         popup.set_default_timeout(7000)
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
+            popup.locator("#open-profile").click()
             expect(popup.locator("#profile")).to_have_value(SETTINGS["profile"])
-            popup.locator("#tab-profile").focus()
-            popup.keyboard.press("ArrowRight")
-            expect(popup.locator("#tab-writing")).to_be_focused()
-            expect(popup.locator("#panel-writing")).to_be_visible()
+            expect(popup.locator("#back-profile")).to_be_focused()
             popup.locator("#tone-casual").click()
             expect(popup.locator("#writing-instructions")).to_have_value(re.compile("friendly|conversational|casual", re.I))
             popup.locator("#tone-professional").click()
             expect(popup.locator("#writing-instructions")).to_have_value(re.compile("professional", re.I))
-            popup.locator("#tab-writing").focus()
-            popup.keyboard.press("End")
-            expect(popup.locator("#tab-connection")).to_be_focused()
-            popup.keyboard.press("Home")
-            expect(popup.locator("#tab-profile")).to_be_focused()
-            imported = {"facts":{"name":"Jordan Example", "email":"jordan@example.test"},
+            imported = {"facts":{"first_name":"Jordan", "last_name":"Example", "email":"jordan@example.test", "phone":"+1 604 555 0100"},
                 "employment":[{"company":"Synthetic Operations", "role":"Software engineer", "apiKey":"TOP_SECRET_KEY"}],
-                "password":"TOP_SECRET_PASSWORD", "resume":"C:\\private\\resume.pdf", "cover_letter":"/home/private/letter.txt",
+                "password":"TOP_SECRET_PASSWORD", "resume":r"C:\private\resume.pdf", "cover_letter":"/home/private/letter.txt",
                 "nested":{"token":"TOP_SECRET_TOKEN", "privateKey":"TOP_SECRET_PRIVATE", "note":"sk-notarealkey1234567890"},
                 "dataPath":"/Users/private/data.json"}
             self.upload(popup, "profile-import", {"name":"profile.json","mimeType":"application/json","buffer":json.dumps(imported).encode()})
             expect(popup.locator("#profile-import-status")).to_contain_text(re.compile("imported", re.I))
+            expect(popup.locator("#fact-fullName")).to_have_value("Jordan Example")
+            expect(popup.locator("#fact-email")).to_have_value("jordan@example.test")
             clean = popup.locator("#profile").input_value()
-            for safe in ("Jordan Example", "jordan@example.test", "Synthetic Operations", "Software engineer"):
+            for safe in ("Jordan", "jordan@example.test", "Synthetic Operations", "Software engineer"):
                 assert safe in clean
-            for forbidden in ("TOP_SECRET", "C:\\private", "/home/private", "/Users/private", "sk-notareal"):
+            for forbidden in ("TOP_SECRET", r"C:\private", "/home/private", "/Users/private", "sk-notareal"):
                 assert forbidden not in clean, f"Profile import exposed {forbidden}"
             self.upload(popup, "resume-upload", str(FIXTURES / "resume.pdf"))
             expect(popup.locator("#resume-status")).to_contain_text(re.compile("PDF attached", re.I))
             expect(popup.locator("#resume-file-name")).to_contain_text("resume.pdf")
             popup.locator("#save-button").click()
             expect(popup.locator("#save-status")).to_contain_text(re.compile("saved", re.I))
-            settings = self.worker.evaluate("async () => (await chrome.storage.local.get('wcSettings')).wcSettings")
+            settings = self.stored_settings()
             assert settings["resumeFile"]["dataUrl"].startswith("data:application/pdf;base64,JVBERi0")
+            assert settings["profileFacts"]["fullName"] == "Jordan Example"
             self.screenshot("popup-pdf-profile", popup)
+            popup.locator("#back-profile").click()
+            expect(popup.locator("#home-screen")).to_be_visible()
+            popup.locator("#open-connection").click()
+            expect(popup.locator("#panel-connection")).to_be_visible()
+            popup.locator("#back-connection").click()
+            expect(popup.locator("#home-screen")).to_be_visible()
             popup.close()
             self.page.bring_to_front()
             self.mock()
@@ -783,24 +859,30 @@ class BrowserSuite:
         popup.set_default_timeout(7000)
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
-            expect(popup.locator("#tab-connection")).to_have_attribute("aria-selected", "true")
+            expect(popup.locator("#home-screen")).to_be_visible()
             expect(popup.locator("#setup-banner")).to_be_visible()
             expect(popup.locator("#setup-banner")).to_contain_text(re.compile("key|connect|OpenAI", re.I))
             self.screenshot("popup-guided-setup", popup)
+            popup.locator("#setup-action").click()
+            expect(popup.locator("#panel-connection")).to_be_visible()
             popup.locator("#api-key").fill(KEY)
             self.wait_stored("apiKey", KEY)
+            popup.locator("#back-connection").click()
+            expect(popup.locator("#setup-action")).to_have_text("Edit profile")
             popup.locator("#setup-action").click()
             expect(popup.locator("#panel-profile")).to_be_visible()
-            expect(popup.locator("#setup-banner")).to_contain_text(re.compile("profile|about you|experience", re.I))
             profile = "Jordan Example. I build accessible robotics tools with operations teams."
             popup.locator("#profile").fill(profile)
             self.wait_stored("profile", profile)
+            popup.locator("#back-profile").click()
+            expect(popup.locator("#setup-banner")).to_be_hidden()
             popup.close()
             popup = self.context.new_page()
             popup.set_viewport_size({"width":400,"height":600})
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
+            expect(popup.locator("#home-screen")).to_be_visible()
+            popup.locator("#open-profile").click()
             expect(popup.locator("#profile")).to_have_value(profile)
-            expect(popup.locator("#tab-profile")).to_have_attribute("aria-selected", "true")
             self.screenshot("popup-setup-complete", popup)
         finally:
             if not popup.is_closed():
@@ -813,6 +895,7 @@ class BrowserSuite:
         popup.set_default_timeout(7000)
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
+            popup.locator("#open-profile").click()
             expect(popup.locator("#profile")).to_have_value(SETTINGS["profile"])
             draft = "Jordan Example. This change must survive closing the popup immediately."
             popup.locator("#profile").fill(draft)
@@ -821,12 +904,14 @@ class BrowserSuite:
             popup = self.context.new_page()
             popup.set_viewport_size({"width":400,"height":600})
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
+            popup.locator("#open-profile").click()
             expect(popup.locator("#profile")).to_have_value(draft)
             self.wait_stored("profile", draft)
-            popup.locator("#tab-connection").click()
-            self.expand(popup, "advanced-settings")
+            popup.locator("#back-profile").click()
+            popup.locator("#open-connection").click()
             popup.locator("#model").fill("")
-            popup.locator("#tab-profile").click()
+            popup.locator("#back-connection").click()
+            popup.locator("#open-profile").click()
             second = "Jordan Example. Preserve this draft while paused and the model is invalid."
             popup.locator("#profile").fill(second)
             popup.locator("#enable-toggle").uncheck()
@@ -839,14 +924,16 @@ class BrowserSuite:
             popup = self.context.new_page()
             popup.set_viewport_size({"width":400,"height":600})
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
-            expect(popup.locator("#profile")).to_have_value(second)
             expect(popup.locator("#enable-toggle")).not_to_be_checked()
-            popup.locator("#tab-connection").click()
-            self.expand(popup, "advanced-settings")
+            popup.locator("#open-profile").click()
+            expect(popup.locator("#profile")).to_have_value(second)
+            popup.locator("#back-profile").click()
+            popup.locator("#open-connection").click()
             expect(popup.locator("#model")).to_have_value("")
             popup.locator("#model").fill("gpt-5-mini")
             self.wait_stored("profile", second)
-            popup.locator("#tab-writing").click()
+            popup.locator("#back-connection").click()
+            popup.locator("#open-profile").click()
             preferences = "Mention my accessibility work. Avoid sales language."
             popup.locator("#writing-instructions").fill(preferences)
             popup.locator("#tone-casual").click()
@@ -880,7 +967,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable",
+                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

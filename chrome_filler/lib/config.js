@@ -1,6 +1,10 @@
 export const SETTINGS_KEY = 'wcSettings';
 export const LOGS_KEY = 'wcLogs';
 export const MAX_RESUME_BYTES = 5 * 1024 * 1024;
+export const EMPTY_PROFILE_FACTS = Object.freeze({
+  fullName: '', email: '', phone: '', location: '', headline: '', linkedin: '', portfolio: '',
+  workAuthorization: '', sponsorship: '', veteranStatus: '',
+});
 const PREVIOUS_CASUAL_INSTRUCTIONS = [
   'Write in a friendly, conversational tone and in the first person. Keep it clear and natural.',
   'Use a casual, straightforward first-person voice. Keep answers short and specific. Contractions are fine. Skip buzzwords, stock enthusiasm, and overly polished phrasing.',
@@ -11,6 +15,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   apiKey: '',
   model: 'gpt-4.1-mini',
   profile: '',
+  profileFacts: EMPTY_PROFILE_FACTS,
   writingInstructions: 'Keep open answers short, casual, and confident, usually 1–3 sentences. Mention one relevant detail from the job posting when it fits. Say what I built and the results plainly, without corporate fluff.',
   resumeText: '',
   resumeFile: null,
@@ -24,6 +29,10 @@ export function normalizeSettings(value = {}) {
   for (const key of ['apiKey', 'model', 'profile', 'writingInstructions', 'resumeText']) {
     if (typeof source[key] === 'string') settings[key] = source[key];
   }
+  const facts = source.profileFacts && typeof source.profileFacts === 'object' && !Array.isArray(source.profileFacts) ? source.profileFacts : {};
+  settings.profileFacts = Object.fromEntries(Object.keys(EMPTY_PROFILE_FACTS).map(key => [key,
+    typeof facts[key] === 'string' ? facts[key].trim().slice(0, 500) : '',
+  ]));
   for (const previous of PREVIOUS_CASUAL_INSTRUCTIONS) {
     if (settings.writingInstructions.startsWith(previous)) {
       settings.writingInstructions = DEFAULT_SETTINGS.writingInstructions + settings.writingInstructions.slice(previous.length);

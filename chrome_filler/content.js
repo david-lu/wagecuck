@@ -3,8 +3,8 @@
   if (globalThis.__wcInputFiller) return;
   globalThis.__wcInputFiller = true;
 
-  const SELECTOR = 'input, textarea, [contenteditable="true"], [contenteditable=""], [role="textbox"]';
-  const TYPES = new Set(['text', 'email', 'tel', 'url', 'number']);
+  const SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]';
+  const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox']);
   const records = new Map();
   const roots = new Set([document]);
   let enabled = true;
@@ -104,7 +104,26 @@
   }
 
   function readValue(field) {
+    if (field instanceof HTMLInputElement && field.type === 'checkbox') return field.checked;
     return 'value' in field ? field.value : field.innerText;
+  }
+
+  function hasAnswer(field) {
+    const value = readValue(field);
+    return typeof value === 'boolean' ? value : Boolean(String(value).trim());
+  }
+
+  function selectableOption(field, value) {
+    return field instanceof HTMLSelectElement && [...field.options].some(option => option.value === value && value.trim() && !option.disabled && !option.hidden && !option.closest('optgroup[disabled]'));
+  }
+
+  function normalizedAnswer(field, answer) {
+    if (field instanceof HTMLInputElement && field.type === 'checkbox') return typeof answer === 'boolean' ? answer : null;
+    if (field instanceof HTMLSelectElement) return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
+    if (typeof answer !== 'string') return null;
+    const value = answer.trim();
+    if (!value || (field.maxLength > 0 && value.length > field.maxLength) || (field.type === 'number' && !Number.isFinite(Number(value)))) return null;
+    return value;
   }
 
   function labelFor(field) {
@@ -114,7 +133,8 @@
   function isVisible(field) {
     if (!field.isConnected || field.closest('[hidden], [inert]')) return false;
     const rect = field.getBoundingClientRect();
-    if (rect.width < 60 || rect.height < 18) return false;
+    const minSize = field instanceof HTMLInputElement && field.type === 'checkbox' ? 10 : 18;
+    if (rect.width < minSize || rect.height < minSize || (minSize !== 10 && rect.width < 60)) return false;
     for (let node = field; node instanceof Element; node = parentElement(node)) {
       if (node.matches('[hidden], [inert]')) return false;
       const style = getComputedStyle(node);
@@ -130,10 +150,12 @@
   function isEligible(field) {
     if (field.getRootNode() === shadow || field.disabled || field.matches(':disabled') || field.readOnly || field.getAttribute('aria-disabled') === 'true' || field.getAttribute('aria-readonly') === 'true') return false;
     if (field.tagName === 'INPUT' && !TYPES.has(field.type)) return false;
-    if (field.maxLength === 0) return false;
-    if (!['INPUT', 'TEXTAREA'].includes(field.tagName) && !field.isContentEditable) return false;
+    if (field.matches('[role="combobox"],[aria-haspopup="listbox"]')) return false;
+    if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 100 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
+    if (field.tagName !== 'SELECT' && field.type !== 'checkbox' && field.maxLength === 0) return false;
+    if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable) return false;
     if (field.isContentEditable && parentElement(field)?.isContentEditable) return false;
-    if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field)) return false;
+    if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field) || globalThis.WCFieldContext.isConsentField(field)) return false;
     return isVisible(field);
   }
 
@@ -142,7 +164,7 @@
   }
 
   function targetSignature(info) {
-    return JSON.stringify(['label', 'type', 'placeholder', 'context', 'required', 'maxLength', 'min', 'max', 'step', 'pattern'].map(key => info[key]));
+    return JSON.stringify(['label', 'type', 'placeholder', 'context', 'required', 'maxLength', 'min', 'max', 'step', 'pattern', 'options'].map(key => info[key]));
   }
 
   function collectRoots(root = document, found = []) {
@@ -296,15 +318,16 @@
       outline.style.top = `${rect.top}px`;
       outline.style.width = `${rect.width}px`;
       outline.style.height = `${rect.height}px`;
-      const compact = rect.width < 240 || rect.height < 36;
+      const choice = field.tagName === 'SELECT' || field.type === 'checkbox';
+      const compact = !choice && (rect.width < 240 || rect.height < 36);
       const width = compact ? 45 : 80;
       const height = compact ? 26 : 28;
-      const x = rect.right - width - 4;
+      const x = choice ? rect.right + 8 : rect.right - width - 4;
       // Straddle the top border on roomy fields so the button does not cover text.
-      let y = compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
+      let y = choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
       button.dataset.compact = String(compact);
       if (!button.hasAttribute('aria-busy')) {
-        const text = compact ? '✦ AI' : readValue(field).trim() ? '✦ Rewrite' : '✦ Write';
+        const text = compact ? '✦ AI' : hasAnswer(field) ? '✦ Rewrite' : '✦ Write';
         if (button.textContent !== text) button.textContent = text;
       }
       button.style.width = `${width}px`;
@@ -366,7 +389,11 @@
 
   function writeValue(field, answer) {
     field.focus({ preventScroll: true });
-    if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+    if (field instanceof HTMLInputElement && field.type === 'checkbox') {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(field, answer);
+    } else if (field instanceof HTMLSelectElement) {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(field, answer);
+    } else if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
       const prototype = field instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype;
       Object.getOwnPropertyDescriptor(prototype, 'value').set.call(field, answer);
     } else {
@@ -374,7 +401,9 @@
       // in editors whose whitespace style is the default "normal".
       field.innerText = answer;
     }
-    field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: answer }));
+    field.dispatchEvent(field.type === 'checkbox' || field.tagName === 'SELECT'
+      ? new Event('input', { bubbles: true, composed: true })
+      : new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: answer }));
     field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
@@ -506,15 +535,15 @@
         toast('The question changed', 'The page or field changed while the AI was writing. Click AI again for the current question.', 'info', [], 14000);
         return;
       }
-      const answer = typeof message.answer === 'string' ? message.answer.trim() : '';
-      if (!answer || (field.maxLength > 0 && answer.length > field.maxLength)) {
+      const answer = normalizedAnswer(field, message.answer);
+      if (answer === null) {
         settle({ status: 'failed' });
-        toast('Answer doesn’t fit this field', 'Try again with a shorter answer in your writing preferences.', 'error', [], 14000);
+        toast('Answer does not fit this field', 'The generated choice or format is no longer available. Scan again and retry.', 'error', [], 14000);
         return;
       }
-      if (field.type === 'number' && !Number.isFinite(Number(answer))) {
-        settle({ status: 'failed' });
-        toast('A number is needed', 'The AI returned text for a numeric field. Click AI to try again.', 'error', [], 14000);
+      if ((field.type === 'checkbox' || field.tagName === 'SELECT') && answer === original) {
+        settle({ status: 'skipped' });
+        toast('No change needed', field.type === 'checkbox' ? 'The answer is to leave this box as it is.' : 'This option is already selected.', 'info', [], 10000);
         return;
       }
       try {
@@ -561,7 +590,7 @@
     scan();
     return {
       scanned: true, enabled, page: collectPage(),
-      targets: [...records.values()].filter(record => !record.active && !record.starting && isEligible(record.field) && !readValue(record.field).trim())
+      targets: [...records.values()].filter(record => !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field))
         .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
     };
   }
@@ -593,13 +622,13 @@
   }
 
   function applyBatch(message) {
-    if (!batch || batch.id !== message.runId) return { filled: 0, skipped: message.answers?.length || 0, failed: 0 };
-    const result = { filled: 0, skipped: 0, failed: 0, firstError: '' };
+    if (!batch || batch.id !== message.runId) return { filled: 0, skipped: message.answers?.length || 0, failed: 0, unchecked: 0 };
+    const result = { filled: 0, skipped: 0, failed: 0, unchecked: 0, firstError: '' };
     for (const item of message.answers || []) {
       const target = batch.targets.get(item.fieldId);
       const record = target?.record;
       const field = record?.field;
-      if (!record || records.get(field) !== record || !enabled || !scanned || batch.sourceUrl !== location.href || record.active || record.starting || !isEligible(field) || readValue(field).trim() || targetSignature(fieldInfo(field)) !== target.signature) {
+      if (!record || records.get(field) !== record || !enabled || !scanned || batch.sourceUrl !== location.href || record.active || record.starting || !isEligible(field) || hasAnswer(field) || targetSignature(fieldInfo(field)) !== target.signature) {
         result.skipped++;
         continue;
       }
@@ -608,19 +637,25 @@
         result.firstError ||= item.error.message || 'The agent could not answer a field.';
         continue;
       }
-      const answer = typeof item.answer === 'string' ? item.answer.trim() : '';
-      if (!answer || (field.maxLength > 0 && answer.length > field.maxLength)) {
+      const answer = normalizedAnswer(field, item.answer);
+      if (answer === null) {
         result.failed++;
-        result.firstError ||= 'An answer was empty or too long for its field.';
+        result.firstError ||= 'An answer did not match its field or available choices.';
         continue;
       }
+      if (answer === readValue(field) && (field.type === 'checkbox' || field.tagName === 'SELECT')) {
+        if (field.type === 'checkbox' && answer === false) result.unchecked++;
+        else result.skipped++;
+        continue;
+      }
+      const original = readValue(field);
       try {
         writeValue(field, answer);
         if (readValue(field) !== answer || (field.validity && !field.validity.valid)) throw new Error('The page rejected an answer.');
         result.filled++;
         logUI('ui.filled', batch.id);
       } catch {
-        try { writeValue(field, ''); } catch { /* The page may have removed the field. */ }
+        try { writeValue(field, original); } catch { /* The page may have removed the field. */ }
         result.failed++;
         result.firstError ||= 'The page rejected an answer.';
         logUI('ui.insert_failed', batch.id, 'INSERT_FAILED');
@@ -639,8 +674,8 @@
     ending.keepalive?.disconnect();
     if (doAllButton) doAllButton.disabled = false;
     if (window.top === window) {
-      const { filled = 0, failed = 0, skipped = 0 } = message.summary || {};
-      const detail = message.errorMessage || `${filled} filled${failed ? `, ${failed} could not be filled` : ''}${skipped ? `, ${skipped} skipped` : ''}. ${message.fieldError ? `${message.fieldError} ` : ''}Review the answers before submitting.`;
+      const { filled = 0, failed = 0, skipped = 0, unchecked = 0 } = message.summary || {};
+      const detail = message.errorMessage || `${filled} filled${unchecked ? `, ${unchecked} left unchecked` : ''}${failed ? `, ${failed} could not be filled` : ''}${skipped ? `, ${skipped} skipped` : ''}. ${message.fieldError ? `${message.fieldError} ` : ''}Review the answers before submitting.`;
       toast(message.stopped ? 'DO ALL stopped' : message.errorMessage ? 'DO ALL failed' : 'DO ALL finished', detail, message.errorMessage ? 'error' : filled ? 'success' : 'info', [], 20000);
     }
     return { finished: true };
