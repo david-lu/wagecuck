@@ -59,6 +59,18 @@ test('settings reject oversized or mismatched PDF and preserve safe defaults', (
   assert.throws(() => normalizeSettings({ model: 'model\ninjection' }), /valid OpenAI model/);
 });
 
+test('previous casual instructions upgrade without losing added preferences', () => {
+  const previous = [
+    'Write in a friendly, conversational tone and in the first person. Keep it clear and natural.',
+    'Use a casual, straightforward first-person voice. Keep answers short and specific. Contractions are fine. Skip buzzwords, stock enthusiasm, and overly polished phrasing.',
+  ];
+  const extra = '\n\nMention my work on creative tools.';
+  for (const preset of previous) {
+    assert.equal(normalizeSettings({ writingInstructions: preset + extra }).writingInstructions, DEFAULT_SETTINGS.writingInstructions + extra);
+  }
+  assert.equal(normalizeSettings({ writingInstructions: 'Keep it formal.' }).writingInstructions, 'Keep it formal.');
+});
+
 test('settings storage loads and saves complete objects and reports storage failures', async () => {
   let stored = {};
   const storage = { get: async () => stored, set: async value => { stored = value; } };
