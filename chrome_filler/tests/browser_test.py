@@ -106,8 +106,8 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
       const contextText = payload.input?.[0]?.content?.find(part => part.type === 'input_text')?.text || '{}';
       const context = JSON.parse(contextText);
       const target = context.targetField || {};
-      const choice = (field, batch = false) => field.type === 'checkbox_group' ? (field.options || []).filter(option => /accessible interfaces|design systems/i.test(option.label)).map(option => option.value)
-        : field.type === 'checkbox' ? /accessible interfaces|open to remote work/i.test(field.label || '')
+      const choice = (field, batch = false) => field.type === 'checkbox_group' ? (field.options || []).filter(option => /accessible interfaces|design systems|I utilize Terraform daily|I prefer not to answer/i.test(option.label)).map(option => option.value)
+        : field.type === 'checkbox' ? /accessible interfaces|open to remote work|open to hybrid work|open to relocation/i.test(field.label || '')
         : field.type === 'select' ? (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
         : field.type === 'radio' ? (field.options || []).find(option => option.value === 'Prefer not to answer')?.value || field.options?.[0]?.value || ''
         : field.type === 'number' && batch ? 5 : field.type === 'email' ? self.__qaEmail : self.__qaAnswer;
@@ -829,6 +829,92 @@ class BrowserSuite:
         assert self.page.locator("#consent").is_checked() is False
         assert self.page.evaluate("window.fixtureSubmitted") is False
 
+    def choice_groups_from_saved_runs(self):
+        self.seed()
+        self.mock(delay=25)
+        self.page.goto(self.url.replace("application.html", "choice_groups.html"))
+        self.page.locator('input[name="wrapper_two"]').evaluate("node => { node.checked = true; }")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(8)
+        for selector in ("#workable-question", "#greenhouse-question", "#ashby-question", "#custom-radio-question", "#custom-checkbox-question"):
+            assert self.page.locator(selector).evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
+        assert self.page.locator("#hybrid-choice-label").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
+        self.page.locator('input[name="wrapper_one"]').scroll_into_view_if_needed()
+        self.button("Authorized to work for any employer").click()
+        expect(self.page.locator('input[name="wrapper_one"]')).to_be_checked()
+        expect(self.page.locator('input[name="wrapper_two"]')).not_to_be_checked()
+        request = self.worker.evaluate("self.__qaRequests")[0]["payload"]
+        radio = json.loads(request["input"][0]["content"][0]["text"])["targetField"]
+        assert radio["label"] == "Authorized to work for any employer in the US without sponsorship"
+        assert [option["value"] for option in radio["options"]] == ["YES", "NO"]
+
+        self.page.locator('#custom-radio-question [role="radio"]').first.scroll_into_view_if_needed()
+        self.button("Preferred interview window").click()
+        expect(self.page.locator('#custom-radio-question [role="radio"]').first).to_have_attribute("aria-checked", "true")
+        self.page.locator('#custom-checkbox-question [role="checkbox"]').first.scroll_into_view_if_needed()
+        self.button("Engineering interests").click()
+        expect(self.page.locator('#custom-checkbox-question [role="checkbox"]').first).to_have_attribute("aria-checked", "true")
+        self.page.locator("#custom-single-checkbox").scroll_into_view_if_needed()
+        self.button("Open to remote work").click()
+        expect(self.page.locator("#custom-single-checkbox")).to_have_attribute("aria-checked", "true")
+        self.page.locator("#custom-switch").scroll_into_view_if_needed()
+        self.button("Open to relocation").click()
+        expect(self.page.locator("#custom-switch")).to_have_attribute("aria-checked", "true")
+
+        self.page.reload()
+        self.mock(delay=25)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(self.page.locator('input[name="wrapper_one"]')).to_be_checked()
+        expect(self.page.locator('input[name="terraform_group"]').first).to_be_checked()
+        expect(self.page.locator('input[name="Prefer not"]')).to_be_checked()
+        expect(self.page.locator('#custom-radio-question [role="radio"]').first).to_have_attribute("aria-checked", "true")
+        expect(self.page.locator('#custom-checkbox-question [role="checkbox"]').first).to_have_attribute("aria-checked", "true")
+        expect(self.page.locator("#custom-single-checkbox")).to_have_attribute("aria-checked", "true")
+        expect(self.page.locator("#custom-switch")).to_have_attribute("aria-checked", "true")
+        expect(self.page.locator("#hybrid-choice")).to_be_checked()
+        requests = self.worker.evaluate("self.__qaRequests")
+        assert len(requests) == 1
+        context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
+        assert [field["type"] for field in context["targetFields"]] == ["radio", "checkbox_group", "checkbox_group", "radio", "checkbox_group", "checkbox", "checkbox", "checkbox"]
+
+    def mixed_choice_and_controlled_combobox(self):
+        self.seed()
+        self.mock(delay=25)
+        self.page.goto(self.url.replace("application.html", "edge_controls.html"))
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(3)
+        expect(self.button("How did you hear about ElevenLabs?")).to_have_count(1)
+        expect(self.button("If other, please specify below")).to_have_count(1)
+        expect(self.button("Country of residence")).to_have_count(1)
+        expect(self.button("Unsupported dropdown")).to_have_count(0)
+        assert self.page.locator("#ashby-referral").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
+        self.button("How did you hear about ElevenLabs?").click()
+        expect(self.page.locator('input[name="referral"]').first).to_be_checked()
+        radio_request = self.worker.evaluate("self.__qaRequests")[-1]["payload"]
+        radio = json.loads(radio_request["input"][0]["content"][0]["text"])["targetField"]
+        assert [option["value"] for option in radio["options"]] == ["user", "other"]
+        self.button("Country of residence").click()
+        expect(self.page.locator('[data-automation-id="selectedItem"]')).to_have_text("Canada")
+        country_request = self.worker.evaluate("self.__qaRequests")[-1]["payload"]
+        country = json.loads(country_request["input"][0]["content"][0]["text"])["targetField"]
+        assert country["type"] == "select"
+        assert [option["value"] for option in country["options"]] == ["Canada", "United States"]
+        answer_schema = country_request["text"]["format"]["schema"]["properties"]["answer"]
+        assert answer_schema["anyOf"][1]["enum"] == ["Canada", "United States"]
+
+        self.page.reload()
+        self.mock(delay=25)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(self.page.locator('input[name="referral"]').first).to_be_checked()
+        expect(self.page.locator("#other-detail")).to_have_value(ANSWER)
+        expect(self.page.locator('[data-automation-id="selectedItem"]')).to_have_text("Canada")
+        requests = self.worker.evaluate("self.__qaRequests")
+        assert len(requests) == 1
+        context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
+        assert [field["type"] for field in context["targetFields"]] == ["radio", "text", "select"]
+
     def lever_radio_group(self):
         self.fresh()
         self.page.locator('input[name="survey-age"]').first.scroll_into_view_if_needed()
@@ -1238,7 +1324,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
+                "manual_scan_gate", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

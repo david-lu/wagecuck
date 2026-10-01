@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Choice group application</title>
+<style>body{font:16px system-ui,sans-serif;max-width:760px;margin:30px auto}section{margin:24px 0;padding:16px}label{display:block;margin:8px 0}input[type=radio],input[type=checkbox]{width:16px;height:16px}.styled-choice{position:absolute;width:1px!important;height:1px!important;opacity:0}.question-title{font-weight:700}[role=radio],[role=checkbox],[role=switch]{display:block;margin:8px 0;padding:8px;border:1px solid #999;cursor:pointer}</style>
+</head>
+<body>
+<h1>Application questions</h1>
+<form id="application">
+  <section class="form-field" id="workable-question">
+    <div class="question-title">Authorized to work for any employer in the US without sponsorship</div>
+    <fieldset><label><input class="styled-choice" type="radio" name="wrapper_one" value=""> YES</label></fieldset>
+    <fieldset><label><input class="styled-choice" type="radio" name="wrapper_two" value="on"> NO</label></fieldset>
+  </section>
+  <section class="form-field" id="greenhouse-question">
+    <div><div class="question-label">Do you have strong experience with Terraform or Terragrunt? Pick no more than 2.</div></div>
+    <div class="choices">
+      <label><input class="styled-choice" type="checkbox" name="terraform_group" value="on"> I utilize Terraform daily and consider myself senior level with it.</label>
+      <label><input class="styled-choice" type="checkbox" name="terraform_group" value="on"> I utilize Terragrunt daily and consider myself senior level with it.</label>
+      <label><input class="styled-choice" type="checkbox" name="terraform_group" value="on"> I utilize another IaC tool daily and consider myself senior level with it.</label>
+    </div>
+  </section>
+  <section id="ashby-question">
+    <div class="ashby-application-form-question-title">Which ethnicity(ies) do you identify with? Please select all that apply.</div>
+    <div class="choices">
+      <label><input type="checkbox" name="Asian" value="on"> Asian or Asian American</label>
+      <label><input type="checkbox" name="White" value="on"> White</label>
+      <label><input type="checkbox" name="Prefer not" value="on"> I prefer not to answer</label>
+    </div>
+  </section>
+  <section role="radiogroup" aria-label="Preferred interview window" id="custom-radio-question">
+    <div role="radio" aria-checked="false" tabindex="0">Morning</div>
+    <div role="radio" aria-checked="false" tabindex="0">Afternoon</div>
+  </section>
+  <section role="group" aria-label="Engineering interests" id="custom-checkbox-question">
+    <div role="checkbox" aria-checked="false" tabindex="0">Accessible interfaces</div>
+    <div role="checkbox" aria-checked="false" tabindex="0">Backend systems</div>
+  </section>
+  <div role="checkbox" aria-label="Open to remote work" aria-checked="false" tabindex="0" id="custom-single-checkbox">Open to remote work</div>
+  <div role="switch" aria-label="Open to relocation" aria-checked="false" tabindex="0" id="custom-switch">Open to relocation</div>
+  <label id="hybrid-choice-label"><input class="styled-choice" type="checkbox" id="hybrid-choice"> Open to hybrid work</label>
+  <input type="checkbox" id="unlabelled-hidden-choice" style="display:none">
+</form>
+<script>
+  document.querySelectorAll('[role="radio"]').forEach(option => option.addEventListener('click', () => {
+    option.parentElement.querySelectorAll('[role="radio"]').forEach(peer => peer.setAttribute('aria-checked', String(peer === option)));
+    option.dispatchEvent(new Event('input', { bubbles: true }));
+    option.dispatchEvent(new Event('change', { bubbles: true }));
+  }));
+  document.querySelectorAll('[role="checkbox"],[role="switch"]').forEach(option => option.addEventListener('click', () => {
+    option.setAttribute('aria-checked', String(option.getAttribute('aria-checked') !== 'true'));
+    option.dispatchEvent(new Event('input', { bubbles: true }));
+    option.dispatchEvent(new Event('change', { bubbles: true }));
+  }));
+</script>
+</body>
+</html>

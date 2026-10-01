@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Saved run edge controls</title>
+<style>body{font:16px system-ui,sans-serif;max-width:700px;margin:32px auto}section{margin:24px 0;padding:16px;border:1px solid #bbb}label{display:block;margin:8px 0}input{min-height:20px}.ashby-application-form-question-title{font-weight:700}[role=option]{padding:8px;cursor:pointer}</style>
+</head>
+<body>
+<form>
+  <section id="ashby-referral">
+    <div class="ashby-application-form-question-title">How did you hear about ElevenLabs?</div>
+    <label><input type="radio" name="referral" value="user"> I'm a user</label>
+    <label><input type="radio" name="referral" value="other"> Other (please specify)</label>
+    <label for="other-detail">If other, please specify below</label>
+    <input id="other-detail" name="other_referral" type="text">
+  </section>
+  <section>
+    <label for="country">Country of residence</label>
+    <div class="generic-combobox">
+      <input id="country" type="text" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="country-list" readonly>
+      <span data-automation-id="selectedItem"></span>
+    </div>
+    <div id="country-list" role="listbox" hidden>
+      <div role="option">Canada</div>
+      <div role="option">United States</div>
+    </div>
+  </section>
+  <label for="unsupported">Unsupported dropdown</label><input id="unsupported" role="combobox" aria-haspopup="listbox">
+</form>
+<script>
+  const country = document.querySelector('#country');
+  const list = document.querySelector('#country-list');
+  country.addEventListener('click', () => {
+    const open = country.getAttribute('aria-expanded') !== 'true';
+    country.setAttribute('aria-expanded', String(open));
+    list.hidden = !open;
+  });
+  list.querySelectorAll('[role="option"]').forEach(option => option.addEventListener('click', () => {
+    country.parentElement.querySelector('[data-automation-id="selectedItem"]').textContent = option.textContent;
+    country.setAttribute('aria-expanded', 'false');
+    list.hidden = true;
+    country.dispatchEvent(new Event('change', { bubbles: true }));
+  }));
+</script>
+</body>
+</html>

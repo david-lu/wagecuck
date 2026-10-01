@@ -3,7 +3,7 @@
   if (globalThis.__wcInputFiller) return;
   globalThis.__wcInputFiller = true;
 
-  const SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]';
+  const SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"], [role="combobox"], [role="radio"], [role="checkbox"], [role="switch"]';
   const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox', 'radio', 'file']);
   const records = new Map();
   const highlighted = new Map();
@@ -134,12 +134,12 @@
   }
 
   function readValue(field) {
-    if (isReactSelect(field)) return comboboxShell(field).querySelector('.select__single-value')?.textContent?.trim() || '';
+    if (isSupportedCombobox(field)) return comboboxSelectedText(field) || field.value || field.getAttribute('aria-valuetext') || '';
     if (field instanceof HTMLInputElement && field.type === 'file') return field.files?.length || 0;
     const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
-    if (checkbox) return JSON.stringify(checkbox.options.filter(option => option.element.checked).map(option => option.value));
-    if (field instanceof HTMLInputElement && field.type === 'checkbox') return field.checked;
-    if (field instanceof HTMLInputElement && field.type === 'radio') return globalThis.WCFieldContext.radioGroup(field).find(option => option.checked)?.value || '';
+    if (checkbox) return JSON.stringify(checkbox.options.filter(option => globalThis.WCFieldContext.choiceChecked(option.element)).map(option => option.value));
+    if (globalThis.WCFieldContext.choiceKind(field) === 'checkbox') return globalThis.WCFieldContext.choiceChecked(field);
+    if (globalThis.WCFieldContext.choiceKind(field) === 'radio') return globalThis.WCFieldContext.radioChoices(field).find(option => globalThis.WCFieldContext.choiceChecked(option.element))?.value || '';
     return 'value' in field ? field.value : field.innerText;
   }
 
@@ -151,8 +151,8 @@
   }
 
   function selectableOption(field, value) {
-    if (isReactSelect(field)) return (comboboxOptions.get(field) || []).some(option => option.value === value);
-    if (field instanceof HTMLInputElement && field.type === 'radio') return globalThis.WCFieldContext.radioOptions(field).some(option => option.value === value);
+    if (isSupportedCombobox(field)) return (comboboxOptions.get(field) || []).some(option => option.value === value);
+    if (globalThis.WCFieldContext.choiceKind(field) === 'radio') return globalThis.WCFieldContext.radioChoices(field).some(option => option.value === value);
     return field instanceof HTMLSelectElement && [...field.options].some(option => option.value === value && value.trim() && !option.disabled && !option.hidden && !option.closest('optgroup[disabled]'));
   }
 
@@ -162,8 +162,8 @@
       const values = new Set(checkbox.options.map(option => option.value));
       return Array.isArray(answer) && answer.length <= values.size && new Set(answer).size === answer.length && answer.every(value => typeof value === 'string' && values.has(value)) ? JSON.stringify(checkbox.options.filter(option => answer.includes(option.value)).map(option => option.value)) : null;
     }
-    if (field instanceof HTMLInputElement && field.type === 'checkbox') return typeof answer === 'boolean' ? answer : null;
-    if (field instanceof HTMLSelectElement || isReactSelect(field) || field instanceof HTMLInputElement && field.type === 'radio') return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
+    if (globalThis.WCFieldContext.choiceKind(field) === 'checkbox') return typeof answer === 'boolean' ? answer : null;
+    if (field instanceof HTMLSelectElement || isSupportedCombobox(field) || globalThis.WCFieldContext.choiceKind(field) === 'radio') return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
     if (typeof answer !== 'string') return null;
     const value = answer.trim();
     if (!value || (field.maxLength > 0 && value.length > field.maxLength) || (field.type === 'number' && !Number.isFinite(Number(value)))) return null;
@@ -177,7 +177,7 @@
   function isVisible(field) {
     if (!field.isConnected || field.closest('[hidden], [inert]')) return false;
     const rect = field.getBoundingClientRect();
-    const minSize = field instanceof HTMLInputElement && ['checkbox', 'radio'].includes(field.type) ? 10 : 18;
+    const minSize = ['checkbox', 'radio'].includes(globalThis.WCFieldContext.choiceKind(field)) ? 10 : 18;
     if (rect.width < minSize || rect.height < minSize || (minSize !== 10 && rect.width < 60)) return false;
     for (let node = field; node instanceof Element; node = parentElement(node)) {
       if (node.matches('[hidden], [inert]')) return false;
@@ -200,8 +200,33 @@
     return Boolean(field.id && comboboxShell(field)?.querySelector('.select__control'));
   }
 
+  function isSupportedCombobox(field) {
+    if (field.getAttribute('role') !== 'combobox' || field.querySelector('[role="combobox"]')) return false;
+    const ids = `${field.getAttribute('aria-controls') || ''} ${field.getAttribute('aria-owns') || ''}`.trim();
+    return isReactSelect(field) || Boolean(ids && ids.split(/\s+/).every(id => /^[^\s]+$/.test(id)) && field.getAttribute('aria-haspopup') !== 'grid');
+  }
+
+  function comboboxTrigger(field) {
+    return isReactSelect(field) ? comboboxShell(field).querySelector('.select__control') : field;
+  }
+
+  function comboboxSelectedText(field) {
+    for (let node = field.parentElement, depth = 0; node && depth < 3 && !node.matches('form,body,html'); node = node.parentElement, depth++) {
+      if (node.querySelectorAll('[role="combobox"]').length > 1) break;
+      const selected = node.querySelector('.select__single-value,[class*="singleValue"],[data-automation-id="selectedItem"]');
+      if (selected) return selected.textContent.replace(/\s+/g, ' ').trim();
+    }
+    return '';
+  }
+
   function comboboxList(field) {
-    return field.getRootNode().getElementById?.(`react-select-${field.id}-listbox`) || null;
+    const root = field.getRootNode();
+    const ids = `${field.getAttribute('aria-controls') || ''} ${field.getAttribute('aria-owns') || ''}`.trim().split(/\s+/).filter(Boolean);
+    for (const id of ids) {
+      const list = root.getElementById?.(id) || field.ownerDocument.getElementById(id);
+      if (list?.matches('[role="listbox"]') || list?.querySelector('[role="option"]')) return list;
+    }
+    return isReactSelect(field) ? root.getElementById?.(`react-select-${field.id}-listbox`) || null : null;
   }
 
   function mouseSequence(element) {
@@ -209,19 +234,19 @@
   }
 
   async function waitForComboboxMenu(field) {
-    for (let attempt = 0; attempt < 12; attempt++) {
+    for (let attempt = 0; attempt < 20; attempt++) {
       const list = comboboxList(field);
       if (field.getAttribute('aria-expanded') === 'true' && list?.querySelector('[role="option"]')) return list;
-      await new Promise(resolve => setTimeout(resolve, 25));
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
     return null;
   }
 
   async function discoverComboboxOptions(field) {
-    if (!isReactSelect(field) || !field.isConnected) return [];
+    if (!isSupportedCombobox(field) || !field.isConnected) return [];
     comboboxOptions.delete(field);
     const opened = field.getAttribute('aria-expanded') !== 'true';
-    if (opened) mouseSequence(comboboxShell(field).querySelector('.select__control'));
+    if (opened) mouseSequence(comboboxTrigger(field));
     try {
       const list = await waitForComboboxMenu(field);
       if (!list) return [];
@@ -239,11 +264,13 @@
   }
 
   function visualTarget(field) {
-    if (isReactSelect(field)) return comboboxShell(field).querySelector('.select__control');
+    if (isSupportedCombobox(field)) return comboboxTrigger(field);
     if (field.type === 'file') return resumeVisualTarget(field) || field;
     const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
     if (checkbox) return checkbox.container;
-    return field.type === 'radio' ? globalThis.WCFieldContext.radioDetails(field).container || field : field;
+    if (globalThis.WCFieldContext.choiceKind(field) === 'radio') return globalThis.WCFieldContext.radioDetails(field).container || globalThis.WCFieldContext.visibleChoiceLabel(field) || field;
+    if (globalThis.WCFieldContext.choiceKind(field) === 'checkbox') return isVisible(field) ? field : globalThis.WCFieldContext.visibleChoiceLabel(field) || field;
+    return field;
   }
 
   function highlightVisual(visual) {
@@ -355,31 +382,33 @@
   }
 
   function isEligible(field) {
-    if (field.getRootNode() === shadow || field.disabled || field.matches(':disabled') || field.readOnly || field.getAttribute('aria-disabled') === 'true' || field.getAttribute('aria-readonly') === 'true') return false;
-    if (field.tagName === 'INPUT' && !TYPES.has(field.type)) return false;
+    const choiceKind = globalThis.WCFieldContext.choiceKind(field);
+    if (field.getRootNode() === shadow || field.disabled || field.matches(':disabled') || (field.readOnly && !isSupportedCombobox(field)) || field.getAttribute('aria-disabled') === 'true' || (field.getAttribute('aria-readonly') === 'true' && !isSupportedCombobox(field))) return false;
+    if (field.tagName === 'INPUT' && !TYPES.has(field.type) && !choiceKind && !isSupportedCombobox(field)) return false;
+    if (choiceKind && field.querySelector(`input[type="${choiceKind}"]`)) return false;
     if (field.type === 'file' && !isResumeField(field)) return false;
-    if (field.matches('[role="combobox"],[aria-haspopup="listbox"]') && !isReactSelect(field)) return false;
+    if (field.matches('[role="combobox"],[aria-haspopup="listbox"]') && !isSupportedCombobox(field)) return false;
     if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 100 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
-    if (field.type === 'radio') {
-      const options = globalThis.WCFieldContext.radioOptions(field);
-      if (options.length < 2 || options.length > 100 || new Set(options.map(option => option.value)).size !== options.length || options[0] !== field || !globalThis.WCFieldContext.radioDetails(field).label) return false;
+    if (choiceKind === 'radio') {
+      const options = globalThis.WCFieldContext.radioChoices(field);
+      if (options.length < 2 || options.length > 100 || new Set(options.map(option => option.value)).size !== options.length || options[0].element !== field || !globalThis.WCFieldContext.radioDetails(field).label) return false;
     }
     const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
     if (checkbox && checkbox.options[0].element !== field) return false;
-    if (field.tagName !== 'SELECT' && !['checkbox', 'radio', 'file'].includes(field.type) && field.maxLength === 0) return false;
-    if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable) return false;
+    if (field.tagName !== 'SELECT' && !choiceKind && field.type !== 'file' && field.maxLength === 0 && !isSupportedCombobox(field)) return false;
+    if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable && !choiceKind && !isSupportedCombobox(field)) return false;
     if (field.isContentEditable && parentElement(field)?.isContentEditable) return false;
     if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field) || globalThis.WCFieldContext.isConsentField(field)) return false;
-    return field.type === 'file' ? Boolean(resumeVisualTarget(field)) : isReactSelect(field) ? isVisible(visualTarget(field)) : isVisible(field);
+    return field.type === 'file' ? Boolean(resumeVisualTarget(field)) : isSupportedCombobox(field) ? isVisible(visualTarget(field)) : choiceKind ? globalThis.WCFieldContext.choiceAvailable(field) && isVisible(visualTarget(field)) : isVisible(field);
   }
 
   function fieldInfo(field) {
     const info = globalThis.WCFieldContext.fieldInfo(field);
-    if (isReactSelect(field)) {
+    if (isSupportedCombobox(field)) {
       info.type = 'select';
       info.options = comboboxOptions.get(field) || [];
       info.currentValue = readValue(field);
-      info.placeholder = comboboxShell(field).querySelector('.select__placeholder')?.textContent?.trim() || '';
+      info.placeholder = comboboxShell(field)?.querySelector('.select__placeholder')?.textContent?.trim() || field.getAttribute('placeholder') || '';
     }
     return info;
   }
@@ -555,13 +584,13 @@
     for (const record of records.values()) {
       const { field, visual, button } = record;
       const rect = visual.getBoundingClientRect();
-      const choice = field.tagName === 'SELECT' || isReactSelect(field) || ['checkbox', 'radio', 'file'].includes(field.type);
+      const choice = field.tagName === 'SELECT' || isSupportedCombobox(field) || ['checkbox', 'radio'].includes(globalThis.WCFieldContext.choiceKind(field)) || field.type === 'file';
       const compact = !choice && (rect.width < 240 || rect.height < 36);
       const width = field.type === 'file' ? 100 : compact ? 45 : 80;
       const height = compact ? 26 : 28;
       const x = choice ? rect.right + 8 : rect.right - width - 4;
       // Straddle the top border on roomy fields so the button does not cover text.
-      let y = field.type === 'radio' || globalThis.WCFieldContext.checkboxDetails(field) ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
+      let y = globalThis.WCFieldContext.choiceKind(field) === 'radio' || globalThis.WCFieldContext.checkboxDetails(field) ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
       button.dataset.compact = String(compact);
       if (!button.hasAttribute('aria-busy')) {
         if (record.undo && readValue(field) !== record.undo.answer) clearUndo(record);
@@ -629,10 +658,19 @@
     return { element, title: titleNode, detail: description };
   }
 
+  function setChoiceChecked(field, checked) {
+    if (globalThis.WCFieldContext.choiceChecked(field) === checked) return;
+    if (field instanceof HTMLInputElement && ['checkbox', 'radio'].includes(field.type)) {
+      field.focus({ preventScroll: true });
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(field, checked);
+      field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    } else field.click();
+  }
+
   async function writeValue(field, answer) {
-    if (isReactSelect(field)) {
-      const shell = comboboxShell(field);
-      if (field.getAttribute('aria-expanded') !== 'true') mouseSequence(shell.querySelector('.select__control'));
+    if (isSupportedCombobox(field)) {
+      if (field.getAttribute('aria-expanded') !== 'true') mouseSequence(comboboxTrigger(field));
       const list = await waitForComboboxMenu(field);
       const option = [...(list?.querySelectorAll('[role="option"]') || [])].find(item => item.getAttribute('aria-disabled') !== 'true' && item.textContent.replace(/\s+/g, ' ').trim() === answer);
       if (!option) { field.blur(); throw new Error('The dropdown option is no longer available.'); }
@@ -647,22 +685,34 @@
       for (const option of checkbox.options) {
         const target = option.element;
         const checked = selected.has(option.value);
-        if (target.checked === checked) continue;
-        target.focus({ preventScroll: true });
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(target, checked);
-        target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-        target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+        setChoiceChecked(target, checked);
       }
       return;
     }
+    if (globalThis.WCFieldContext.choiceKind(field) === 'radio') {
+      const choices = globalThis.WCFieldContext.radioChoices(field);
+      const selected = choices.find(option => option.value === answer)?.element;
+      if (answer && !selected) throw new Error('The radio option is no longer available.');
+      if (selected && !(selected instanceof HTMLInputElement && selected.type === 'radio')) {
+        setChoiceChecked(selected, true);
+        if (choices.some(option => option.element !== selected && globalThis.WCFieldContext.choiceChecked(option.element))) throw new Error('The page kept more than one radio option selected.');
+        return;
+      }
+      for (const option of choices) {
+        const target = option.element;
+        if (target === selected || !globalThis.WCFieldContext.choiceChecked(target)) continue;
+        setChoiceChecked(target, false);
+      }
+      if (selected) setChoiceChecked(selected, true);
+      if (choices.some(option => option.element !== selected && globalThis.WCFieldContext.choiceChecked(option.element))) throw new Error('The page kept more than one radio option selected.');
+      return;
+    }
+    if (globalThis.WCFieldContext.choiceKind(field) === 'checkbox' && !(field instanceof HTMLInputElement && field.type === 'checkbox')) {
+      setChoiceChecked(field, answer);
+      return;
+    }
     let target = field;
-    if (field instanceof HTMLInputElement && field.type === 'radio') {
-      const group = globalThis.WCFieldContext.radioGroup(field);
-      target = answer ? group.find(option => option.value === answer) : group.find(option => option.checked);
-      if (!target) return;
-      target.focus({ preventScroll: true });
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(target, Boolean(answer));
-    } else if (field instanceof HTMLInputElement && field.type === 'checkbox') {
+    if (field instanceof HTMLInputElement && field.type === 'checkbox') {
       field.focus({ preventScroll: true });
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(field, answer);
     } else if (field instanceof HTMLSelectElement) {
@@ -766,7 +816,7 @@
       return { status: 'failed', code: 'BUSY' };
     }
     const field = record.field;
-    if (isReactSelect(field)) {
+    if (isSupportedCombobox(field)) {
       record.starting = true;
       try {
         if (!(await discoverComboboxOptions(field)).length) {
@@ -796,7 +846,7 @@
     }
     let edited = false;
     let writing = false;
-    const editTargets = field.type === 'radio' ? globalThis.WCFieldContext.radioGroup(field) : globalThis.WCFieldContext.checkboxDetails(field)?.options.map(option => option.element) || [field];
+    const editTargets = globalThis.WCFieldContext.choiceKind(field) === 'radio' ? globalThis.WCFieldContext.radioGroup(field) : globalThis.WCFieldContext.checkboxDetails(field)?.options.map(option => option.element) || [field];
     editTargets.forEach(target => target.addEventListener('input', onEdit));
     function onEdit() { edited = true; }
     record.button.setAttribute('aria-busy', 'true');
@@ -886,7 +936,7 @@
         toast('Answer does not fit this field', 'The generated choice or format is no longer available. Scan again and retry.', 'error', [], 14000);
         return;
       }
-      if ((['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT' || isReactSelect(field)) && answer === original) {
+      if ((globalThis.WCFieldContext.choiceKind(field) || field.tagName === 'SELECT' || isSupportedCombobox(field)) && answer === original) {
         settle({ status: 'skipped' });
         return;
       }
@@ -894,12 +944,12 @@
         await writeValue(field, answer);
         if (readValue(field) !== answer) throw new Error('The website did not keep the answer.');
         if (field.validity && !field.validity.valid) {
-          if (!isReactSelect(field)) await writeValue(field, original);
+          if (!isSupportedCombobox(field)) await writeValue(field, original);
           throw new Error('The answer did not meet the field’s format. Your previous text was restored.');
         }
         logUI('ui.filled', requestId);
         settle({ status: 'filled' });
-        if (!isReactSelect(field)) {
+        if (!isSupportedCombobox(field)) {
           const undo = { original, answer, requestId };
           undo.timer = setTimeout(() => { if (record.undo === undo) { clearUndo(record); schedulePosition(); } }, 25000);
           record.undo = undo;
@@ -926,14 +976,14 @@
     scan();
     let unavailableChoices = 0;
     for (const record of [...records.values()]) {
-      if (!isReactSelect(record.field) || record.active || record.starting || !isEligible(record.field) || hasAnswer(record.field)) continue;
+      if (!isSupportedCombobox(record.field) || record.active || record.starting || !isEligible(record.field) || hasAnswer(record.field)) continue;
       try {
         if (!(await discoverComboboxOptions(record.field)).length) unavailableChoices++;
       } catch { unavailableChoices++; }
     }
     return {
       scanned: true, enabled, page: collectPage(), unavailableChoices,
-      targets: [...records.values()].filter(record => record.field.type !== 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field) && (!isReactSelect(record.field) || (comboboxOptions.get(record.field) || []).length))
+      targets: [...records.values()].filter(record => record.field.type !== 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field) && (!isSupportedCombobox(record.field) || (comboboxOptions.get(record.field) || []).length))
         .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
       uploadTargets: [...records.values()].filter(record => record.field.type === 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field))
         .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
@@ -1002,8 +1052,8 @@
         result.firstError ||= 'An answer did not match its field or available choices.';
         continue;
       }
-      if (answer === readValue(field) && (['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT' || isReactSelect(field))) {
-        if (field.type === 'checkbox' && answer === false) result.unchecked++;
+      if (answer === readValue(field) && (globalThis.WCFieldContext.choiceKind(field) || field.tagName === 'SELECT' || isSupportedCombobox(field))) {
+        if (globalThis.WCFieldContext.choiceKind(field) === 'checkbox' && answer === false) result.unchecked++;
         else result.skipped++;
         continue;
       }
@@ -1014,7 +1064,7 @@
         result.filled++;
         logUI('ui.filled', batch.id);
       } catch {
-        if (!isReactSelect(field)) try { await writeValue(field, original); } catch { /* The page may have removed the field. */ }
+        if (!isSupportedCombobox(field)) try { await writeValue(field, original); } catch { /* The page may have removed the field. */ }
         result.failed++;
         result.firstError ||= 'The page rejected an answer.';
         logUI('ui.insert_failed', batch.id, 'INSERT_FAILED');
