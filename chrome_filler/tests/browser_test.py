@@ -107,7 +107,7 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
       const context = JSON.parse(contextText);
       const target = context.targetField || {};
       const choice = (field, batch = false) => field.type === 'checkbox_group' ? (field.options || []).filter(option => /accessible interfaces|design systems|I utilize Terraform daily|I prefer not to answer/i.test(option.label)).map(option => option.value)
-        : field.type === 'checkbox' ? /accessible interfaces|open to remote work|open to hybrid work|open to relocation/i.test(field.label || '')
+        : field.type === 'checkbox' ? /accessible interfaces|open to remote work|open to hybrid work|open to relocation|I agree to the application terms/i.test(field.label || '')
         : field.type === 'select' ? (field.options || []).find(option => option.value === self.__qaAnswer)?.value || (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
         : field.type === 'radio' ? (field.options || []).find(option => option.value === 'Prefer not to answer')?.value || field.options?.[0]?.value || ''
         : field.type === 'number' && batch ? 5 : field.type === 'email' ? self.__qaEmail : self.__qaAnswer;
@@ -273,7 +273,8 @@ class BrowserSuite:
         assert self.page.locator("#work-interests").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
         for label in ("Accessible interfaces", "Backend systems"):
             expect(self.button(label)).to_have_count(0)
-        for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Consent checkbox", "Custom focus dropdown", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
+        expect(self.button("I agree to the application terms")).to_have_count(1)
+        for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Custom focus dropdown", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
             expect(self.button(label)).to_have_count(0)
         expect(self.resume_button("Resume file")).to_have_count(1)
         expect(self.resume_button("Upload CV")).to_have_count(1)
@@ -343,6 +344,56 @@ class BrowserSuite:
             assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(0, 0, 255)"
         finally:
             popup.close()
+
+    def panel_stays_above_page_overlays(self):
+        self.seed()
+        self.page.goto(self.url)
+        scan = self.page.locator("#wc-ai-root .wc-scan-button")
+        expect(scan).to_be_visible()
+        assert self.page.locator("#wc-ai-root").evaluate("node => node.matches(':popover-open')")
+        assert self.page.evaluate("""() => {
+          const host = document.querySelector('#wc-ai-root');
+          const rect = host.shadowRoot.querySelector('.wc-control-panel').getBoundingClientRect();
+          const front = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return front === host || front?.getRootNode() === host.shadowRoot;
+        }""")
+        self.page.evaluate("""() => {
+          const cover = document.createElement('div');
+          cover.id = 'page-cover';
+          cover.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#777;';
+          document.body.append(cover);
+        }""")
+        scan.click()
+        expect(scan).to_have_text("Scan again")
+        self.page.evaluate("""() => {
+          const dialog = document.createElement('dialog');
+          dialog.id = 'page-dialog';
+          dialog.textContent = 'Application modal';
+          dialog.style.cssText = 'width:100vw;height:100vh;max-width:none;max-height:none;margin:0;';
+          document.body.append(dialog);
+          dialog.showModal();
+        }""")
+        scan.click()
+        expect(scan).to_have_text("Scan again")
+        self.page.evaluate("""() => {
+          document.querySelector('#page-dialog').close();
+          const popover = document.createElement('div');
+          popover.id = 'page-popover';
+          popover.popover = 'manual';
+          popover.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;margin:0;background:#666;';
+          document.body.append(popover);
+          popover.showPopover();
+        }""")
+        scan.click()
+        expect(scan).to_have_text("Scan again")
+        self.page.evaluate("""() => {
+          document.querySelector('#page-popover').remove();
+          document.querySelector('#wc-ai-root').remove();
+        }""")
+        expect(scan).to_be_visible()
+        expect(scan).to_have_text("Scan again")
+        scan.click()
+        expect(scan).to_have_text("Scan again")
 
     def direct_highlight_restores_page_styles(self):
         self.seed()
@@ -458,7 +509,7 @@ class BrowserSuite:
             expect(self.page.locator('input[name="interview-time"][value="morning"]')).to_be_checked()
             expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("Add a PDF resume")
             assert self.page.locator("#upload").evaluate("node => node.files.length") == 0
-            assert self.page.locator("#consent").is_checked() is False
+            expect(self.page.locator("#consent")).to_be_checked()
             assert self.page.evaluate("window.fixtureSubmitted") is False
             requests = self.worker.evaluate("self.__qaRequests")
             assert len(requests) == 1, "FILL ALL must make one API request across the page and frames"
@@ -473,7 +524,7 @@ class BrowserSuite:
             assert any(field["type"] == "select" for field in context["targetFields"])
             assert any(field["label"] == "Preferred engineering area" and [option["value"] for option in field["options"]] == ["frontend", "design-systems", "backend"] for field in context["targetFields"])
             assert len([field for field in context["targetFields"] if field["type"] == "radio" and field["label"] == "What is your age range?"]) == 1
-            assert all(field["label"] != "Consent checkbox" for field in context["targetFields"])
+            assert any(field["label"] == "I agree to the application terms" and field["type"] == "checkbox" for field in context["targetFields"])
             assert all("answer" in entry["properties"] for entry in schema["properties"].values())
             expect(do_all).to_be_enabled()
             self.page.locator("#motivation").fill("")
@@ -563,8 +614,9 @@ class BrowserSuite:
         assert self.page.locator("#greenhouse-cover").evaluate("node => node.files.length") == 0
         assert self.page.evaluate("window.fixtureSubmitted") is False
 
-    def agreement_dropdowns_stay_manual(self):
+    def agreement_dropdowns_fill_and_certifications_stay_manual(self):
         self.seed()
+        self.mock(delay=25)
         self.page.goto(self.url)
         self.page.evaluate("""() => {
           const form = document.querySelector('#application');
@@ -573,16 +625,22 @@ class BrowserSuite:
             <select id="ai-policy"><option value="">Select...</option><option value="yes">Yes</option><option value="no">No</option></select>
             <label for="arbitration">Agreement to Arbitrate</label>
             <select id="arbitration"><option value="">Select...</option><option value="agree">I agree</option></select>
+            <label for="certification">I certify my application is accurate</label>
+            <select id="certification"><option value="">Select...</option><option value="yes">Yes</option></select>
             <label for="work-location">Are you open to working in-person?</label>
             <select id="work-location"><option value="">Select...</option><option value="yes">Yes</option><option value="no">No</option></select>
           `);
         }""")
         self.page.locator("#wc-ai-root .wc-scan-button").click()
-        expect(self.button("AI Policy for Application")).to_have_count(0)
-        expect(self.button("Agreement to Arbitrate")).to_have_count(0)
+        expect(self.button("AI Policy for Application")).to_have_count(1)
+        expect(self.button("Agreement to Arbitrate")).to_have_count(1)
+        expect(self.button("I certify my application is accurate")).to_have_count(0)
         expect(self.button("Are you open to working in-person?")).to_have_count(1)
-        assert self.page.locator("#ai-policy").evaluate("node => getComputedStyle(node).outlineStyle") != "solid"
-        assert self.page.locator("#arbitration").evaluate("node => getComputedStyle(node).outlineStyle") != "solid"
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(self.page.locator("#ai-policy")).to_have_value("yes")
+        expect(self.page.locator("#arbitration")).to_have_value("agree")
+        expect(self.page.locator("#certification")).to_have_value("")
+        assert self.page.evaluate("window.fixtureSubmitted") is False
 
     def resume_upload_without_pdf(self):
         self.fresh()
@@ -1327,7 +1385,7 @@ class BrowserSuite:
             if not popup.is_closed():
                 popup.close()
 
-    def popup_guided_setup_and_autosave(self):
+    def popup_guided_setup_and_manual_save(self):
         self.fresh(apiKey="", profile="", resumeText="", resumeFile=None)
         popup = self.context.new_page()
         popup.set_viewport_size({"width":400,"height":600})
@@ -1341,6 +1399,12 @@ class BrowserSuite:
             popup.locator("#setup-action").click()
             expect(popup.locator("#panel-connection")).to_be_visible()
             popup.locator("#api-key").fill(KEY)
+            popup.wait_for_timeout(850)
+            assert self.stored_settings()["apiKey"] == ""
+            popup.locator("#back-connection").click()
+            expect(popup.locator("#setup-action")).to_have_text("AI settings")
+            popup.locator("#open-connection").click()
+            popup.locator("#save-button").click()
             self.wait_stored("apiKey", KEY)
             popup.locator("#back-connection").click()
             expect(popup.locator("#setup-action")).to_have_text("Edit profile")
@@ -1348,6 +1412,12 @@ class BrowserSuite:
             expect(popup.locator("#panel-profile")).to_be_visible()
             profile = "Jordan Example. I build accessible robotics tools with operations teams."
             popup.locator("#profile").fill(profile)
+            popup.wait_for_timeout(850)
+            assert self.stored_settings()["profile"] == ""
+            popup.locator("#back-profile").click()
+            expect(popup.locator("#setup-banner")).to_be_visible()
+            popup.locator("#open-profile").click()
+            popup.locator("#save-button").click()
             self.wait_stored("profile", profile)
             popup.locator("#back-profile").click()
             expect(popup.locator("#setup-banner")).to_be_hidden()
@@ -1363,7 +1433,7 @@ class BrowserSuite:
             if not popup.is_closed():
                 popup.close()
 
-    def popup_draft_pause_and_tone_preferences(self):
+    def popup_unsaved_changes_and_tone_preferences(self):
         self.fresh()
         popup = self.context.new_page()
         popup.set_viewport_size({"width":400,"height":600})
@@ -1372,16 +1442,16 @@ class BrowserSuite:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
             popup.locator("#open-profile").click()
             expect(popup.locator("#profile")).to_have_value(SETTINGS["profile"])
-            draft = "Jordan Example. This change must survive closing the popup immediately."
+            draft = "Jordan Example. This change should be discarded when the popup closes."
             popup.locator("#profile").fill(draft)
-            popup.wait_for_timeout(120)
+            popup.wait_for_timeout(850)
+            assert self.stored_settings()["profile"] == SETTINGS["profile"]
             popup.close()
             popup = self.context.new_page()
             popup.set_viewport_size({"width":400,"height":600})
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
             popup.locator("#open-profile").click()
-            expect(popup.locator("#profile")).to_have_value(draft)
-            self.wait_stored("profile", draft)
+            expect(popup.locator("#profile")).to_have_value(SETTINGS["profile"])
             popup.locator("#back-profile").click()
             popup.locator("#open-connection").click()
             popup.locator("#model").fill("")
@@ -1394,6 +1464,22 @@ class BrowserSuite:
             expect(self.page.locator(".wc-fill-button")).to_have_count(0)
             expect(popup.locator("#profile")).to_have_value(second)
             assert self.stored_settings()["model"] == "gpt-5-mini", "Pause saved an invalid model"
+            assert self.stored_settings()["profile"] == SETTINGS["profile"], "Pause saved an unsaved profile"
+            popup.locator("#save-button").click()
+            self.wait_stored("profile", second)
+            assert self.stored_settings()["model"] == "gpt-5-mini", "Save profile saved an invalid model"
+            popup.locator("#back-profile").click()
+            popup.locator("#open-connection").click()
+            popup.locator("#model").fill("gpt-4.1-mini")
+            popup.locator("#back-connection").click()
+            popup.locator("#open-profile").click()
+            unsaved = "Jordan Example. This profile edit should not be saved with AI settings."
+            popup.locator("#profile").fill(unsaved)
+            popup.locator("#back-profile").click()
+            popup.locator("#open-connection").click()
+            popup.locator("#save-button").click()
+            self.wait_stored("model", "gpt-4.1-mini")
+            assert self.stored_settings()["profile"] == second
             popup.wait_for_timeout(150)
             popup.close()
             popup = self.context.new_page()
@@ -1404,9 +1490,7 @@ class BrowserSuite:
             expect(popup.locator("#profile")).to_have_value(second)
             popup.locator("#back-profile").click()
             popup.locator("#open-connection").click()
-            expect(popup.locator("#model")).to_have_value("")
-            popup.locator("#model").fill("gpt-5-mini")
-            self.wait_stored("profile", second)
+            expect(popup.locator("#model-preset")).to_have_value("gpt-4.1-mini")
             popup.locator("#back-connection").click()
             popup.locator("#open-profile").click()
             preferences = "Mention my accessibility work. Avoid sales language."
@@ -1421,6 +1505,9 @@ class BrowserSuite:
             assert "Mention my accessibility work." in professional
             assert "Avoid sales language." in professional
             assert re.search("professional", professional, re.I)
+            popup.wait_for_timeout(850)
+            assert self.stored_settings()["writingInstructions"] == SETTINGS["writingInstructions"]
+            popup.locator("#save-button").click()
             self.wait_stored("writingInstructions", professional)
             self.screenshot("popup-pause-and-preferences", popup)
         finally:
@@ -1442,13 +1529,13 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "popup_scan_updates_page_count", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "agreement_dropdowns_stay_manual", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "ashby_live_markup_and_control_panel", "lever_radio_group",
+                "manual_scan_gate", "panel_stays_above_page_overlays", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "popup_scan_updates_page_count", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "agreement_dropdowns_fill_and_certifications_stay_manual", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "ashby_live_markup_and_control_panel", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",
                 "popup_import_pdf_and_keyboard",
                 "label_combinations", "bounded_field_context",
-                "popup_guided_setup_and_autosave", "popup_draft_pause_and_tone_preferences",
+                "popup_guided_setup_and_manual_save", "popup_unsaved_changes_and_tone_preferences",
             )
             for name in (sys.argv[1:] or names):
                 suite.run(name, getattr(suite, name))

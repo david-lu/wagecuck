@@ -6,20 +6,13 @@ const CASUAL = DEFAULT_SETTINGS.writingInstructions;
 const MAX_TEXT_BYTES = 1024 * 1024;
 const MAX_TEXT_LENGTH = 100000;
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
-const DRAFT_KEY = 'wcPopupDraft';
-const AUTOSAVE_MS = 650;
 const PROFILE_FACT_KEYS = Object.keys(EMPTY_PROFILE_FACTS);
 let settings = { ...DEFAULT_SETTINGS };
 let resumeFile = null;
 let loaded = false;
 let importing = false;
-let revision = 0;
-let autosaveTimer;
 let writeQueue = Promise.resolve();
-let draftWrite = Promise.resolve();
 let pendingWrites = 0;
-let lastQueuedRevision = -1;
-let draftStored = false;
 let lastError = '';
 let pageTabId = null;
 let customModel = '';
@@ -70,16 +63,20 @@ function sameResume(a, b) {
   return ['name', 'type', 'size', 'dataUrl'].every((key) => a[key] === b[key]);
 }
 
-function sameSettings(a, b) {
+function sameProfile(a, b) {
   const comparable = (value) => typeof value === 'string' ? value.trim() : value;
-  return ['enabled', 'apiKey', 'model', 'profile', 'writingInstructions', 'resumeText', 'debug'].every((key) => comparable(a[key]) === comparable(b[key])) &&
+  return ['profile', 'writingInstructions', 'resumeText'].every((key) => comparable(a[key]) === comparable(b[key])) &&
     PROFILE_FACT_KEYS.every(key => comparable(a.profileFacts?.[key] || '') === comparable(b.profileFacts?.[key] || '')) && sameResume(a.resumeFile, b.resumeFile);
+}
+
+function sameConnection(a, b) {
+  return ['apiKey', 'model', 'debug'].every(key => a[key] === b[key]);
 }
 
 function updateSetup() {
   const banner = $('setup-banner');
-  const connected = Boolean($('api-key').value.trim());
-  const hasBackground = Boolean($('profile').value.trim() || $('resume-text').value.trim() || resumeFile || PROFILE_FACT_KEYS.some(key => $(`fact-${key}`).value.trim()));
+  const connected = Boolean(settings.apiKey);
+  const hasBackground = Boolean(settings.profile || settings.resumeText || settings.resumeFile || PROFILE_FACT_KEYS.some(key => settings.profileFacts?.[key]));
   banner.classList.toggle('ready', connected && hasBackground);
   banner.hidden = connected && hasBackground;
   $('setup-title').textContent = connected ? 'Make your answers personal' : 'Connect AI to start';
@@ -94,47 +91,17 @@ function updateFooter() {
   if (!loaded) return;
   if (lastError) setStatus('save-status', lastError, 'error');
   else if (pendingWrites) setStatus('save-status', 'Saving…');
-  else if (!sameSettings(collectSettings(), settings)) setStatus('save-status', 'Unsaved changes');
+  else if ($('panel-profile').hidden ? !sameConnection(collectSettings(), settings) : !sameProfile(collectSettings(), settings)) setStatus('save-status', 'Unsaved changes');
   else setStatus('save-status', 'Saved', 'success');
-}
-
-function persistDraft() {
-  if (!loaded || !chrome.storage.session) return;
-  const currentRevision = revision;
-  const draft = collectSettings();
-  // The saved PDF can be ~6.7 MB. Do not copy it on each keystroke.
-  const resumeFileFromSaved = sameResume(draft.resumeFile, settings.resumeFile);
-  draftStored = false;
-  draftWrite = chrome.storage.session.set({ [DRAFT_KEY]: {
-    version: 1, updatedAt: Date.now(), resumeFileFromSaved,
-    settings: { ...draft, resumeFile: resumeFileFromSaved ? null : draft.resumeFile },
-  } }).then(() => { if (revision === currentRevision) draftStored = true; }, () => { draftStored = false; });
-}
-
-async function clearDraftIfSaved() {
-  await draftWrite;
-  if (!sameSettings(collectSettings(), settings) || !chrome.storage.session) return;
-  try { await chrome.storage.session.remove(DRAFT_KEY); draftStored = false; } catch { /* A redundant saved draft is harmless. */ }
-}
-
-function scheduleAutosave() {
-  clearTimeout(autosaveTimer);
-  if (loaded && !importing && !sameSettings(collectSettings(), settings)) {
-    autosaveTimer = setTimeout(() => flushSettings(), AUTOSAVE_MS);
-  }
 }
 
 function markChanged() {
   updateToneChips();
   renderResume();
   if (!loaded) return;
-  revision += 1;
   lastError = '';
   if (/^[a-zA-Z0-9._:-]{1,120}$/.test(selectedModel())) $('model').removeAttribute('aria-invalid');
-  persistDraft();
-  updateSetup();
   updateFooter();
-  scheduleAutosave();
 }
 
 function renderResume() {
@@ -166,6 +133,7 @@ function showScreen(name, focus = false) {
     $('save-label').textContent = name === 'profile' ? 'Save profile' : 'Save settings';
     $(`panel-${name}`).querySelector('.form-scroll').scrollTop = 0;
   }
+  updateFooter();
   if (focus) (home ? $('open-profile') : $(`back-${name}`)).focus();
 }
 
@@ -225,11 +193,12 @@ async function refreshPage(rescan = false) {
   }
 }
 
-function validateDraft(draft, manual) {
+function validateConnection(draft) {
   if (!/^[a-zA-Z0-9._:-]{1,120}$/.test(draft.model)) {
     $('model').setAttribute('aria-invalid', 'true');
     lastError = draft.model ? 'Use a valid OpenAI model name.' : 'Enter an OpenAI model name.';
-    if (manual) { showScreen('connection'); $('model').focus(); }
+    showScreen('connection');
+    $('model').focus();
     updateFooter();
     return false;
   }
@@ -237,7 +206,8 @@ function validateDraft(draft, manual) {
   if (draft.apiKey && (draft.apiKey.length < 8 || /\s/.test(draft.apiKey))) {
     $('api-key').setAttribute('aria-invalid', 'true');
     lastError = 'Paste the full API key without spaces.';
-    if (manual) { showScreen('connection'); $('api-key').focus(); }
+    showScreen('connection');
+    $('api-key').focus();
     updateFooter();
     return false;
   }
@@ -251,8 +221,7 @@ function enqueueWrite(operation) {
   writeQueue = writeQueue.then(async () => {
     try { await operation(); }
     catch {
-      lastError = draftStored ? 'Could not save. Draft kept — try Save.' : 'Not saved. Try Save before closing.';
-      lastQueuedRevision = -1;
+      lastError = 'Could not save. Try Save again.';
     } finally {
       pendingWrites -= 1;
       updateSetup();
@@ -262,41 +231,33 @@ function enqueueWrite(operation) {
   return writeQueue;
 }
 
-function flushSettings({ manual = false } = {}) {
-  clearTimeout(autosaveTimer);
+function flushSettings(section) {
   if (!loaded || importing) return Promise.resolve();
   const draft = collectSettings();
-  if (!validateDraft(draft, manual)) return Promise.resolve();
-  if (sameSettings(draft, settings)) { updateFooter(); return clearDraftIfSaved(); }
-  if (!manual && lastQueuedRevision === revision) return writeQueue;
-  const capturedRevision = revision;
-  lastQueuedRevision = capturedRevision;
+  if (section === 'connection' && !validateConnection(draft)) return Promise.resolve();
+  if (section === 'profile' ? sameProfile(draft, settings) : sameConnection(draft, settings)) { updateFooter(); return Promise.resolve(); }
   lastError = '';
   return enqueueWrite(async () => {
-    settings = await saveSettings(draft);
-    // Never render a saved snapshot over newer edits made during the write.
-    if (revision === capturedRevision && sameSettings(collectSettings(), settings)) await clearDraftIfSaved();
-    else { persistDraft(); scheduleAutosave(); }
+    const latest = await loadSettings();
+    settings = await saveSettings(section === 'profile'
+      ? { ...latest, profile: draft.profile, profileFacts: draft.profileFacts, writingInstructions: draft.writingInstructions, resumeText: draft.resumeText, resumeFile: draft.resumeFile }
+      : { ...latest, apiKey: draft.apiKey, model: draft.model, debug: draft.debug });
     void refreshPage();
   });
 }
 
 function save(event) {
   event.preventDefault();
-  void flushSettings({ manual: true });
+  void flushSettings($('panel-profile').hidden ? 'connection' : 'profile');
 }
 
 function persistEnabled() {
   if (!loaded) return;
   const enabled = $('enable-toggle').checked;
-  revision += 1;
   lastError = '';
-  persistDraft();
   void enqueueWrite(async () => {
     const stored = await loadSettings();
     settings = await saveSettings({ ...stored, enabled });
-    if (sameSettings(collectSettings(), settings)) await clearDraftIfSaved();
-    else persistDraft();
     void refreshPage();
   });
 }
@@ -325,13 +286,11 @@ function readDataUrl(file) {
 
 function setImporting(value) {
   importing = value;
-  if (value) clearTimeout(autosaveTimer);
   $('profile-import').disabled = value;
   $('resume-upload').disabled = value;
   $('profile-import-button').disabled = value;
   $('resume-upload-button').disabled = value;
   updateFooter();
-  if (!value) scheduleAutosave();
 }
 
 async function uploadResume(event) {
@@ -351,7 +310,7 @@ async function uploadResume(event) {
       $('resume-text').value = '';
       $('resume-editor').open = false;
       renderResume();
-      setStatus('resume-status', 'PDF attached. AI can use it in your answers.');
+      setStatus('resume-status', 'PDF attached. Save profile to use it in answers.');
     } else if (['txt', 'md'].includes(extension)) {
       if (file.size > MAX_TEXT_BYTES) throw new Error('Text files must be 1 MB or smaller.');
       const text = await file.text();
@@ -361,7 +320,7 @@ async function uploadResume(event) {
       $('resume-editor').open = true;
       resumeFile = null;
       renderResume();
-      setStatus('resume-status', 'Résumé added. You can edit the text below.');
+      setStatus('resume-status', 'Résumé added. Save profile to use it in answers.');
     } else {
       throw new Error('Choose a PDF, TXT, or Markdown file.');
     }
@@ -431,7 +390,7 @@ async function importProfile(event) {
     $('profile').value = imported;
     if (cleanedProfile) fillImportedFacts(cleanedProfile);
     markChanged();
-    setStatus('profile-import-status', extension === 'json' ? 'Profile imported. File paths and secret fields were excluded.' : 'Profile imported. You can edit it below.');
+    setStatus('profile-import-status', extension === 'json' ? 'Profile imported. File paths and secret fields were excluded. Save profile to keep it.' : 'Profile imported. Save profile to keep it.');
   } catch (error) {
     setStatus('profile-import-status', error.message || 'Could not import the profile.', 'error');
   } finally {
@@ -509,7 +468,7 @@ $('model-preset').addEventListener('change', () => {
 $('model').addEventListener('input', () => { customModel = $('model').value; });
 $('enable-toggle').addEventListener('change', persistEnabled);
 $('setup-action').addEventListener('click', () => {
-  const connected = Boolean($('api-key').value.trim());
+  const connected = Boolean(settings.apiKey);
   showScreen(connected ? 'profile' : 'connection', true);
 });
 $('rescan-button').addEventListener('click', () => refreshPage(true));
@@ -562,44 +521,17 @@ chrome.storage.onChanged?.addListener((changes, area) => {
 async function initialize() {
   try {
     settings = await loadSettings();
-    let restored = null;
-    if (chrome.storage.session) {
-      try {
-        const values = await chrome.storage.session.get(DRAFT_KEY);
-        const draft = values[DRAFT_KEY];
-        if (draft?.version === 1 && draft.settings && typeof draft.settings === 'object') {
-          const raw = draft.settings;
-          if (['apiKey', 'model', 'profile', 'writingInstructions', 'resumeText'].every((key) => typeof raw[key] === 'string') && typeof raw.enabled === 'boolean' && typeof raw.debug === 'boolean') {
-            restored = { ...raw, resumeFile: draft.resumeFileFromSaved ? settings.resumeFile : raw.resumeFile };
-            draftStored = true;
-          }
-        }
-      } catch { /* Local saved settings remain available if session storage fails. */ }
-    }
-    renderSettings(restored || settings);
+    // Older versions stored unsaved edits here. They must not be restored as a profile.
+    if (chrome.storage.session) void chrome.storage.session.remove('wcPopupDraft').catch(() => {});
+    renderSettings(settings);
     loaded = true;
     showScreen('home');
     updateSetup();
     updateFooter();
-    if (restored && !sameSettings(collectSettings(), settings)) {
-      setStatus('save-status', 'Your unsaved changes are back');
-      scheduleAutosave();
-    } else {
-      void clearDraftIfSaved();
-    }
   } catch {
     setStatus('save-status', 'Could not load settings. Reopen the extension.', 'error');
   }
   await refreshPage();
 }
-
-function flushBeforeClose() {
-  if (!loaded || importing) return;
-  persistDraft();
-  void flushSettings();
-}
-
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushBeforeClose(); });
-window.addEventListener('pagehide', flushBeforeClose);
 
 initialize();

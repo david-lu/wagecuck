@@ -40,6 +40,8 @@ test('prompt preserves the entire page, profile, resume, question and writing pr
   assert.match(request.instructions, /make up a short, believable answer based on the user's background/);
   assert.match(request.instructions, /Do not leave open-ended or preference fields empty/);
   assert.match(request.instructions, /Never invent identity, contact information/);
+  assert.match(request.instructions, /agree to all agreements on job applications/);
+  assert.match(request.instructions, /Factual certifications, claims that the user has read/);
   assert.equal(request.stream, true);
   assert.equal(request.store, false);
   assert.equal(request.model, 'gpt-4.1-mini');
@@ -123,10 +125,11 @@ test('checkboxes, dropdowns, and radio groups use exact choice schemas', () => {
   assert.equal(parseResponseAnswer(JSON.stringify({ answer: '30-39', missingInformation: '' }), radio), '30-39');
   assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: 'backend', missingInformation: '' }), dropdown), error => error.code === 'INVALID_ANSWER');
   assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: '40-49', missingInformation: '' }), radio), error => error.code === 'INVALID_ANSWER');
-  assert.throws(() => buildRequest({ settings, field: { ...checkbox, label: 'I consent to the terms' }, page }), error => error.code === 'CONSENT_FIELD');
-  assert.throws(() => buildRequest({ settings, field: { ...radio, label: 'Do you consent to texts?' }, page }), error => error.code === 'CONSENT_FIELD');
-  assert.throws(() => buildRequest({ settings, field: { ...dropdown, label: 'AI Policy for Application' }, page }), error => error.code === 'CONSENT_FIELD');
-  assert.throws(() => buildRequest({ settings, field: { ...dropdown, label: 'Agreement to Arbitrate' }, page }), error => error.code === 'CONSENT_FIELD');
+  assert.equal(buildRequest({ settings, field: { ...checkbox, label: 'I consent to the terms' }, page }).text.format.schema.properties.answer.anyOf[1].type, 'boolean');
+  assert.deepEqual(buildRequest({ settings, field: { ...radio, label: 'Do you consent to texts?' }, page }).text.format.schema.properties.answer.enum, radio.options.map(option => option.value));
+  assert.deepEqual(buildRequest({ settings, field: { ...dropdown, label: 'Agreement to Arbitrate' }, page }).text.format.schema.properties.answer.enum, dropdown.options.map(option => option.value));
+  assert.throws(() => buildRequest({ settings, field: { ...checkbox, label: 'I certify the application is accurate' }, page }), error => error.code === 'ATTESTATION_FIELD');
+  assert.throws(() => buildRequest({ settings, field: { ...dropdown, label: 'I have read the policy' }, page }), error => error.code === 'ATTESTATION_FIELD');
 });
 
 test('checkbox groups use one array answer with listed choices', () => {

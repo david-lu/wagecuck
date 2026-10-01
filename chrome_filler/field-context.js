@@ -225,7 +225,7 @@
     const group = choiceContainer(field, 'checkbox');
     if (!group) return null;
     const labels = group.members.map(option => (associatedLabels(option).map(item => item.text).join(' ') || cleanText(option.getAttribute('aria-label')) || cleanText(option.textContent) || choiceValue(option)).slice(0, 200));
-    if (labels.some(value => /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature)\b/i.test(value))) return null;
+    if (labels.some(value => /\b(certif\w*|attest\w*|have read|read and understand|electronic signature)\b/i.test(value))) return null;
     const rawValues = group.members.map(choiceValue);
     const values = new Set(rawValues).size === group.members.length && rawValues.every(value => value.trim() && value !== 'on') ? rawValues : labels;
     if (new Set(values).size !== group.members.length || values.some(value => !value.trim() || value.length > 500)) return null;
@@ -459,11 +459,11 @@
     return /^(?:(?:keyword|site|job|role|position|opening|posting|candidate) )?search(?: (?:jobs|roles|openings|positions|postings|candidates|results|by .+|for .+))?\s*[.…]*$/i.test(label) || /^filter(?: (?:jobs|roles|openings|positions|postings|results|by .+))?\s*[.…]*$/i.test(label);
   }
 
-  function isConsentField(field) {
+  function isManualAttestationField(field) {
     if (!['checkbox', 'radio'].includes(choiceKind(field)) && field.tagName !== 'SELECT' && field.getAttribute('role') !== 'combobox') return false;
     const description = words(`${labelFor(field)} ${fieldInfo(field).context}`);
-    return /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature|agreement to arbitrate|arbitration agreement|ai policy for application)\b/i.test(description);
+    return /\b(certif\w*|attest\w*|have read|read and understand|electronic signature)\b/i.test(description);
   }
 
-  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, radioGroup, radioOptions, radioDetails, radioChoices, checkboxDetails, choiceKind, choiceChecked, choiceAvailable, visibleChoiceLabel, isSensitiveField, isSearchField, isConsentField });
+  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, radioGroup, radioOptions, radioDetails, radioChoices, checkboxDetails, choiceKind, choiceChecked, choiceAvailable, visibleChoiceLabel, isSensitiveField, isSearchField, isManualAttestationField });
 })();

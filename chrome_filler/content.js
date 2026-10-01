@@ -34,9 +34,11 @@
   let scanPending = false;
   let buttonLayer;
   let toastLayer;
+  let panelCheckFrame;
 
   const css = `
-    :host { all:initial!important; position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important; z-index:2147483646!important; pointer-events:none!important; color-scheme:light!important; }
+    :host { all:initial!important; display:block!important; position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important; z-index:2147483647!important; pointer-events:none!important; color-scheme:light!important; }
+    :host([popover]:not(:popover-open)) { display:none!important; }
     *, *::before, *::after { box-sizing:border-box; }
     button { font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; cursor:pointer; }
     .wc-control-panel { position:fixed; right:16px; bottom:16px; z-index:1; width:252px; padding:11px; border:2px solid #e31800; border-radius:15px; background:linear-gradient(145deg,#fffdf4,#fff3cf); box-shadow:0 10px 30px #54150038,0 2px 5px #54150018; color:#4b1708; font:12px/1.3 system-ui,sans-serif; pointer-events:auto; }
@@ -92,7 +94,8 @@
     host = document.createElement('div');
     host.id = 'wc-ai-root';
     // Keep control styles inside a shadow root to avoid ordinary page CSS collisions.
-    host.style.cssText = 'all:initial!important;position:fixed!important;inset:0!important;z-index:2147483646!important;pointer-events:none!important;';
+    host.style.cssText = 'position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:2147483647!important;pointer-events:none!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;';
+    if (window.top === window && typeof host.showPopover === 'function') host.popover = 'manual';
     shadow = host.attachShadow({ mode: 'open' });
     const style = document.createElement('style');
     style.textContent = css;
@@ -182,7 +185,44 @@
     if (window.top === window) shadow.append(controlPanel);
     shadow.append(toastLayer);
     document.documentElement.append(host);
+    showPanelOnTop();
     for (const record of records.values()) buttonLayer.append(record.button);
+  }
+
+  function showPanelOnTop() {
+    if (window.top !== window || !host?.isConnected || host.popover !== 'manual') return;
+    try {
+      if (!host.matches(':popover-open')) host.showPopover();
+    } catch { /* The page may be replacing its document. The next scan will retry. */ }
+  }
+
+  function checkPanelOnTop() {
+    panelCheckFrame = null;
+    if (!enabled || window.top !== window || !host?.isConnected || !controlPanel) return;
+    // A modal dialog makes everything outside it inert, including a popover.
+    // Keep the extension host inside the active dialog until it closes.
+    const modal = [...document.querySelectorAll('dialog:modal')].at(-1);
+    const parent = modal || document.documentElement;
+    if (host.parentNode !== parent) {
+      try { if (host.matches(':popover-open')) host.hidePopover(); } catch { /* Continue remounting. */ }
+      parent.append(host);
+    }
+    showPanelOnTop();
+    if (host.popover !== 'manual' || !host.matches(':popover-open')) return;
+    const rect = controlPanel.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const front = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    if (front === host || front?.getRootNode() === shadow) return;
+    if (!front?.closest?.('dialog:modal,[popover]:popover-open,:fullscreen')) return;
+    try {
+      host.hidePopover();
+      host.showPopover();
+    } catch { /* A subsequent page mutation or visibility check will retry. */ }
+  }
+
+  function schedulePanelCheck() {
+    if (panelCheckFrame) return;
+    panelCheckFrame = requestAnimationFrame(checkPanelOnTop);
   }
 
   function updateScanButton() {
@@ -502,7 +542,7 @@
     if (field.tagName !== 'SELECT' && !choiceKind && field.type !== 'file' && field.maxLength === 0 && !isSupportedCombobox(field)) return false;
     if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable && !choiceKind && !isSupportedCombobox(field)) return false;
     if (field.isContentEditable && parentElement(field)?.isContentEditable) return false;
-    if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field) || globalThis.WCFieldContext.isConsentField(field)) return false;
+    if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field) || globalThis.WCFieldContext.isManualAttestationField(field)) return false;
     if (ashbyYesNo(field)) return ashbyYesNo(field).buttons.every(button => !button.disabled) && isVisible(visualTarget(field));
     return field.type === 'file' ? Boolean(resumeVisualTarget(field)) : isSupportedCombobox(field) ? isVisible(visualTarget(field)) : choiceKind ? globalThis.WCFieldContext.choiceAvailable(field) && isVisible(visualTarget(field)) : isVisible(field);
   }
@@ -1265,13 +1305,15 @@
     host?.remove();
   }
 
-  const observationOptions = { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['type', 'disabled', 'readonly', 'hidden', 'inert', 'class', 'style', 'name', 'id', 'for', 'title', 'placeholder', 'maxlength', 'min', 'max', 'step', 'pattern', 'required', 'autocomplete', 'aria-label', 'aria-labelledby', 'aria-describedby', 'aria-description', 'aria-required', 'aria-disabled', 'aria-readonly', 'contenteditable'] };
+  const observationOptions = { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['type', 'disabled', 'readonly', 'hidden', 'inert', 'class', 'style', 'open', 'popover', 'name', 'id', 'for', 'title', 'placeholder', 'maxlength', 'min', 'max', 'step', 'pattern', 'required', 'autocomplete', 'aria-label', 'aria-labelledby', 'aria-describedby', 'aria-description', 'aria-required', 'aria-disabled', 'aria-readonly', 'contenteditable'] };
   const observer = new MutationObserver(mutations => {
     if (mutations.every(change => change.target === host || host?.contains(change.target))) return;
     scheduleScan();
+    schedulePanelCheck();
   });
   const resizeObserver = new ResizeObserver(schedulePosition);
-  observer.observe(document.documentElement, observationOptions);
+  let observedDocumentElement = document.documentElement;
+  observer.observe(observedDocumentElement, observationOptions);
   window.addEventListener('scroll', schedulePosition, { capture: true, passive: true });
   window.addEventListener('resize', () => { scheduleScan(); schedulePosition(); }, { passive: true });
   document.addEventListener('focusin', () => { schedulePosition(); scheduleScan(); }, { passive: true });
@@ -1281,6 +1323,13 @@
   // Attaching a shadow root to an existing host does not mutate the document.
   // Discover these late-loaded components without repeatedly rescanning every field.
   setInterval(() => {
+    if (document.documentElement !== observedDocumentElement) {
+      observedDocumentElement = document.documentElement;
+      observer.observe(observedDocumentElement, observationOptions);
+      if (enabled) scheduleScan();
+    }
+    if (enabled && !host?.isConnected) scheduleScan();
+    if (enabled && !document.hidden) schedulePanelCheck();
     if (enabled && scanned && location.href !== scannedUrl) resetScan('The page changed. Scan it again to show fillable fields.');
     if (enabled && scanned && !document.hidden && collectRoots().some(root => !roots.has(root))) scheduleScan();
   }, 2000);
