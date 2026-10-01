@@ -127,6 +127,22 @@ test('checkboxes, dropdowns, and radio groups use exact choice schemas', () => {
   assert.throws(() => buildRequest({ settings, field: { ...radio, label: 'Do you consent to texts?' }, page }), error => error.code === 'CONSENT_FIELD');
 });
 
+test('checkbox groups use one array answer with listed choices', () => {
+  const group = { ...field, label: 'Which kinds of work have you done?', type: 'checkbox_group', currentValue: '["Design systems"]', options: [
+    { value: 'Accessible interfaces', label: 'Accessible interfaces' },
+    { value: 'Backend systems', label: 'Backend systems' },
+    { value: 'Design systems', label: 'Design systems' },
+  ] };
+  const request = buildRequest({ settings, field: group, page });
+  assert.equal(request.text.format.schema.properties.answer.type, 'array');
+  assert.deepEqual(request.text.format.schema.properties.answer.items.enum, group.options.map(option => option.value));
+  assert.deepEqual(parseResponseAnswer(JSON.stringify({ answer: ['Accessible interfaces', 'Design systems'], missingInformation: '' }), group), ['Accessible interfaces', 'Design systems']);
+  assert.deepEqual(parseResponseAnswer(JSON.stringify({ answer: [], missingInformation: '' }), group), []);
+  assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: ['Unknown'], missingInformation: '' }), group), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: ['Design systems', 'Design systems'], missingInformation: '' }), group), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => buildRequest({ settings, field: { ...group, options: [] }, page }), error => error.code === 'INVALID_REQUEST');
+});
+
 test('large country dropdowns retain every available choice in the schema', () => {
   const options = Array.from({ length: 244 }, (_, index) => ({ value: `Country ${index + 1}`, label: `Country ${index + 1}` }));
   const country = { ...field, label: 'Country', type: 'select', currentValue: '', maxLength: null, options };

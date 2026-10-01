@@ -106,7 +106,8 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
       const contextText = payload.input?.[0]?.content?.find(part => part.type === 'input_text')?.text || '{}';
       const context = JSON.parse(contextText);
       const target = context.targetField || {};
-      const choice = (field, batch = false) => field.type === 'checkbox' ? /accessible interfaces/i.test(field.label || '')
+      const choice = (field, batch = false) => field.type === 'checkbox_group' ? (field.options || []).filter(option => /accessible interfaces|design systems/i.test(option.label)).map(option => option.value)
+        : field.type === 'checkbox' ? /accessible interfaces|open to remote work/i.test(field.label || '')
         : field.type === 'select' ? (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
         : field.type === 'radio' ? (field.options || []).find(option => option.value === 'Prefer not to answer')?.value || field.options?.[0]?.value || ''
         : field.type === 'number' && batch ? 5 : field.type === 'email' ? self.__qaEmail : self.__qaAnswer;
@@ -267,8 +268,11 @@ class BrowserSuite:
         self.fresh()
         assert self.page.locator("#wc-ai-root .wc-field-outline").count() == 0
         assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
-        for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "Accessible interfaces", "Backend systems", "Which area best matches your background", "Preferred engineering area", "How do you collaborate with operators"):
+        for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "Which kinds of work have you done?", "Which area best matches your background", "Preferred engineering area", "How do you collaborate with operators"):
             expect(self.button(label)).to_have_count(1)
+        assert self.page.locator("#work-interests").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
+        for label in ("Accessible interfaces", "Backend systems"):
+            expect(self.button(label)).to_have_count(0)
         for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Consent checkbox", "Custom focus dropdown", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
             expect(self.button(label)).to_have_count(0)
         expect(self.resume_button("Resume file")).to_have_count(1)
@@ -404,6 +408,7 @@ class BrowserSuite:
         do_all.evaluate("node => node.click()")
         assert self.worker.evaluate("self.__qaRequests") == []
         self.page.locator("#name").fill("My own name")
+        self.page.locator("#existing-work").uncheck()
         self.page.locator("#wc-ai-root .wc-scan-button").click()
         expect(do_all).to_be_visible()
         expect(do_all).to_have_text("FILL ALL")
@@ -429,7 +434,7 @@ class BrowserSuite:
             expect(self.page.locator("#existing-focus")).to_have_value("frontend")
             expect(self.page.locator('input[name="survey-age"][value="Prefer not to answer"]')).to_be_checked()
             expect(self.page.locator('input[name="interview-time"][value="morning"]')).to_be_checked()
-            expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("left unchecked")
+            expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("Add a PDF resume")
             assert self.page.locator("#upload").evaluate("node => node.files.length") == 0
             assert self.page.locator("#consent").is_checked() is False
             assert self.page.evaluate("window.fixtureSubmitted") is False
@@ -440,7 +445,9 @@ class BrowserSuite:
             assert len(context["targetFields"]) == len(schema["required"])
             assert set(schema["required"]) == set(schema["properties"])
             assert any(field["type"] == "email" for field in context["targetFields"])
-            assert any(field["type"] == "checkbox" for field in context["targetFields"])
+            checkbox_groups = [field for field in context["targetFields"] if field["type"] == "checkbox_group" and field["label"] == "Which kinds of work have you done?"]
+            assert len(checkbox_groups) == 1
+            assert schema["properties"][checkbox_groups[0]["fieldId"]]["properties"]["answer"]["type"] == "array"
             assert any(field["type"] == "select" for field in context["targetFields"])
             assert any(field["label"] == "Preferred engineering area" and [option["value"] for option in field["options"]] == ["frontend", "design-systems", "backend"] for field in context["targetFields"])
             assert len([field for field in context["targetFields"] if field["type"] == "radio" and field["label"] == "What is your age range?"]) == 1
@@ -451,6 +458,8 @@ class BrowserSuite:
             do_all.click()
             expect(self.page.locator("#motivation")).to_have_value(ANSWER)
             assert len(self.worker.evaluate("self.__qaRequests")) == 2
+            second_context = json.loads(next(part["text"] for part in self.worker.evaluate("self.__qaRequests")[1]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
+            assert all(field["type"] != "checkbox_group" for field in second_context["targetFields"]), "An answered checkbox group should be preserved by FILL ALL"
             assert self.page.evaluate("window.fixtureSubmitted") is False
         finally:
             popup.close()
@@ -771,16 +780,35 @@ class BrowserSuite:
     def checkbox_and_dropdown_choices(self):
         self.fresh()
         self.page.locator("#accessible-work").scroll_into_view_if_needed()
-        self.button("Accessible interfaces").click()
+        expect(self.button("Which kinds of work have you done?")).to_have_count(1)
+        expect(self.button("Accessible interfaces")).to_have_count(0)
+        self.button("Which kinds of work have you done?").click()
         expect(self.page.locator("#accessible-work")).to_be_checked()
+        expect(self.page.locator("#backend-work")).not_to_be_checked()
+        expect(self.page.locator("#existing-work")).to_be_checked()
         assert {event["type"] for event in self.page.evaluate("window.fixtureEvents") if event["id"] == "accessible-work"} >= {"input", "change"}
         request = self.worker.evaluate("self.__qaRequests")[0]["payload"]
         context = json.loads(request["input"][0]["content"][0]["text"])
-        assert context["targetField"]["type"] == "checkbox"
-        assert "Which kinds of work" in context["targetField"]["context"]
-        assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["type"] == "boolean"
-        self.undo_button("Accessible interfaces").click()
+        assert context["targetField"]["type"] == "checkbox_group"
+        assert context["targetField"]["label"] == "Which kinds of work have you done?"
+        assert [option["label"] for option in context["targetField"]["options"]] == ["Accessible interfaces", "Backend systems", "Design systems"]
+        assert request["text"]["format"]["schema"]["properties"]["answer"]["type"] == "array"
+        self.undo_button("Which kinds of work have you done?").click()
         expect(self.page.locator("#accessible-work")).not_to_be_checked()
+        expect(self.page.locator("#existing-work")).to_be_checked()
+
+        self.page.evaluate("""() => {
+          const label = document.createElement('label');
+          label.innerHTML = '<input id="standalone-checkbox" type="checkbox"> Open to remote work';
+          document.querySelector('#application').prepend(label);
+        }""")
+        self.page.locator("#standalone-checkbox").scroll_into_view_if_needed()
+        self.page.locator("#standalone-checkbox").hover()
+        self.button("Open to remote work").click()
+        expect(self.page.locator("#standalone-checkbox")).to_be_checked()
+        standalone = self.worker.evaluate("self.__qaRequests")[-1]["payload"]
+        assert json.loads(standalone["input"][0]["content"][0]["text"])["targetField"]["type"] == "checkbox"
+        assert standalone["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["type"] == "boolean"
 
         self.mock()
         self.page.locator("#focus-area").scroll_into_view_if_needed()

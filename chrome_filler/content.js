@@ -136,6 +136,8 @@
   function readValue(field) {
     if (isReactSelect(field)) return comboboxShell(field).querySelector('.select__single-value')?.textContent?.trim() || '';
     if (field instanceof HTMLInputElement && field.type === 'file') return field.files?.length || 0;
+    const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
+    if (checkbox) return JSON.stringify(checkbox.options.filter(option => option.element.checked).map(option => option.value));
     if (field instanceof HTMLInputElement && field.type === 'checkbox') return field.checked;
     if (field instanceof HTMLInputElement && field.type === 'radio') return globalThis.WCFieldContext.radioGroup(field).find(option => option.checked)?.value || '';
     return 'value' in field ? field.value : field.innerText;
@@ -143,6 +145,7 @@
 
   function hasAnswer(field) {
     if (field instanceof HTMLInputElement && field.type === 'file') return Boolean(field.files?.length);
+    if (globalThis.WCFieldContext.checkboxDetails(field)) return readValue(field) !== '[]';
     const value = readValue(field);
     return typeof value === 'boolean' ? value : Boolean(String(value).trim());
   }
@@ -154,6 +157,11 @@
   }
 
   function normalizedAnswer(field, answer) {
+    const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
+    if (checkbox) {
+      const values = new Set(checkbox.options.map(option => option.value));
+      return Array.isArray(answer) && answer.length <= values.size && new Set(answer).size === answer.length && answer.every(value => typeof value === 'string' && values.has(value)) ? JSON.stringify(checkbox.options.filter(option => answer.includes(option.value)).map(option => option.value)) : null;
+    }
     if (field instanceof HTMLInputElement && field.type === 'checkbox') return typeof answer === 'boolean' ? answer : null;
     if (field instanceof HTMLSelectElement || isReactSelect(field) || field instanceof HTMLInputElement && field.type === 'radio') return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
     if (typeof answer !== 'string') return null;
@@ -233,6 +241,8 @@
   function visualTarget(field) {
     if (isReactSelect(field)) return comboboxShell(field).querySelector('.select__control');
     if (field.type === 'file') return resumeVisualTarget(field) || field;
+    const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
+    if (checkbox) return checkbox.container;
     return field.type === 'radio' ? globalThis.WCFieldContext.radioDetails(field).container || field : field;
   }
 
@@ -354,6 +364,8 @@
       const options = globalThis.WCFieldContext.radioOptions(field);
       if (options.length < 2 || options.length > 100 || new Set(options.map(option => option.value)).size !== options.length || options[0] !== field || !globalThis.WCFieldContext.radioDetails(field).label) return false;
     }
+    const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
+    if (checkbox && checkbox.options[0].element !== field) return false;
     if (field.tagName !== 'SELECT' && !['checkbox', 'radio', 'file'].includes(field.type) && field.maxLength === 0) return false;
     if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable) return false;
     if (field.isContentEditable && parentElement(field)?.isContentEditable) return false;
@@ -549,7 +561,7 @@
       const height = compact ? 26 : 28;
       const x = choice ? rect.right + 8 : rect.right - width - 4;
       // Straddle the top border on roomy fields so the button does not cover text.
-      let y = field.type === 'radio' ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
+      let y = field.type === 'radio' || globalThis.WCFieldContext.checkboxDetails(field) ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
       button.dataset.compact = String(compact);
       if (!button.hasAttribute('aria-busy')) {
         if (record.undo && readValue(field) !== record.undo.answer) clearUndo(record);
@@ -627,6 +639,20 @@
       mouseSequence(option);
       await new Promise(resolve => setTimeout(resolve, 30));
       if (field.getAttribute('aria-expanded') === 'true') field.blur();
+      return;
+    }
+    const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
+    if (checkbox) {
+      const selected = new Set(JSON.parse(answer));
+      for (const option of checkbox.options) {
+        const target = option.element;
+        const checked = selected.has(option.value);
+        if (target.checked === checked) continue;
+        target.focus({ preventScroll: true });
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(target, checked);
+        target.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+      }
       return;
     }
     let target = field;
@@ -770,7 +796,7 @@
     }
     let edited = false;
     let writing = false;
-    const editTargets = field.type === 'radio' ? globalThis.WCFieldContext.radioGroup(field) : [field];
+    const editTargets = field.type === 'radio' ? globalThis.WCFieldContext.radioGroup(field) : globalThis.WCFieldContext.checkboxDetails(field)?.options.map(option => option.element) || [field];
     editTargets.forEach(target => target.addEventListener('input', onEdit));
     function onEdit() { edited = true; }
     record.button.setAttribute('aria-busy', 'true');

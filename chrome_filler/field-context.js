@@ -132,17 +132,37 @@
   }
 
   function radioOptions(field) {
-    return radioGroup(field).filter(option => {
-      if (!option.value.trim() || !option.isConnected || option.disabled || option.matches(':disabled') || option.getAttribute('aria-disabled') === 'true') return false;
-      const rect = option.getBoundingClientRect();
-      if (rect.width < 10 || rect.height < 10) return false;
-      for (let node = option; node instanceof Element; node = composedParent(node)) {
-        if (node.matches('[hidden],[inert]')) return false;
-        const style = getComputedStyle(node);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse' || style.opacity === '0') return false;
-      }
-      return true;
-    });
+    return radioGroup(field).filter(choiceAvailable);
+  }
+
+  function choiceAvailable(option) {
+    if (!option.value.trim() || !option.isConnected || option.disabled || option.matches(':disabled') || option.getAttribute('aria-disabled') === 'true') return false;
+    const rect = option.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return false;
+    for (let node = option; node instanceof Element; node = composedParent(node)) {
+      if (node.matches('[hidden],[inert]')) return false;
+      const style = getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse' || style.opacity === '0') return false;
+    }
+    return true;
+  }
+
+  function checkboxDetails(field) {
+    if (field?.tagName !== 'INPUT' || field.type !== 'checkbox') return null;
+    for (let container = composedParent(field), depth = 0; container && depth < 6 && !GLOBAL_CONTAINER.test(container.tagName); container = composedParent(container), depth++) {
+      if (!container.matches?.('fieldset,[role="group"],.application-question,.question,.form-group,.field,[data-field],[data-qa="multiple-choice"]')) continue;
+      const label = cleanText(groupHeading(container, field)).slice(0, 500);
+      if (!label) continue;
+      const members = [...container.querySelectorAll('input[type="checkbox"]')].filter(option => option.form === field.form && choiceAvailable(option));
+      if (members.length < 2 || members.length > 100 || !members.includes(field)) continue;
+      const labels = members.map(option => (associatedLabels(option).map(item => item.text).join(' ') || cleanText(option.getAttribute('aria-label')) || option.value).slice(0, 200));
+      if (labels.some(value => /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature)\b/i.test(value))) continue;
+      const rawValues = members.map(option => option.value);
+      const values = new Set(rawValues).size === members.length && rawValues.every(value => value !== 'on') ? rawValues : labels;
+      if (new Set(values).size !== members.length || values.some(value => !value.trim() || value.length > 500)) continue;
+      return { container, label, options: members.map((element, index) => ({ element, value: values[index], label: labels[index] })) };
+    }
+    return null;
   }
 
   function radioDetails(field) {
@@ -260,6 +280,8 @@
   }
 
   function labelDetails(field) {
+    const checkbox = checkboxDetails(field);
+    if (checkbox) return { label: checkbox.label, sources: ['checkbox-group'] };
     if (field.type === 'radio') {
       const group = radioDetails(field);
       if (group.label) return { label: group.label, sources: [group.source] };
@@ -285,6 +307,7 @@
 
   function fieldInfo(field) {
     const details = labelDetails(field);
+    const checkbox = checkboxDetails(field);
     const context = references(field, 'aria-describedby').map(item => item.text);
     const ariaDescription = cleanText(field.getAttribute('aria-description'));
     if (ariaDescription) context.push(ariaDescription);
@@ -304,10 +327,11 @@
     const options = field.tagName === 'SELECT' ? [...field.options]
       .filter(option => option.value.trim() && !option.disabled && !option.hidden && !option.closest('optgroup[disabled]'))
       .map(option => ({ value: option.value, label: cleanText(option.textContent).slice(0, 200) || option.value }))
-      : field.type === 'radio' ? radioOptions(field).map(option => ({ value: option.value, label: radioOptionLabel(option).slice(0, 200) })) : undefined;
+      : field.type === 'radio' ? radioOptions(field).map(option => ({ value: option.value, label: radioOptionLabel(option).slice(0, 200) }))
+      : checkbox ? checkbox.options.map(option => ({ value: option.value, label: option.label })) : undefined;
     return {
       label: details.label,
-      type: field.tagName === 'SELECT' ? 'select' : field.tagName === 'TEXTAREA' || field.isContentEditable ? 'textarea' : field.type || 'text',
+      type: checkbox ? 'checkbox_group' : field.tagName === 'SELECT' ? 'select' : field.tagName === 'TEXTAREA' || field.isContentEditable ? 'textarea' : field.type || 'text',
       placeholder: field.getAttribute('placeholder') || (field.tagName === 'SELECT' ? cleanText([...field.options].find(option => !option.value.trim())?.textContent) : '') || '',
       required: Boolean(field.required || field.getAttribute('aria-required') === 'true'),
       maxLength: field.maxLength > 0 ? field.maxLength : null,
@@ -316,7 +340,7 @@
       step: field.getAttribute('step') || null,
       pattern: field.getAttribute('pattern') || null,
       context: unique(context).join('\n').slice(0, 2400),
-      currentValue: field.type === 'checkbox' ? String(field.checked) : field.type === 'radio' ? radioGroup(field).find(option => option.checked)?.value || '' : 'value' in field ? field.value : field.innerText || '',
+      currentValue: checkbox ? JSON.stringify(checkbox.options.filter(option => option.element.checked).map(option => option.value)) : field.type === 'checkbox' ? String(field.checked) : field.type === 'radio' ? radioGroup(field).find(option => option.checked)?.value || '' : 'value' in field ? field.value : field.innerText || '',
       options,
       name: field.getAttribute('name') || '',
       id: field.id || '',
@@ -354,5 +378,5 @@
     return /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature)\b/i.test(description);
   }
 
-  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, radioGroup, radioOptions, radioDetails, isSensitiveField, isSearchField, isConsentField });
+  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, radioGroup, radioOptions, radioDetails, checkboxDetails, isSensitiveField, isSearchField, isConsentField });
 })();
