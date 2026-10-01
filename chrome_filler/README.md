@@ -6,10 +6,10 @@ The popup opens on a simple **SCAN PAGE** then **WRITE ALL** flow. Scanning reve
 
 1. Open `chrome://extensions`, enable **Developer mode**, and use **Load unpacked** to select `chrome_filler`.
 2. Pin the extension and open its popup. Choose **Edit profile** to add your resume, name, contact details, location, work eligibility, veteran status, free-form Notes, and writing preferences. Use **Save profile**; edits also save automatically.
-3. Open **AI settings** to enter your OpenAI API key and choose a model ID, then click **Save settings**.
+3. Open **AI settings** to enter your OpenAI API key. Choose GPT-6.1 Sol (balanced), GPT-6 Astra (highest capability), GPT-6 Luna (lowest cost), a GPT-4.1 option, or **Other model ID** for an existing model, then click **Save settings**.
 4. Reload an already-open application page. In the popup, click **SCAN PAGE**, then **WRITE ALL**. You can also click individual Write buttons beside highlighted fields. The button on the page is labeled **DO ALL** and runs the same batch flow. Review each answer before submitting.
 
-No build step or backend is needed. The extension has its own settings and does not read wagecuck’s `.env`. Importing a shared profile copies its content into Chrome storage; re-import it after editing the file. API usage is billed to your OpenAI API account. The default model is `gpt-4.1-mini`; you can enter another model ID that supports the Responses API, structured output, and PDF input if using a PDF résumé.
+No build step or backend is needed. The extension has its own settings and does not read wagecuck’s `.env`. Importing a shared profile copies its content into Chrome storage; re-import it after editing the file. API usage is billed to your OpenAI API account. Existing settings keep their chosen model, and new installs still start on `gpt-4.1-mini` until you choose another. Custom model IDs must support the Responses API, structured output, and PDF input if using a PDF résumé.
 
 Individual **Write** clicks create one API request per field; **WRITE ALL** (called **DO ALL** on the page) creates one request for the scanned unanswered fields using the [OpenAI Responses API](https://developers.openai.com/api/docs/guides/text). It does not open or automate the ChatGPT website.
 

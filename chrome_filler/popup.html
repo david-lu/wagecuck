@@ -91,11 +91,18 @@
         <div class="password-field"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." maxlength="512" aria-describedby="key-help"><button id="reveal-key" type="button" class="text-button" aria-label="Show API key" aria-pressed="false">Show</button></div>
         <p id="key-help" class="hint">API usage is billed separately from ChatGPT.</p>
 
-        <div class="section-heading section-divider"><h3>Model</h3><p>Choose a model available to your OpenAI account.</p></div>
-        <label class="field-label" for="model">Model ID</label>
-        <input id="model" type="text" list="model-choices" autocomplete="off" spellcheck="false" placeholder="gpt-4.1-mini" maxlength="100" aria-describedby="model-help">
-        <datalist id="model-choices"><option value="gpt-4.1-mini"><option value="gpt-4.1"><option value="gpt-5-mini"></datalist>
-        <p id="model-help" class="hint">Select a suggestion or type another model ID that supports structured output and PDF input.</p>
+        <div class="section-heading section-divider"><h3>Model</h3><p>Choose the balance of writing quality and cost you want.</p></div>
+        <label class="field-label" for="model-preset">Chat model</label>
+        <select id="model-preset" class="settings-select" aria-describedby="model-help">
+          <option value="gpt-6.1-sol">GPT-6.1 Sol — balanced</option>
+          <option value="gpt-6-astra">GPT-6 Astra — highest capability</option>
+          <option value="gpt-6-luna">GPT-6 Luna — lowest cost</option>
+          <option value="gpt-4.1">GPT-4.1 — fast classic</option>
+          <option value="gpt-4.1-mini">GPT-4.1 Mini — previous default</option>
+          <option value="custom">Other model ID…</option>
+        </select>
+        <div id="model-custom" hidden><label class="field-label" for="model">Custom model ID</label><input id="model" type="text" autocomplete="off" spellcheck="false" placeholder="gpt-5-mini" maxlength="100" aria-describedby="model-help"></div>
+        <p id="model-help" class="hint">These options work with structured answers and PDF resumes. Access and billing depend on your OpenAI API account. <a href="https://developers.openai.com/api/docs/models" target="_blank" rel="noopener noreferrer">Compare models</a>.</p>
 
         <details id="data-note" class="editor-details privacy-note"><summary>What gets shared?</summary><p>When you click Write or WRITE ALL, the page context, profile facts, notes, writing preferences, and resume are sent to OpenAI. Your settings stay in this browser. Review answers before submitting.</p></details>
         <details id="advanced-settings" class="editor-details"><summary>Diagnostics</summary>

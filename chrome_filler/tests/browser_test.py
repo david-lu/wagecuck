@@ -742,10 +742,18 @@ class BrowserSuite:
             expect(popup.locator("#api-key")).to_have_attribute("type", "text")
             expect(popup.locator("#api-key")).to_have_value(KEY)
             popup.locator("#reveal-key").click()
-            popup.locator("#model").fill("gpt-5-mini")
+            expect(popup.locator("#model-preset")).to_have_value("custom")
+            expect(popup.locator("#model")).to_have_value("gpt-5-mini")
+            assert {"gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna", "gpt-4.1", "gpt-4.1-mini", "custom"}.issubset(set(popup.locator("#model-preset option").evaluate_all("options => options.map(option => option.value)")))
+            popup.locator("#model-preset").select_option("gpt-6.1-sol")
+            expect(popup.locator("#model-custom")).to_be_hidden()
+            popup.locator("#model-preset").select_option("custom")
+            expect(popup.locator("#model")).to_have_value("gpt-5-mini")
+            popup.locator("#model-preset").select_option("gpt-6.1-sol")
             expect(popup.locator("#save-label")).to_have_text("Save settings")
             popup.locator("#save-button").click()
             expect(popup.locator("#save-status")).to_contain_text(re.compile("saved", re.I))
+            assert self.stored_settings()["model"] == "gpt-6.1-sol"
             self.screenshot("popup-connection", popup)
             popup.reload()
             expect(popup.locator("#home-screen")).to_be_visible()
@@ -754,7 +762,7 @@ class BrowserSuite:
             expect(popup.locator("#fact-veteranStatus")).to_have_value("No")
             popup.locator("#back-profile").click()
             popup.locator("#open-connection").click()
-            expect(popup.locator("#model")).to_have_value("gpt-5-mini")
+            expect(popup.locator("#model-preset")).to_have_value("gpt-6.1-sol")
             self.expand(popup, "advanced-settings")
             self.expand(popup, "troubleshooting")
             popup.locator("#log-refresh").click()
@@ -767,6 +775,7 @@ class BrowserSuite:
         self.button("Why do you want to work here").click()
         expect(self.page.locator("#motivation")).to_have_value(ANSWER)
         payload = self.worker.evaluate("self.__qaRequests")[0]["payload"]
+        assert payload["model"] == "gpt-6.1-sol"
         context = json.loads(next(part["text"] for part in payload["input"][0]["content"] if part["type"] == "input_text"))
         assert context["profileFacts"]["veteranStatus"] == "No"
         assert context["profileFacts"]["location"] == "Vancouver, Canada"
@@ -779,6 +788,8 @@ class BrowserSuite:
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
             popup.locator("#open-connection").click()
+            expect(popup.locator("#model-preset")).to_have_value("custom")
+            expect(popup.locator("#model-custom")).to_be_visible()
             popup.locator("#model").fill("")
             popup.locator("#save-button").click()
             expect(popup.locator("#save-status")).to_contain_text(re.compile("model|required|enter", re.I))

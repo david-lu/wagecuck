@@ -75,6 +75,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .field-block label,.field-label,.label-row label { display:block; margin-bottom:6px; font-size:11px; font-weight:700; }
 .field-label { margin-top:13px; }
 .field-block input,.field-block select,textarea,input[type="text"],input[type="password"],input[type="email"],input[type="tel"],input[type="url"] { width:100%; min-height:39px; padding:9px 10px; border:1px solid #dcd4e7; border-radius:8px; background:#fff; color:var(--ink); font-size:12px; line-height:1.4; }
+.settings-select { width:100%; min-height:39px; padding:9px 10px; border:1px solid #dcd4e7; border-radius:8px; background:#fff; color:var(--ink); font-size:12px; line-height:1.4; }
 .field-block select { padding-right:22px; }
 textarea { display:block; min-height:78px; resize:vertical; max-height:300px; }
 input::placeholder,textarea::placeholder { color:#a49aaa; }

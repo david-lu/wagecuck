@@ -22,6 +22,19 @@ let lastQueuedRevision = -1;
 let draftStored = false;
 let lastError = '';
 let pageTabId = null;
+let customModel = '';
+
+function selectedModel() {
+  return $('model-preset').value === 'custom' ? $('model').value.trim() : $('model-preset').value;
+}
+
+function renderModel(model) {
+  const preset = [...$('model-preset').options].some(option => option.value === model && option.value !== 'custom');
+  $('model-preset').value = preset ? model : 'custom';
+  $('model').value = preset ? '' : model;
+  $('model-custom').hidden = preset;
+  customModel = preset ? '' : model;
+}
 
 function setStatus(id, message, kind = '') {
   const element = $(id);
@@ -36,7 +49,7 @@ function collectSettings() {
     ...settings,
     enabled: $('enable-toggle').checked,
     apiKey: $('api-key').value.trim(),
-    model: $('model').value.trim(),
+    model: selectedModel(),
     profile: $('profile').value.trim(),
     profileFacts: Object.fromEntries(PROFILE_FACT_KEYS.map(key => [key, $(`fact-${key}`).value.trim()])),
     writingInstructions: $('writing-instructions').value.trim(),
@@ -117,7 +130,7 @@ function markChanged() {
   if (!loaded) return;
   revision += 1;
   lastError = '';
-  if (/^[a-zA-Z0-9._:-]{1,120}$/.test($('model').value.trim())) $('model').removeAttribute('aria-invalid');
+  if (/^[a-zA-Z0-9._:-]{1,120}$/.test(selectedModel())) $('model').removeAttribute('aria-invalid');
   persistDraft();
   updateSetup();
   updateFooter();
@@ -133,7 +146,7 @@ function renderResume() {
 function renderSettings(view = settings) {
   $('enable-toggle').checked = view.enabled;
   $('api-key').value = view.apiKey;
-  $('model').value = view.model;
+  renderModel(view.model);
   $('profile').value = view.profile;
   for (const key of PROFILE_FACT_KEYS) $(`fact-${key}`).value = view.profileFacts?.[key] || '';
   $('writing-instructions').value = view.writingInstructions;
@@ -484,6 +497,14 @@ $('back-connection').addEventListener('click', () => showScreen('home', true));
 $('settings-form').addEventListener('submit', save);
 $('settings-form').addEventListener('input', (event) => { if (event.target.type !== 'file') markChanged(); });
 $('settings-form').addEventListener('change', (event) => { if (event.target.tagName === 'SELECT') markChanged(); });
+$('model-preset').addEventListener('change', () => {
+  const custom = $('model-preset').value === 'custom';
+  if (custom) $('model').value = customModel;
+  else if (!$('model-custom').hidden) customModel = $('model').value.trim();
+  $('model-custom').hidden = !custom;
+  if (custom) $('model').focus();
+});
+$('model').addEventListener('input', () => { customModel = $('model').value; });
 $('enable-toggle').addEventListener('change', persistEnabled);
 $('setup-action').addEventListener('click', () => {
   const connected = Boolean($('api-key').value.trim());
