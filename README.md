@@ -1,5 +1,7 @@
 # wagecuck
 
+<img src="chrome_filler/icons/wagecuck-mark.svg" alt="Wagecuck logo" width="96">
+
 This repository contains three separate tools:
 
 | Directory | Purpose |

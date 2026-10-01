@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Wagecuck upside-down golden arches</title>
+  <rect width="128" height="128" rx="24" fill="#e31800"/>
+  <path d="M25 101 C24 54 30 27 42 27 C55 27 58 79 64 91 C70 79 73 27 86 27 C98 27 104 54 103 101"
+        transform="rotate(180 64 64)" fill="none" stroke="#ffcc00" stroke-width="14"
+        stroke-linecap="butt" stroke-linejoin="round"/>
+</svg>
