@@ -253,7 +253,7 @@ class BrowserSuite:
     def discovery(self):
         self.fresh()
         assert self.page.locator("#wc-ai-root .wc-field-outline").count() == self.page.locator("#wc-ai-root .wc-fill-button").count()
-        for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "Accessible interfaces", "Backend systems", "Which area best matches your background", "How do you collaborate with operators"):
+        for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "Accessible interfaces", "Backend systems", "Which area best matches your background", "Preferred engineering area", "How do you collaborate with operators"):
             expect(self.button(label)).to_have_count(1)
         for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Consent checkbox", "Custom focus dropdown", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
             expect(self.button(label)).to_have_count(0)
@@ -346,6 +346,7 @@ class BrowserSuite:
             expect(self.page.locator("#backend-work")).not_to_be_checked()
             expect(self.page.locator("#existing-work")).to_be_checked()
             expect(self.page.locator("#focus-area")).to_have_value("frontend")
+            expect(self.page.locator(".select-shell .select__single-value")).to_have_text("frontend")
             expect(self.page.locator("#existing-focus")).to_have_value("frontend")
             expect(self.page.locator('input[name="survey-age"][value="Prefer not to answer"]')).to_be_checked()
             expect(self.page.locator('input[name="interview-time"][value="morning"]')).to_be_checked()
@@ -362,6 +363,7 @@ class BrowserSuite:
             assert any(field["type"] == "email" for field in context["targetFields"])
             assert any(field["type"] == "checkbox" for field in context["targetFields"])
             assert any(field["type"] == "select" for field in context["targetFields"])
+            assert any(field["label"] == "Preferred engineering area" and [option["value"] for option in field["options"]] == ["frontend", "design-systems", "backend"] for field in context["targetFields"])
             assert len([field for field in context["targetFields"] if field["type"] == "radio" and field["label"] == "What is your age range?"]) == 1
             assert all(field["label"] != "Consent checkbox" for field in context["targetFields"])
             assert all("answer" in entry["properties"] for entry in schema["properties"].values())
@@ -420,6 +422,19 @@ class BrowserSuite:
         self.resume_button("Resume file").click()
         self.page.wait_for_function("() => document.querySelector('#upload').files.length === 1")
         assert not self.worker.evaluate("self.__qaRequests")
+
+    def react_select_dropdown(self):
+        self.fresh()
+        self.page.locator("#react-dropdown").scroll_into_view_if_needed()
+        self.button("Preferred engineering area").click()
+        expect(self.page.locator(".select__single-value")).to_have_text("frontend")
+        assert self.page.locator("#react-dropdown").input_value() == "", "React Select keeps its choice outside the text input"
+        request = self.worker.evaluate("self.__qaRequests")[-1]["payload"]
+        context = json.loads(next(part["text"] for part in request["input"][0]["content"] if part["type"] == "input_text"))
+        assert context["targetField"]["type"] == "select"
+        assert [option["value"] for option in context["targetField"]["options"]] == ["frontend", "design-systems", "backend"]
+        assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["enum"] == ["frontend", "design-systems", "backend"]
+        assert self.page.evaluate("window.fixtureSubmitted") is False
 
     def do_all_stop_cancels_every_frame(self):
         self.seed()
@@ -1064,7 +1079,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "resume_upload_single_and_all", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
+                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "react_select_dropdown", "resume_upload_single_and_all", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

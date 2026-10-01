@@ -12,6 +12,12 @@
     input, textarea, select, [contenteditable] { width: 100%; border: 1px solid #a5b4cb; border-radius: 6px; font: inherit; padding: 12px; }
     textarea { min-height: 135px; }
     input[type=checkbox], input[type=radio] { width: auto; }
+    .select-shell { width: 100%; }
+    .select__control { min-height: 42px; border: 1px solid #a5b4cb; border-radius: 6px; padding: 4px; }
+    .select__value-container { overflow: hidden; }
+    .select__control input { border: 0; width: 100%; padding: 4px; }
+    [role=listbox] { background: white; border: 1px solid #a5b4cb; }
+    [role=option] { padding: 5px; cursor: pointer; }
     .spacer { height: 850px; }
     iframe { height: 210px; width: 100%; border: 1px solid #bbc6da; margin-top: 15px; }
   </style>
@@ -37,6 +43,8 @@
         </fieldset>
         <label for="focus-area">Which area best matches your background?</label>
         <select id="focus-area"><option value="">Choose an area</option><option value="frontend">Frontend engineering</option><option value="design-systems">Design systems</option><option value="backend" disabled>Backend engineering</option></select>
+        <label for="react-dropdown" id="react-dropdown-label">Preferred engineering area</label>
+        <div class="select-shell"><div class="select__control"><div class="select__value-container"><input id="react-dropdown" type="text" role="combobox" aria-autocomplete="list" aria-haspopup="true" aria-expanded="false" aria-labelledby="react-dropdown-label"></div></div></div>
         <label for="existing-focus">Already chosen focus</label>
         <select id="existing-focus"><option value="">Choose an area</option><option value="frontend" selected>Frontend engineering</option><option value="design-systems">Design systems</option></select>
         <ul><li class="application-question"><div class="application-label full-width multiple-choice"><div class="text">What is your age range?</div></div><div class="application-field full-width"><ul data-qa="multiple-choice">
@@ -88,6 +96,35 @@
       const field = document.createElement('textarea'); field.id = 'dynamic'; field.name = 'project';
       document.getElementById('application').append(label, field);
     };
+    const reactDropdown = document.getElementById('react-dropdown');
+    const reactControl = reactDropdown.closest('.select__control');
+    reactControl.addEventListener('mousedown', () => {
+      if (reactDropdown.getAttribute('aria-expanded') === 'true') return;
+      reactDropdown.setAttribute('aria-expanded', 'true');
+      const list = document.createElement('div');
+      list.id = 'react-select-react-dropdown-listbox';
+      list.setAttribute('role', 'listbox');
+      for (const label of ['frontend', 'design-systems', 'backend']) {
+        const option = document.createElement('div');
+        option.setAttribute('role', 'option');
+        option.textContent = label;
+        option.addEventListener('mousedown', () => {
+          reactControl.querySelector('.select__single-value')?.remove();
+          const selected = document.createElement('div');
+          selected.className = 'select__single-value';
+          selected.textContent = label;
+          reactDropdown.parentElement.insertBefore(selected, reactDropdown);
+          reactDropdown.setAttribute('aria-expanded', 'false');
+          list.remove();
+        });
+        list.append(option);
+      }
+      reactControl.parentElement.append(list);
+    });
+    reactDropdown.addEventListener('blur', () => {
+      reactDropdown.setAttribute('aria-expanded', 'false');
+      document.getElementById('react-select-react-dropdown-listbox')?.remove();
+    });
     const crossPort = new URL(location.href).searchParams.get('crossPort');
     document.getElementById('cross-frame').src = (crossPort ? 'http://127.0.0.1:' + crossPort : location.origin) + '/frame.html';
   </script>

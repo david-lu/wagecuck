@@ -123,6 +123,14 @@ test('checkboxes, dropdowns, and radio groups use exact choice schemas', () => {
   assert.throws(() => buildRequest({ settings, field: { ...radio, label: 'Do you consent to texts?' }, page }), error => error.code === 'CONSENT_FIELD');
 });
 
+test('large country dropdowns retain every available choice in the schema', () => {
+  const options = Array.from({ length: 244 }, (_, index) => ({ value: `Country ${index + 1}`, label: `Country ${index + 1}` }));
+  const country = { ...field, label: 'Country', type: 'select', currentValue: '', maxLength: null, options };
+  const request = buildRequest({ settings, field: country, page });
+  assert.deepEqual(request.text.format.schema.properties.answer.anyOf[1].enum, options.map(option => option.value));
+  assert.throws(() => buildRequest({ settings, field: { ...country, options: [...options, ...options.slice(0, 57)] }, page }), error => error.code === 'INVALID_REQUEST');
+});
+
 test('PDF resume is passed as input_file with filename and full base64 data URL', () => {
   const bytes = Buffer.from('%PDF-1.7\nresume fixture');
   const file = { name: 'resume.pdf', type: 'application/pdf', size: bytes.length, dataUrl: `data:application/pdf;base64,${bytes.toString('base64')}` };

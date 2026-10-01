@@ -31,7 +31,7 @@ export function validateFieldAndPage(field, page) {
     if (field[key] !== undefined && field[key] !== null && !['string', 'number'].includes(typeof field[key])) throw new AgentError('INVALID_REQUEST', 'The field constraints are invalid.');
   }
   if (field.type === 'select' || field.type === 'radio') {
-    if (!Array.isArray(field.options) || !field.options.length || field.options.length > 100 || field.options.some(option => !option || typeof option.value !== 'string' || !option.value.trim() || option.value.length > 500 || typeof option.label !== 'string' || !option.label.trim() || option.label.length > 200)) throw new AgentError('INVALID_REQUEST', 'The choice options are invalid. Scan the page again.');
+    if (!Array.isArray(field.options) || !field.options.length || field.options.length > 300 || field.options.some(option => !option || typeof option.value !== 'string' || !option.value.trim() || option.value.length > 500 || typeof option.label !== 'string' || !option.label.trim() || option.label.length > 200)) throw new AgentError('INVALID_REQUEST', 'The choice options are invalid. Scan the page again.');
   }
   if (typeof page.text !== 'string' || typeof page.title !== 'string' || typeof page.url !== 'string' || !/^https?:\/\//i.test(page.url)) throw new AgentError('INVALID_REQUEST', 'The page context is invalid.');
   const contextSize = JSON.stringify({ title: page.title, url: page.url, text: page.text, fields: page.fields || [], contextNote: page.contextNote || '' }).length;

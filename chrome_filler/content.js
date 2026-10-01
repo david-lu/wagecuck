@@ -6,6 +6,7 @@
   const SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]';
   const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox', 'radio', 'file']);
   const records = new Map();
+  const comboboxOptions = new WeakMap();
   const roots = new Set([document]);
   let enabled = true;
   let configured = false;
@@ -104,6 +105,7 @@
   }
 
   function readValue(field) {
+    if (isReactSelect(field)) return comboboxShell(field).querySelector('.select__single-value')?.textContent?.trim() || '';
     if (field instanceof HTMLInputElement && field.type === 'file') return field.files?.length || 0;
     if (field instanceof HTMLInputElement && field.type === 'checkbox') return field.checked;
     if (field instanceof HTMLInputElement && field.type === 'radio') return globalThis.WCFieldContext.radioGroup(field).find(option => option.checked)?.value || '';
@@ -117,13 +119,14 @@
   }
 
   function selectableOption(field, value) {
+    if (isReactSelect(field)) return (comboboxOptions.get(field) || []).some(option => option.value === value);
     if (field instanceof HTMLInputElement && field.type === 'radio') return globalThis.WCFieldContext.radioOptions(field).some(option => option.value === value);
     return field instanceof HTMLSelectElement && [...field.options].some(option => option.value === value && value.trim() && !option.disabled && !option.hidden && !option.closest('optgroup[disabled]'));
   }
 
   function normalizedAnswer(field, answer) {
     if (field instanceof HTMLInputElement && field.type === 'checkbox') return typeof answer === 'boolean' ? answer : null;
-    if (field instanceof HTMLSelectElement || field instanceof HTMLInputElement && field.type === 'radio') return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
+    if (field instanceof HTMLSelectElement || isReactSelect(field) || field instanceof HTMLInputElement && field.type === 'radio') return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
     if (typeof answer !== 'string') return null;
     const value = answer.trim();
     if (!value || (field.maxLength > 0 && value.length > field.maxLength) || (field.type === 'number' && !Number.isFinite(Number(value)))) return null;
@@ -151,7 +154,55 @@
     return node.parentElement || (node.getRootNode() instanceof ShadowRoot ? node.getRootNode().host : null);
   }
 
+  function comboboxShell(field) {
+    return field instanceof HTMLInputElement && field.getAttribute('role') === 'combobox' && field.getAttribute('aria-autocomplete') === 'list'
+      ? field.closest('.select-shell') : null;
+  }
+
+  function isReactSelect(field) {
+    return Boolean(field.id && comboboxShell(field)?.querySelector('.select__control'));
+  }
+
+  function comboboxList(field) {
+    return field.getRootNode().getElementById?.(`react-select-${field.id}-listbox`) || null;
+  }
+
+  function mouseSequence(element) {
+    for (const type of ['mousedown', 'mouseup', 'click']) element.dispatchEvent(new MouseEvent(type, { bubbles: true, composed: true, button: 0 }));
+  }
+
+  async function waitForComboboxMenu(field) {
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const list = comboboxList(field);
+      if (field.getAttribute('aria-expanded') === 'true' && list?.querySelector('[role="option"]')) return list;
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    return null;
+  }
+
+  async function discoverComboboxOptions(field) {
+    if (!isReactSelect(field) || !field.isConnected) return [];
+    comboboxOptions.delete(field);
+    const opened = field.getAttribute('aria-expanded') !== 'true';
+    if (opened) mouseSequence(comboboxShell(field).querySelector('.select__control'));
+    try {
+      const list = await waitForComboboxMenu(field);
+      if (!list) return [];
+      const options = [...list.querySelectorAll('[role="option"]')]
+        .filter(option => option.getAttribute('aria-disabled') !== 'true')
+        .map(option => option.textContent.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+      if (!options.length || options.length > 300 || new Set(options).size !== options.length) return [];
+      const result = options.map(label => ({ value: label, label }));
+      comboboxOptions.set(field, result);
+      return result;
+    } finally {
+      if (opened && field.isConnected) field.blur();
+    }
+  }
+
   function visualTarget(field) {
+    if (isReactSelect(field)) return comboboxShell(field).querySelector('.select__control');
     if (field.type === 'file') return resumeVisualTarget(field) || field;
     return field.type === 'radio' ? globalThis.WCFieldContext.radioDetails(field).container || field : field;
   }
@@ -186,7 +237,7 @@
     if (field.getRootNode() === shadow || field.disabled || field.matches(':disabled') || field.readOnly || field.getAttribute('aria-disabled') === 'true' || field.getAttribute('aria-readonly') === 'true') return false;
     if (field.tagName === 'INPUT' && !TYPES.has(field.type)) return false;
     if (field.type === 'file' && !isResumeField(field)) return false;
-    if (field.matches('[role="combobox"],[aria-haspopup="listbox"]')) return false;
+    if (field.matches('[role="combobox"],[aria-haspopup="listbox"]') && !isReactSelect(field)) return false;
     if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 100 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
     if (field.type === 'radio') {
       const options = globalThis.WCFieldContext.radioOptions(field);
@@ -196,11 +247,18 @@
     if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable) return false;
     if (field.isContentEditable && parentElement(field)?.isContentEditable) return false;
     if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field) || globalThis.WCFieldContext.isConsentField(field)) return false;
-    return field.type === 'file' ? Boolean(resumeVisualTarget(field)) : isVisible(field);
+    return field.type === 'file' ? Boolean(resumeVisualTarget(field)) : isReactSelect(field) ? isVisible(visualTarget(field)) : isVisible(field);
   }
 
   function fieldInfo(field) {
-    return globalThis.WCFieldContext.fieldInfo(field);
+    const info = globalThis.WCFieldContext.fieldInfo(field);
+    if (isReactSelect(field)) {
+      info.type = 'select';
+      info.options = comboboxOptions.get(field) || [];
+      info.currentValue = readValue(field);
+      info.placeholder = comboboxShell(field).querySelector('.select__placeholder')?.textContent?.trim() || '';
+    }
+    return info;
   }
 
   function targetSignature(info) {
@@ -365,7 +423,7 @@
       outline.style.top = `${rect.top}px`;
       outline.style.width = `${rect.width}px`;
       outline.style.height = `${rect.height}px`;
-      const choice = field.tagName === 'SELECT' || ['checkbox', 'radio', 'file'].includes(field.type);
+      const choice = field.tagName === 'SELECT' || isReactSelect(field) || ['checkbox', 'radio', 'file'].includes(field.type);
       const compact = !choice && (rect.width < 240 || rect.height < 36);
       const width = field.type === 'file' ? 100 : compact ? 45 : 80;
       const height = compact ? 26 : 28;
@@ -380,7 +438,7 @@
       button.style.width = `${width}px`;
       button.style.height = `${height}px`;
       let visible = rect.right > 0 && rect.left < innerWidth && y >= 0 && y + height <= innerHeight && isVisible(visual);
-      for (let node = parentElement(field); visible && node; node = parentElement(node)) {
+      for (let node = parentElement(visual); visible && node; node = parentElement(node)) {
         // The document's scrollport is the viewport, even when BODY has overflow:auto
         // and its layout rect has scrolled above the visible page.
         if (node === document.body || node === document.documentElement) continue;
@@ -434,7 +492,18 @@
     return { element, title: titleNode, detail: description };
   }
 
-  function writeValue(field, answer) {
+  async function writeValue(field, answer) {
+    if (isReactSelect(field)) {
+      const shell = comboboxShell(field);
+      if (field.getAttribute('aria-expanded') !== 'true') mouseSequence(shell.querySelector('.select__control'));
+      const list = await waitForComboboxMenu(field);
+      const option = [...(list?.querySelectorAll('[role="option"]') || [])].find(item => item.getAttribute('aria-disabled') !== 'true' && item.textContent.replace(/\s+/g, ' ').trim() === answer);
+      if (!option) { field.blur(); throw new Error('The dropdown option is no longer available.'); }
+      mouseSequence(option);
+      await new Promise(resolve => setTimeout(resolve, 30));
+      if (field.getAttribute('aria-expanded') === 'true') field.blur();
+      return;
+    }
     let target = field;
     if (field instanceof HTMLInputElement && field.type === 'radio') {
       const group = globalThis.WCFieldContext.radioGroup(field);
@@ -536,6 +605,19 @@
       return { status: 'failed', code: 'BUSY' };
     }
     const field = record.field;
+    if (isReactSelect(field)) {
+      record.starting = true;
+      try {
+        if (!(await discoverComboboxOptions(field)).length) {
+          toast('Dropdown needs a manual choice', 'This menu did not expose a usable set of options. Choose from it on the page.', 'info', [], 14000);
+          return { status: 'skipped' };
+        }
+      } catch {
+        toast('Dropdown needs a manual choice', 'The website did not expose this menu’s options. Choose from it on the page.', 'info', [], 14000);
+        return { status: 'skipped' };
+      } finally { record.starting = false; }
+      if (!scanned || scannedUrl !== location.href || records.get(field) !== record || !isEligible(field)) return;
+    }
     const original = readValue(field);
     const targetInfo = fieldInfo(field);
     const sourceLocation = location.href;
@@ -603,7 +685,7 @@
         toast('Connection interrupted', message ? 'Reload the page and try again.' : 'The AI session stopped. Click AI to try again.', 'error', [], 14000);
       }
     });
-    port.onMessage.addListener(message => {
+    port.onMessage.addListener(async message => {
       if (finished || message.requestId !== requestId) return;
       if (message.type === 'state') {
         writing = message.state === 'writing';
@@ -643,23 +725,23 @@
         toast('Answer does not fit this field', 'The generated choice or format is no longer available. Scan again and retry.', 'error', [], 14000);
         return;
       }
-      if ((['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT') && answer === original) {
+      if ((['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT' || isReactSelect(field)) && answer === original) {
         settle({ status: 'skipped' });
         toast('No change needed', field.type === 'checkbox' ? 'The answer is to leave this box as it is.' : 'This option is already selected.', 'info', [], 10000);
         return;
       }
       try {
-        writeValue(field, answer);
+        await writeValue(field, answer);
         if (readValue(field) !== answer) throw new Error('The website did not keep the answer.');
         if (field.validity && !field.validity.valid) {
-          writeValue(field, original);
+          if (!isReactSelect(field)) await writeValue(field, original);
           throw new Error('The answer did not meet the field’s format. Your previous text was restored.');
         }
         logUI('ui.filled', requestId);
         settle({ status: 'filled' });
-        toast('Answer filled', 'Review the answer before submitting your form.', 'success', [{ label: 'Undo', run: element => {
+        const actions = isReactSelect(field) ? [] : [{ label: 'Undo', run: async element => {
           if (field.isConnected && readValue(field) === answer) {
-            writeValue(field, original);
+            await writeValue(field, original);
             logUI('ui.undo', requestId);
             element.remove();
             toast('Undone', 'Your previous text has been restored.', 'info', [], 5000);
@@ -668,7 +750,8 @@
             element.remove();
             toast('Your edits were preserved', 'The field changed after filling, so undo did not replace your edits.', 'info', [], 10000);
           }
-        } }], 25000);
+        } }];
+        toast('Answer filled', 'Review the answer before submitting your form.', 'success', actions, 25000);
       } catch (error) {
         settle({ status: 'failed' });
         logUI('ui.insert_failed', requestId, 'INSERT_FAILED');
@@ -687,12 +770,19 @@
     return completion;
   }
 
-  function batchSnapshot() {
+  async function batchSnapshot() {
     if (!enabled || !scanned || scannedUrl !== location.href) return { scanned: false, enabled };
     scan();
+    let unavailableChoices = 0;
+    for (const record of [...records.values()]) {
+      if (!isReactSelect(record.field) || record.active || record.starting || !isEligible(record.field) || hasAnswer(record.field)) continue;
+      try {
+        if (!(await discoverComboboxOptions(record.field)).length) unavailableChoices++;
+      } catch { unavailableChoices++; }
+    }
     return {
-      scanned: true, enabled, page: collectPage(),
-      targets: [...records.values()].filter(record => record.field.type !== 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field))
+      scanned: true, enabled, page: collectPage(), unavailableChoices,
+      targets: [...records.values()].filter(record => record.field.type !== 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field) && (!isReactSelect(record.field) || (comboboxOptions.get(record.field) || []).length))
         .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
       uploadTargets: [...records.values()].filter(record => record.field.type === 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field))
         .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
@@ -741,7 +831,7 @@
     return result;
   }
 
-  function applyBatch(message) {
+  async function applyBatch(message) {
     if (!batch || batch.id !== message.runId) return { filled: 0, skipped: message.answers?.length || 0, failed: 0, unchecked: 0 };
     const result = { filled: 0, skipped: 0, failed: 0, unchecked: 0, firstError: '' };
     for (const item of message.answers || []) {
@@ -763,19 +853,19 @@
         result.firstError ||= 'An answer did not match its field or available choices.';
         continue;
       }
-      if (answer === readValue(field) && (['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT')) {
+      if (answer === readValue(field) && (['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT' || isReactSelect(field))) {
         if (field.type === 'checkbox' && answer === false) result.unchecked++;
         else result.skipped++;
         continue;
       }
       const original = readValue(field);
       try {
-        writeValue(field, answer);
+        await writeValue(field, answer);
         if (readValue(field) !== answer || (field.validity && !field.validity.valid)) throw new Error('The page rejected an answer.');
         result.filled++;
         logUI('ui.filled', batch.id);
       } catch {
-        try { writeValue(field, original); } catch { /* The page may have removed the field. */ }
+        if (!isReactSelect(field)) try { await writeValue(field, original); } catch { /* The page may have removed the field. */ }
         result.failed++;
         result.firstError ||= 'The page rejected an answer.';
         logUI('ui.insert_failed', batch.id, 'INSERT_FAILED');
@@ -839,11 +929,13 @@
       if (scanned && scannedUrl !== location.href) resetScan('The page changed. Scan it again to show fillable fields.');
       respond({ count: records.size, scanned, enabled });
     } else if (message?.type === 'WC_BATCH_SNAPSHOT') {
-      try { respond(batchSnapshot()); } catch { respond({ scanned: false, enabled }); }
+      void batchSnapshot().then(respond).catch(() => respond({ scanned: false, enabled }));
+      return true;
     } else if (message?.type === 'WC_BATCH_BEGIN') {
       respond(beginBatch(message));
     } else if (message?.type === 'WC_BATCH_APPLY') {
-      respond(applyBatch(message));
+      void applyBatch(message).then(respond).catch(() => respond({ filled: 0, skipped: 0, failed: message.answers?.length || 0, unchecked: 0, firstError: 'The page rejected the answers.' }));
+      return true;
     } else if (message?.type === 'WC_BATCH_ATTACH_RESUME') {
       respond(attachBatchResumes(message));
     } else if (message?.type === 'WC_BATCH_DONE') {

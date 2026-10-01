@@ -58,7 +58,7 @@ async function startFillAllTab(tabId) {
   batchRuns.set(tabId, run);
   try {
     const replies = await Promise.allSettled(frames.map(frame =>
-      withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_BATCH_SNAPSHOT' }, { frameId: frame.frameId }))));
+      withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_BATCH_SNAPSHOT' }, { frameId: frame.frameId }), 15000)));
     if (run.controller.signal.aborted) return { error: 'DO ALL stopped.' };
     const snapshots = frames.flatMap((frame, index) => {
       const reply = replies[index];
@@ -68,7 +68,8 @@ async function startFillAllTab(tabId) {
     if (!top) return { error: 'Scan the page first.' };
     const targets = snapshots.flatMap(snapshot => (snapshot.targets || []).map(target => ({ id: `${snapshot.frameId}:${target.id}`, field: target.field })));
     const uploadTargets = snapshots.flatMap(snapshot => (snapshot.uploadTargets || []).map(target => ({ id: `${snapshot.frameId}:${target.id}`, field: target.field })));
-    if (!targets.length && !uploadTargets.length) return { error: 'There are no empty scanned fields to fill.' };
+    const unavailableChoices = snapshots.reduce((total, snapshot) => total + (snapshot.unavailableChoices || 0), 0);
+    if (!targets.length && !uploadTargets.length) return { error: unavailableChoices ? 'Some dropdowns need a manual choice because their options are unavailable until you search or interact with them.' : 'There are no empty scanned fields to fill.' };
     const page = combinePageSnapshots(top.page, snapshots.filter(snapshot => snapshot !== top).map(snapshot => snapshot.page), frames.length - snapshots.length);
     const begun = await Promise.allSettled(snapshots.map(snapshot => withDeadline(chrome.tabs.sendMessage(tabId, {
       type: 'WC_BATCH_BEGIN', runId: run.id, count: targets.length + uploadTargets.length, targets: snapshot.targets || [], uploadTargets: snapshot.uploadTargets || [],
@@ -79,6 +80,7 @@ async function startFillAllTab(tabId) {
     const accepted = targets.filter(target => run.frames.includes(Number(target.id.split(':', 1)[0])));
     const acceptedUploads = uploadTargets.filter(target => run.frames.includes(Number(target.id.split(':', 1)[0])));
     if (!accepted.length && !acceptedUploads.length) return { error: 'The page changed. Scan it again.' };
+    run.unavailableChoices = unavailableChoices;
     run.started = true;
     void runBatch(tabId, run, accepted, acceptedUploads, page);
     return { started: true, count: accepted.length + acceptedUploads.length };
@@ -102,9 +104,9 @@ async function stopFillAllTab(tabId) {
 }
 
 async function runBatch(tabId, run, targets, uploadTargets, page) {
-  let summary = { filled: 0, skipped: 0, failed: 0, unchecked: 0 };
+  let summary = { filled: 0, skipped: run.unavailableChoices || 0, failed: 0, unchecked: 0 };
   let errorMessage = '';
-  let fieldError = '';
+  let fieldError = run.unavailableChoices ? 'Some searchable dropdowns need a manual choice.' : '';
   try {
     await storageReady;
     const settings = await loadSettings();
