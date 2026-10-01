@@ -1,6 +1,6 @@
 # AI Input Filler
 
-A standalone Chrome extension inside wagecuck. It puts a **✦ Write** button at the top right of eligible fields (**✦ AI** on small fields). Click it to draft and insert an answer using your profile, résumé, writing preferences, and the entire rendered page. Fields with existing text show **Rewrite**.
+A standalone Chrome extension inside wagecuck. Click **Scan page** to reveal purple outlines and **✦ Write** buttons beside eligible fields (**✦ AI** on small fields). Click a field button to draft and insert an answer using your profile, résumé, writing preferences, and the entire rendered page. Fields with existing text show **Rewrite**. Scanning does not call the AI; navigation clears the scan until you scan the new page.
 
 ## Install in Chrome
 
@@ -8,8 +8,8 @@ A standalone Chrome extension inside wagecuck. It puts a **✦ Write** button at
 2. Click **Load unpacked** and select this `chrome_filler` folder.
 3. Pin **Wagecuck · AI Input Filler** from Chrome’s extensions menu.
 4. Click its icon and follow the setup banner: **Connect AI** with your OpenAI API key, then add your résumé or background in **About you**. You can upload PDF, TXT, or Markdown, paste résumé text, or import the shared `../profiles/actual/profile.json` after you have completed it.
-5. In **Your voice**, choose a tone or write your preferences: for example, “Write professionally in two short paragraphs. Mention my interest in accessible products. Avoid buzzwords.” Tone changes keep your other instructions. Edits save automatically; the footer shows saving or saved status, and **Save** is available when you need it.
-6. Reload an already-open application page, then click **✦ Write** on a field. Review the result before submitting.
+5. In **Your voice**, choose a tone or write your preferences. New settings default to a casual, first-person voice. For example: “Keep it conversational and specific. Mention my interest in accessible products. Avoid buzzwords.” Tone changes keep your other instructions. Edits save automatically; the footer shows saving or saved status, and **Save** is available when you need it.
+6. Reload an already-open application page. Click **Scan page** on the page or in the extension popup to reveal purple outlines and **✦ Write** buttons on supported fields. Review each result before submitting.
 
 No build step or backend is needed. The extension has its own settings and does not read wagecuck’s `.env`. Importing a shared profile copies its content into Chrome storage; re-import it after editing the file. API usage is billed to your OpenAI API account. The default model is `gpt-4.1-mini`; you can enter another model ID that supports the Responses API, structured output, and PDF input if using a PDF résumé.
 
@@ -25,7 +25,7 @@ This creates a fresh API generation session for each field using the [OpenAI Res
 - Preservation of edits made while generation is running. Undo also preserves edits made after filling.
 - Native input and change events for framework forms. It fills one field per click and never clicks Next or Submit.
 
-Password, search, payment, identity-number, verification-code, hidden, disabled, and read-only fields are excluded. The model is instructed to use provided personal facts and report missing information instead of inventing it. As with any generated text, review factual claims.
+Password, search, payment, identity-number, verification-code, hidden, disabled, and read-only fields are excluded. The model uses provided personal facts by default. If the saved profile or writing instructions explicitly permit it, it can draft invented details for open-ended answers; review those details before use. It does not invent identity, contact details, education, licenses, employment dates, work location, work authorization, sponsorship needs, referrals, or consent.
 
 ## Résumé and data
 

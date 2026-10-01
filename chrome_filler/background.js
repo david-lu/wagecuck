@@ -34,6 +34,21 @@ function withDeadline(promise, milliseconds = 4000) {
   ]).finally(() => clearTimeout(timeout));
 }
 
+async function pageScanStatus(tabId, scan = false) {
+  const frames = await chrome.webNavigation.getAllFrames({ tabId });
+  if (!/^https?:\/\//i.test(frames?.find(frame => frame.frameId === 0)?.url || '')) throw new Error('Open a website to scan it.');
+  const frameIds = Array.isArray(frames) && frames.length ? frames.map(frame => frame.frameId) : [0];
+  const replies = await Promise.allSettled(frameIds.map(frameId =>
+    withDeadline(chrome.tabs.sendMessage(tabId, { type: scan ? 'WC_RESCAN' : 'WC_GET_PAGE_STATUS' }, { frameId }))));
+  const statuses = replies.filter(result => result.status === 'fulfilled' && result.value && typeof result.value === 'object').map(result => result.value);
+  if (!statuses.length) throw new Error('Reload the page before scanning it.');
+  return {
+    count: statuses.reduce((total, status) => total + (Number.isFinite(status.count) ? Math.max(0, status.count) : 0), 0),
+    scanned: statuses.some(status => status.scanned === true),
+    enabled: statuses.some(status => status.enabled !== false),
+  };
+}
+
 async function gatherPageContext(sender, clickedPage) {
   let frames;
   try { frames = await withDeadline(chrome.webNavigation.getAllFrames({ tabId: sender.tab.id })); }
@@ -121,6 +136,12 @@ chrome.runtime.onConnect.addListener(port => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!trustedSender(sender) || !message || typeof message !== 'object') return false;
+  if ((message.type === 'WC_SCAN_TAB' || message.type === 'WC_GET_TAB_SCAN_STATUS') && (trustedContent(sender) || trustedExtensionPage(sender))) {
+    const tabId = trustedContent(sender) ? sender.tab.id : message.tabId;
+    if (!Number.isInteger(tabId) || tabId < 0) { sendResponse({ error: 'No website tab is available.' }); return false; }
+    void pageScanStatus(tabId, message.type === 'WC_SCAN_TAB').then(sendResponse).catch(error => sendResponse({ error: error.message }));
+    return true;
+  }
   if (message.type === 'WC_GET_STATUS' && (trustedContent(sender) || trustedExtensionPage(sender))) {
     void storageReady.then(() => loadSettings()).then(settings => sendResponse({ enabled: settings.enabled, configured: Boolean(settings.apiKey) })).catch(() => sendResponse({ enabled: false, configured: false }));
     return true;

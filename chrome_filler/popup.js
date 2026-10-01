@@ -2,7 +2,7 @@ import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 const PROFESSIONAL = 'Write professionally, clearly, and in the first person.';
-const CASUAL = 'Write in a friendly, conversational tone and in the first person. Keep it clear and natural.';
+const CASUAL = DEFAULT_SETTINGS.writingInstructions;
 const MAX_TEXT_BYTES = 1024 * 1024;
 const MAX_TEXT_LENGTH = 100000;
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
@@ -167,24 +167,35 @@ async function refreshPage(rescan = false) {
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
   $('page-indicator').classList.remove('ready');
-  $('page-status').textContent = rescan ? 'Finding fields…' : 'Looking for fields…';
+  $('page-status').textContent = rescan ? 'Scanning page…' : 'Checking page…';
   try {
-    const [tab] = await withTimeout(chrome.tabs.query({ active: true, currentWindow: true }));
-    if (!tab?.id || (tab.url && !/^https?:\/\//i.test(tab.url))) {
+    const tabs = await withTimeout(chrome.tabs.query({ currentWindow: true }));
+    const activeTab = tabs.find(item => item.active);
+    const ownTab = await withTimeout(chrome.tabs.getCurrent()).catch(() => null);
+    const openedAsTab = ownTab?.id === activeTab?.id;
+    const candidates = openedAsTab ? tabs.filter(item => item !== activeTab).sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0)) : activeTab ? [activeTab] : [];
+    let tab;
+    for (const candidate of candidates) {
+      try {
+        const frame = await withTimeout(chrome.webNavigation.getFrame({ tabId: candidate.id, frameId: 0 }));
+        if (/^https?:\/\//i.test(frame?.url || '')) { tab = candidate; break; }
+      } catch { /* Extension and browser pages are not scannable. */ }
+    }
+    if (!tab?.id) {
       $('page-status').textContent = 'Open an application page.';
       return;
     }
-    const status = await withTimeout(chrome.tabs.sendMessage(tab.id, { type: rescan ? 'WC_RESCAN' : 'WC_GET_PAGE_STATUS' }, { frameId: 0 }));
+    const status = await withTimeout(chrome.runtime.sendMessage({ type: rescan ? 'WC_SCAN_TAB' : 'WC_GET_TAB_SCAN_STATUS', tabId: tab.id }));
     if (status?.error) throw new Error('Could not scan this page.');
     // Storage is authoritative; the content script may be applying the toggle.
     const enabled = settings.enabled;
     const count = Number.isFinite(status?.count) ? Math.max(0, status.count) : 0;
-    $('page-status').textContent = !enabled ? 'AI filling is paused.' : count ? `${count} ${count === 1 ? 'field' : 'fields'} ready to write` : 'No writable fields. Try an application page.';
-    $('page-indicator').classList.toggle('ready', enabled && count > 0);
+    $('page-status').textContent = !enabled ? 'AI filling is paused.' : !status.scanned ? 'Scan page to highlight fillable fields.' : count ? `${count} ${count === 1 ? 'field' : 'fields'} ready to write` : 'No fillable fields found. Try scanning again after the page loads.';
+    $('page-indicator').classList.toggle('ready', enabled && status.scanned && count > 0);
   } catch {
     $('page-status').textContent = 'Open an application page, or refresh it.';
   } finally {
-    button.disabled = false;
+    button.disabled = !settings.enabled;
     button.removeAttribute('aria-busy');
   }
 }

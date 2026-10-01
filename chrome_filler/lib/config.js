@@ -6,7 +6,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   apiKey: '',
   model: 'gpt-4.1-mini',
   profile: '',
-  writingInstructions: 'Write professionally, clearly, and in the first person.',
+  writingInstructions: 'Write in a friendly, conversational tone and in the first person. Keep it clear and natural.',
   resumeText: '',
   resumeFile: null,
   debug: false,

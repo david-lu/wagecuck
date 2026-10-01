@@ -156,6 +156,8 @@ class BrowserSuite:
         self.mock()
         self.page.goto(self.url)
         expect(self.page.locator("#wc-ai-root")).to_have_count(1)
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
         expect(self.button("Why do you want to work here")).to_be_visible()
 
     def fresh_labels(self):
@@ -163,6 +165,8 @@ class BrowserSuite:
         self.mock()
         self.page.goto(self.url.replace("application.html", "labels.html"))
         expect(self.page.locator("#wc-ai-root")).to_have_count(1)
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
         expect(self.button("Legal first name")).to_be_visible()
 
     @staticmethod
@@ -228,6 +232,7 @@ class BrowserSuite:
 
     def discovery(self):
         self.fresh()
+        assert self.page.locator("#wc-ai-root .wc-field-outline").count() == self.page.locator("#wc-ai-root .wc-fill-button").count()
         for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "How do you collaborate with operators"):
             expect(self.button(label)).to_have_count(1)
         for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Resume file", "Consent checkbox", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
@@ -242,6 +247,40 @@ class BrowserSuite:
         self.page.locator("#dynamic").evaluate("node => node.remove()")
         expect(self.button("What project are you proud of")).to_have_count(0)
         self.screenshot("discovered-fields")
+
+    def manual_scan_gate(self):
+        self.seed()
+        self.mock()
+        self.page.goto(self.url)
+        scan = self.page.locator("#wc-ai-root .wc-scan-button")
+        expect(scan).to_be_visible()
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+        expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
+        scan.evaluate("node => node.click()")
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+        popup = self.context.new_page()
+        try:
+            popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
+            expect(popup.locator("#rescan-button")).to_have_text("Scan page")
+            expect(popup.locator("#page-status")).to_contain_text("Scan page to highlight")
+            popup.locator("#rescan-button").click()
+            expect(self.button("Why do you want to work here")).to_be_visible()
+            expect(popup.locator("#page-status")).to_contain_text("ready to write")
+            count = self.page.locator("#wc-ai-root .wc-fill-button").count()
+            expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(count)
+            color = self.page.locator("#wc-ai-root .wc-field-outline").first.evaluate("node => getComputedStyle(node).borderTopColor")
+            assert color == "rgb(139, 92, 246)", color
+            self.page.reload()
+            expect(self.page.locator("#wc-ai-root .wc-scan-button")).to_be_visible()
+            expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+            expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
+            self.page.locator("#wc-ai-root .wc-scan-button").click()
+            expect(self.button("Why do you want to work here")).to_be_visible()
+            self.page.evaluate("history.pushState({}, '', '?newApplication=1'); document.body.appendChild(document.createElement('div'))")
+            expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+            expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
+        finally:
+            popup.close()
 
     def synthetic_click_does_not_generate(self):
         self.fresh()
@@ -509,6 +548,8 @@ class BrowserSuite:
         self.seed(enabled=False)
         expect(self.page.locator(".wc-fill-button")).to_have_count(0)
         self.seed(enabled=True, apiKey="")
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
         expect(self.button("Why do you want to work here")).to_be_visible()
         self.button("Why do you want to work here").click()
         expect(self.toast()).to_contain_text(re.compile("key|settings|extension", re.I))
@@ -742,7 +783,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "discovery", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable",
+                "manual_scan_gate", "discovery", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

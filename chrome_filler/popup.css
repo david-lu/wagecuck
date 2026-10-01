@@ -31,10 +31,11 @@ h1 span { display: block; font-size: 10px; font-weight: 500; letter-spacing: .5p
 .page-card { margin: 0 18px 11px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 11px; background: #fff9; display: flex; align-items: center; gap: 9px; min-height: 54px; }
 .page-card > div { flex: 1; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #a5ada0; }
-.status-dot.ready { background: #659037; box-shadow: 0 0 0 3px #dceac8; }
+.status-dot.ready { background: #7c3aed; box-shadow: 0 0 0 3px #ede9fe; }
 .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--muted); }
 #page-status { margin: 3px 0 0; font-size: 12px; line-height: 1.35; }
-.page-card .small-button { flex-shrink: 0; font-size: 11px; padding: 7px; }
+.page-card .small-button { flex-shrink: 0; font-size: 11px; padding: 7px 10px; background: #7c3aed; border-color: #6d28d9; color: white; }
+.page-card .small-button:hover:enabled { background: #6d28d9; }
 .icon-button { border: 0; background: transparent; color: var(--muted); font-size: 23px; border-radius: 6px; padding: 2px 5px; }
 .icon-button:hover { background: #edf0e6; color: var(--ink); }
 .tabs { display: flex; margin: 0 18px; padding: 4px; background: #ebece4; border-radius: 10px; gap: 2px; }

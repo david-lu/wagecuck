@@ -9,11 +9,14 @@
   const roots = new Set([document]);
   let enabled = true;
   let configured = false;
+  let scanned = false;
+  let scannedUrl = '';
   let serial = 0;
   let scanTimer;
   let positionFrame;
   let host;
   let shadow;
+  let scanButton;
   let buttonLayer;
   let toastLayer;
 
@@ -21,6 +24,10 @@
     :host { all:initial!important; position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important; z-index:2147483646!important; pointer-events:none!important; color-scheme:light!important; }
     *, *::before, *::after { box-sizing:border-box; }
     button { font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; cursor:pointer; }
+    .wc-scan-button { all:initial; box-sizing:border-box; position:fixed; right:16px; bottom:16px; z-index:1; display:flex; align-items:center; justify-content:center; min-height:38px; padding:0 15px; border:1px solid #6d28d9; border-radius:10px; background:#7c3aed; color:#fff; box-shadow:0 4px 16px #3b176b55; font:650 13px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; }
+    .wc-scan-button:hover { background:#6d28d9; }
+    .wc-scan-button:focus-visible { outline:3px solid #c4b5fd; outline-offset:3px; }
+    .wc-field-outline { box-sizing:border-box; position:fixed; border:2px solid #8b5cf6; border-radius:7px; box-shadow:0 0 0 3px #8b5cf633; pointer-events:none; }
     .wc-fill-button { all:initial; box-sizing:border-box; position:fixed; display:flex; align-items:center; justify-content:center; gap:5px; width:80px; height:28px; padding:0 8px; border:1px solid #b6ca83; border-radius:8px; background:#eaf5c7; color:#263415; box-shadow:0 1px 4px #18241418; font:650 12px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; transition:background .15s,box-shadow .15s; }
     .wc-fill-button:hover { background:#d9eda1; box-shadow:0 2px 7px #18241430; }
     .wc-fill-button:focus-visible, .wc-toast button:focus-visible { outline:3px solid #586e2e; outline-offset:2px; }
@@ -50,13 +57,25 @@
     const style = document.createElement('style');
     style.textContent = css;
     buttonLayer = document.createElement('div');
+    scanButton = document.createElement('button');
+    scanButton.type = 'button';
+    scanButton.className = 'wc-scan-button';
+    scanButton.textContent = 'Scan page';
+    scanButton.setAttribute('aria-label', 'Scan page for fillable fields');
+    scanButton.addEventListener('click', event => {
+      if (!event.isTrusted) return;
+      activateScan();
+      chrome.runtime.sendMessage({ type: 'WC_SCAN_TAB' }).catch(() => {});
+    });
     toastLayer = document.createElement('div');
     toastLayer.className = 'wc-toasts';
     toastLayer.setAttribute('aria-live', 'polite');
     toastLayer.setAttribute('aria-relevant', 'additions text');
-    shadow.append(style, buttonLayer, toastLayer);
+    shadow.append(style, buttonLayer);
+    if (window.top === window) shadow.append(scanButton);
+    shadow.append(toastLayer);
     document.documentElement.append(host);
-    for (const record of records.values()) buttonLayer.append(record.button);
+    for (const record of records.values()) buttonLayer.append(record.outline, record.button);
   }
 
   function readValue(field) {
@@ -144,6 +163,8 @@
     scanTimer = null;
     if (!enabled) return;
     ensureUI();
+    if (scanned && scannedUrl !== location.href) resetScan('The page changed. Scan it again to show fillable fields.');
+    if (!scanned) return;
     const fields = new Set();
     for (const root of collectRoots()) {
       if (!roots.has(root)) {
@@ -166,10 +187,13 @@
         button.textContent = '✦ Write';
         button.title = `Write an answer for ${labelFor(field)}`;
         button.setAttribute('aria-label', `Fill with AI: ${labelFor(field)}`);
-        const record = { field, button, id, active: null, starting: false };
+        const outline = document.createElement('div');
+        outline.className = 'wc-field-outline';
+        outline.setAttribute('aria-hidden', 'true');
+        const record = { field, button, outline, id, active: null, starting: false };
         button.addEventListener('click', event => { if (event.isTrusted) startFill(record); });
         records.set(field, record);
-        buttonLayer.append(button);
+        buttonLayer.append(outline, button);
         resizeObserver.observe(field);
       }
     }
@@ -177,6 +201,7 @@
       if (!fields.has(field)) {
         record.active?.cancel('Field is no longer available.');
         record.button.remove();
+        record.outline.remove();
         resizeObserver.unobserve(field);
         records.delete(field);
       }
@@ -192,6 +217,26 @@
     scanTimer = setTimeout(scan, 120);
   }
 
+  function resetScan(reason = '') {
+    scanned = false;
+    scannedUrl = '';
+    for (const [field, record] of records) {
+      record.active?.cancel(reason || 'The page scan ended.');
+      resizeObserver.unobserve(field);
+      record.button.remove();
+      record.outline.remove();
+    }
+    records.clear();
+  }
+
+  function activateScan() {
+    if (!enabled) return { count: 0, scanned: false, enabled };
+    scanned = true;
+    scannedUrl = location.href;
+    scan();
+    return { count: records.size, scanned, enabled };
+  }
+
   function schedulePosition() {
     if (positionFrame) return;
     positionFrame = requestAnimationFrame(positionButtons);
@@ -200,8 +245,14 @@
   function positionButtons() {
     positionFrame = null;
     for (const record of records.values()) {
-      const { field, button } = record;
+      const { field, button, outline } = record;
       const rect = field.getBoundingClientRect();
+      const outlineVisible = rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight && isVisible(field);
+      outline.style.display = outlineVisible ? 'block' : 'none';
+      outline.style.left = `${rect.left}px`;
+      outline.style.top = `${rect.top}px`;
+      outline.style.width = `${rect.width}px`;
+      outline.style.height = `${rect.height}px`;
       const compact = rect.width < 240 || rect.height < 36;
       const width = compact ? 45 : 80;
       const height = compact ? 26 : 28;
@@ -286,7 +337,7 @@
   }
 
   async function startFill(record) {
-    if (record.active || record.starting || !enabled || !isEligible(record.field)) return;
+    if (!scanned || scannedUrl !== location.href || record.active || record.starting || !enabled || !isEligible(record.field)) return;
     record.starting = true;
     try {
       const status = await chrome.runtime.sendMessage({ type: 'WC_GET_STATUS' });
@@ -299,7 +350,7 @@
     } finally {
       record.starting = false;
     }
-    if (!records.has(record.field) || record.active || !isEligible(record.field)) return;
+    if (!scanned || scannedUrl !== location.href || !records.has(record.field) || record.active || !isEligible(record.field)) return;
     if (!configured) {
       toast('One quick step before you start', 'Connect your OpenAI account using an API key, then add your background.', 'info', [{ label: 'Set up AI', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) }], 14000);
       return;
@@ -443,12 +494,8 @@
   function setEnabled(value) {
     enabled = value;
     if (enabled) { scan(); return; }
-    for (const { field, button, active } of records.values()) {
-      active?.cancel('AI filling was switched off.');
-      resizeObserver.unobserve(field);
-      button.remove();
-    }
-    records.clear();
+    resetScan('AI filling was switched off.');
+    host?.remove();
   }
 
   const observationOptions = { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['type', 'disabled', 'readonly', 'hidden', 'inert', 'class', 'style', 'name', 'id', 'for', 'title', 'placeholder', 'maxlength', 'min', 'max', 'step', 'pattern', 'required', 'autocomplete', 'aria-label', 'aria-labelledby', 'aria-describedby', 'aria-description', 'aria-required', 'aria-disabled', 'aria-readonly', 'contenteditable'] };
@@ -467,7 +514,8 @@
   // Attaching a shadow root to an existing host does not mutate the document.
   // Discover these late-loaded components without repeatedly rescanning every field.
   setInterval(() => {
-    if (enabled && !document.hidden && collectRoots().some(root => !roots.has(root))) scheduleScan();
+    if (enabled && scanned && location.href !== scannedUrl) resetScan('The page changed. Scan it again to show fillable fields.');
+    if (enabled && scanned && !document.hidden && collectRoots().some(root => !roots.has(root))) scheduleScan();
   }, 2000);
   window.visualViewport?.addEventListener('resize', schedulePosition);
   window.visualViewport?.addEventListener('scroll', schedulePosition);
@@ -476,11 +524,12 @@
     if (message?.type === 'WC_PAGE_CONTEXT') {
       try { respond(collectPage()); } catch { respond(null); }
     } else if (message?.type === 'WC_RESCAN') {
-      scan(); respond({ count: records.size, enabled });
+      respond(activateScan());
     } else if (message?.type === 'WC_GET_PAGE_STATUS') {
-      respond({ count: records.size, enabled });
+      if (scanned && scannedUrl !== location.href) resetScan('The page changed. Scan it again to show fillable fields.');
+      respond({ count: records.size, scanned, enabled });
     } else if (message?.type === 'WC_SETTINGS_CHANGED') {
-      setEnabled(message.enabled !== false); respond({ count: records.size, enabled });
+      setEnabled(message.enabled !== false); respond({ count: records.size, scanned, enabled });
     }
   });
   chrome.runtime.sendMessage({ type: 'WC_GET_STATUS' }).then(status => {
