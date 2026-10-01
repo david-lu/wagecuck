@@ -17,6 +17,9 @@
   let host;
   let shadow;
   let scanButton;
+  let doAllButton;
+  let batch = null;
+  let scanPending = false;
   let buttonLayer;
   let toastLayer;
 
@@ -27,6 +30,11 @@
     .wc-scan-button { all:initial; box-sizing:border-box; position:fixed; right:16px; bottom:16px; z-index:1; display:flex; align-items:center; justify-content:center; min-height:38px; padding:0 15px; border:1px solid #6d28d9; border-radius:10px; background:#7c3aed; color:#fff; box-shadow:0 4px 16px #3b176b55; font:650 13px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; }
     .wc-scan-button:hover { background:#6d28d9; }
     .wc-scan-button:focus-visible { outline:3px solid #c4b5fd; outline-offset:3px; }
+    .wc-do-all-button { all:initial; box-sizing:border-box; position:fixed; right:16px; bottom:62px; z-index:1; min-height:38px; padding:0 15px; border:1px solid #4c1d95; border-radius:10px; background:#5b21b6; color:#fff; box-shadow:0 4px 16px #3b176b55; font:700 13px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; }
+    .wc-do-all-button:hover { background:#4c1d95; }
+    .wc-do-all-button:focus-visible { outline:3px solid #c4b5fd; outline-offset:3px; }
+    .wc-do-all-button[disabled] { opacity:.55; cursor:default; }
+    .wc-do-all-button[hidden] { display:none; }
     .wc-field-outline { box-sizing:border-box; position:fixed; border:2px solid #8b5cf6; border-radius:7px; box-shadow:0 0 0 3px #8b5cf633; pointer-events:none; }
     .wc-fill-button { all:initial; box-sizing:border-box; position:fixed; display:flex; align-items:center; justify-content:center; gap:5px; width:80px; height:28px; padding:0 8px; border:1px solid #b6ca83; border-radius:8px; background:#eaf5c7; color:#263415; box-shadow:0 1px 4px #18241418; font:650 12px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; transition:background .15s,box-shadow .15s; }
     .wc-fill-button:hover { background:#d9eda1; box-shadow:0 2px 7px #18241430; }
@@ -64,15 +72,32 @@
     scanButton.setAttribute('aria-label', 'Scan page for fillable fields');
     scanButton.addEventListener('click', event => {
       if (!event.isTrusted) return;
+      scanPending = true;
       activateScan();
-      chrome.runtime.sendMessage({ type: 'WC_SCAN_TAB' }).catch(() => {});
+      chrome.runtime.sendMessage({ type: 'WC_SCAN_TAB' }).catch(() => {}).finally(() => {
+        scanPending = false;
+        if (scanned) scan();
+      });
+    });
+    doAllButton = document.createElement('button');
+    doAllButton.type = 'button';
+    doAllButton.className = 'wc-do-all-button';
+    doAllButton.textContent = 'DO ALL';
+    doAllButton.title = 'Fill empty scanned text fields; never submit';
+    doAllButton.setAttribute('aria-label', 'DO ALL: fill empty scanned fields');
+    doAllButton.hidden = true;
+    doAllButton.addEventListener('click', event => {
+      if (!event.isTrusted || doAllButton.disabled) return;
+      chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB' }).then(result => {
+        if (result?.error) toast('Couldn’t start DO ALL', result.error, 'error', [], 12000);
+      }).catch(() => toast('Couldn’t start DO ALL', 'Reload the page and try again.', 'error', [], 12000));
     });
     toastLayer = document.createElement('div');
     toastLayer.className = 'wc-toasts';
     toastLayer.setAttribute('aria-live', 'polite');
     toastLayer.setAttribute('aria-relevant', 'additions text');
     shadow.append(style, buttonLayer);
-    if (window.top === window) shadow.append(scanButton);
+    if (window.top === window) shadow.append(scanButton, doAllButton);
     shadow.append(toastLayer);
     document.documentElement.append(host);
     for (const record of records.values()) buttonLayer.append(record.outline, record.button);
@@ -114,6 +139,10 @@
 
   function fieldInfo(field) {
     return globalThis.WCFieldContext.fieldInfo(field);
+  }
+
+  function targetSignature(info) {
+    return JSON.stringify(['label', 'type', 'placeholder', 'context', 'required', 'maxLength', 'min', 'max', 'step', 'pattern'].map(key => info[key]));
   }
 
   function collectRoots(root = document, found = []) {
@@ -209,6 +238,10 @@
     for (const root of roots) {
       if (root instanceof ShadowRoot && !root.host.isConnected) roots.delete(root);
     }
+    if (doAllButton) {
+      doAllButton.hidden = records.size === 0;
+      doAllButton.disabled = !!batch || scanPending;
+    }
     schedulePosition();
   }
 
@@ -220,6 +253,16 @@
   function resetScan(reason = '') {
     scanned = false;
     scannedUrl = '';
+    if (batch) {
+      const ending = batch;
+      batch = null;
+      ending.progress?.element.remove();
+      clearInterval(ending.heartbeat);
+      ending.keepalive?.disconnect();
+      chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => {});
+    }
+    scanPending = false;
+    if (doAllButton) doAllButton.hidden = true;
     for (const [field, record] of records) {
       record.active?.cancel(reason || 'The page scan ended.');
       resizeObserver.unobserve(field);
@@ -346,31 +389,38 @@
       const status = await chrome.runtime.sendMessage({ type: 'WC_GET_STATUS' });
       configured = !!status?.configured;
       enabled = status?.enabled !== false;
-      if (!enabled) { setEnabled(false); return; }
+      if (!enabled) { setEnabled(false); return { status: 'failed', code: 'DISABLED' }; }
     } catch {
       toast('Extension needs a refresh', 'Reload this page after reloading the extension in Chrome.', 'error', [], 14000);
-      return;
+      return { status: 'failed', code: 'CONNECTION_INTERRUPTED' };
     } finally {
       record.starting = false;
     }
     if (!scanned || scannedUrl !== location.href || !records.has(record.field) || record.active || !isEligible(record.field)) return;
     if (!configured) {
       toast('One quick step before you start', 'Connect your OpenAI account using an API key, then add your background.', 'info', [{ label: 'Set up AI', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) }], 14000);
-      return;
+      return { status: 'failed', code: 'NOT_CONFIGURED' };
     }
     if ([...records.values()].filter(item => item.active).length >= 3) {
       toast('Three answers are already in progress', 'Wait for an answer or cancel one before starting another.', 'info', [], 10000);
-      return;
+      return { status: 'failed', code: 'BUSY' };
     }
     const field = record.field;
     const original = readValue(field);
     const targetInfo = fieldInfo(field);
     const sourceLocation = location.href;
-    const targetSignature = info => JSON.stringify(['label', 'type', 'placeholder', 'context', 'required', 'maxLength', 'min', 'max', 'step', 'pattern'].map(key => info[key]));
     const requestId = crypto.randomUUID();
     const start = Date.now();
     const port = chrome.runtime.connect({ name: 'wc-fill' });
     let finished = false;
+    let settled = false;
+    let resolveCompletion;
+    const completion = new Promise(resolve => { resolveCompletion = resolve; });
+    function settle(result) {
+      if (settled) return;
+      settled = true;
+      resolveCompletion(result);
+    }
     let edited = false;
     let writing = false;
     field.addEventListener('input', onEdit);
@@ -409,6 +459,7 @@
       if (finished) return;
       try { port.postMessage({ type: 'cancel', requestId }); } catch { /* Already disconnected. */ }
       cleanup();
+      settle({ status: 'cancelled' });
       logUI('ui.cancelled', requestId);
       toast(reason ? 'Answer stopped' : 'Cancelled', reason || 'Your text has not been changed.', 'info', [], 7000);
     }
@@ -417,6 +468,7 @@
       if (!finished) {
         const message = chrome.runtime.lastError?.message;
         cleanup();
+        settle({ status: 'failed', code: 'CONNECTION_INTERRUPTED' });
         toast('Connection interrupted', message ? 'Reload the page and try again.' : 'The AI session stopped. Click AI to try again.', 'error', [], 14000);
       }
     });
@@ -429,6 +481,7 @@
       }
       if (message.type === 'error') {
         cleanup();
+        settle({ status: 'failed', code: message.code });
         const actions = [{ label: 'Try again', run: element => { element.remove(); startFill(record); } }];
         if (['MISSING_INFORMATION', 'AUTHENTICATION', 'NOT_CONFIGURED', 'ACCESS_DENIED', 'API_REQUEST'].includes(message.code)) actions.push({ label: message.code === 'MISSING_INFORMATION' ? 'Edit profile' : 'Open settings', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) });
         toast('Couldn’t write this answer', message.message || 'Click Write to try again.', 'error', actions, 20000);
@@ -437,25 +490,30 @@
       if (message.type !== 'result') return;
       cleanup();
       if (!enabled || !isEligible(field)) {
+        settle({ status: 'skipped' });
         toast('Field is no longer available', 'The answer was not inserted. Rescan from the extension icon.', 'info', [], 12000);
         return;
       }
       if (edited || readValue(field) !== original) {
+        settle({ status: 'skipped' });
         logUI('ui.edit_preserved', requestId);
         toast('Your edits were preserved', 'You changed this field while the AI was writing. Click AI again to use your latest text.', 'info', [], 14000);
         return;
       }
       if (location.href !== sourceLocation || targetSignature(fieldInfo(field)) !== targetSignature(targetInfo)) {
+        settle({ status: 'skipped' });
         logUI('ui.edit_preserved', requestId, 'FIELD_CHANGED');
         toast('The question changed', 'The page or field changed while the AI was writing. Click AI again for the current question.', 'info', [], 14000);
         return;
       }
       const answer = typeof message.answer === 'string' ? message.answer.trim() : '';
       if (!answer || (field.maxLength > 0 && answer.length > field.maxLength)) {
+        settle({ status: 'failed' });
         toast('Answer doesn’t fit this field', 'Try again with a shorter answer in your writing preferences.', 'error', [], 14000);
         return;
       }
       if (field.type === 'number' && !Number.isFinite(Number(answer))) {
+        settle({ status: 'failed' });
         toast('A number is needed', 'The AI returned text for a numeric field. Click AI to try again.', 'error', [], 14000);
         return;
       }
@@ -467,6 +525,7 @@
           throw new Error('The answer did not meet the field’s format. Your previous text was restored.');
         }
         logUI('ui.filled', requestId);
+        settle({ status: 'filled' });
         toast('Answer filled', 'Review the answer before submitting your form.', 'success', [{ label: 'Undo', run: element => {
           if (field.isConnected && readValue(field) === answer) {
             writeValue(field, original);
@@ -480,6 +539,7 @@
           }
         } }], 25000);
       } catch (error) {
+        settle({ status: 'failed' });
         logUI('ui.insert_failed', requestId, 'INSERT_FAILED');
         toast('Couldn’t insert the answer', error.message, 'error', [], 14000);
       }
@@ -490,8 +550,100 @@
       waiting.detail.textContent = `${labelFor(field)} · Your edits will be preserved.`;
     } catch {
       cleanup();
+      settle({ status: 'failed' });
       toast('Couldn’t read this page', 'Reload the page and try again.', 'error', [], 14000);
     }
+    return completion;
+  }
+
+  function batchSnapshot() {
+    if (!enabled || !scanned || scannedUrl !== location.href) return { scanned: false, enabled };
+    scan();
+    return {
+      scanned: true, enabled, page: collectPage(),
+      targets: [...records.values()].filter(record => !record.active && !record.starting && isEligible(record.field) && !readValue(record.field).trim())
+        .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
+    };
+  }
+
+  function beginBatch(message) {
+    if (!enabled || !scanned || scannedUrl !== location.href || batch) return { started: false };
+    const targets = new Map();
+    for (const target of message.targets || []) {
+      const record = [...records.values()].find(item => item.id === target.id);
+      if (record) targets.set(target.id, { record, signature: targetSignature(target.field) });
+    }
+    batch = { id: message.runId, sourceUrl: location.href, targets, progress: null };
+    if (window.top === window) {
+      batch.progress = toast('DO ALL', `Writing ${message.count} ${message.count === 1 ? 'answer' : 'answers'} in one agent run...`, 'info', [{ label: 'Stop', run: () => {
+        chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => {});
+        if (batch?.progress) batch.progress.detail.textContent = 'Stopping...';
+      } }]);
+      const keepalive = chrome.runtime.connect({ name: 'wc-batch' });
+      batch.keepalive = keepalive;
+      const heartbeat = () => { try { keepalive.postMessage({ type: 'heartbeat', runId: message.runId }); } catch { /* The worker has disconnected. */ } };
+      batch.heartbeat = setInterval(heartbeat, 20_000);
+      keepalive.onDisconnect.addListener(() => {
+        if (batch?.id === message.runId) finishBatch({ runId: message.runId, stopped: true, errorMessage: 'The extension connection was interrupted. Reload the page and try again.' });
+      });
+      heartbeat();
+    }
+    if (doAllButton) doAllButton.disabled = true;
+    return { started: true };
+  }
+
+  function applyBatch(message) {
+    if (!batch || batch.id !== message.runId) return { filled: 0, skipped: message.answers?.length || 0, failed: 0 };
+    const result = { filled: 0, skipped: 0, failed: 0, firstError: '' };
+    for (const item of message.answers || []) {
+      const target = batch.targets.get(item.fieldId);
+      const record = target?.record;
+      const field = record?.field;
+      if (!record || records.get(field) !== record || !enabled || !scanned || batch.sourceUrl !== location.href || record.active || record.starting || !isEligible(field) || readValue(field).trim() || targetSignature(fieldInfo(field)) !== target.signature) {
+        result.skipped++;
+        continue;
+      }
+      if (item.error) {
+        result.failed++;
+        result.firstError ||= item.error.message || 'The agent could not answer a field.';
+        continue;
+      }
+      const answer = typeof item.answer === 'string' ? item.answer.trim() : '';
+      if (!answer || (field.maxLength > 0 && answer.length > field.maxLength)) {
+        result.failed++;
+        result.firstError ||= 'An answer was empty or too long for its field.';
+        continue;
+      }
+      try {
+        writeValue(field, answer);
+        if (readValue(field) !== answer || (field.validity && !field.validity.valid)) throw new Error('The page rejected an answer.');
+        result.filled++;
+        logUI('ui.filled', batch.id);
+      } catch {
+        try { writeValue(field, ''); } catch { /* The page may have removed the field. */ }
+        result.failed++;
+        result.firstError ||= 'The page rejected an answer.';
+        logUI('ui.insert_failed', batch.id, 'INSERT_FAILED');
+      }
+    }
+    schedulePosition();
+    return result;
+  }
+
+  function finishBatch(message) {
+    if (!batch || batch.id !== message.runId) return { finished: false };
+    const ending = batch;
+    batch = null;
+    ending.progress?.element.remove();
+    clearInterval(ending.heartbeat);
+    ending.keepalive?.disconnect();
+    if (doAllButton) doAllButton.disabled = false;
+    if (window.top === window) {
+      const { filled = 0, failed = 0, skipped = 0 } = message.summary || {};
+      const detail = message.errorMessage || `${filled} filled${failed ? `, ${failed} could not be filled` : ''}${skipped ? `, ${skipped} skipped` : ''}. ${message.fieldError ? `${message.fieldError} ` : ''}Review the answers before submitting.`;
+      toast(message.stopped ? 'DO ALL stopped' : message.errorMessage ? 'DO ALL failed' : 'DO ALL finished', detail, message.errorMessage ? 'error' : filled ? 'success' : 'info', [], 20000);
+    }
+    return { finished: true };
   }
 
   function setEnabled(value) {
@@ -531,6 +683,14 @@
     } else if (message?.type === 'WC_GET_PAGE_STATUS') {
       if (scanned && scannedUrl !== location.href) resetScan('The page changed. Scan it again to show fillable fields.');
       respond({ count: records.size, scanned, enabled });
+    } else if (message?.type === 'WC_BATCH_SNAPSHOT') {
+      try { respond(batchSnapshot()); } catch { respond({ scanned: false, enabled }); }
+    } else if (message?.type === 'WC_BATCH_BEGIN') {
+      respond(beginBatch(message));
+    } else if (message?.type === 'WC_BATCH_APPLY') {
+      respond(applyBatch(message));
+    } else if (message?.type === 'WC_BATCH_DONE') {
+      respond(finishBatch(message));
     } else if (message?.type === 'WC_SETTINGS_CHANGED') {
       setEnabled(message.enabled !== false); respond({ count: records.size, scanned, enabled });
     }

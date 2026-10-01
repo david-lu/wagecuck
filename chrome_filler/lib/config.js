@@ -4,13 +4,14 @@ export const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 const PREVIOUS_CASUAL_INSTRUCTIONS = [
   'Write in a friendly, conversational tone and in the first person. Keep it clear and natural.',
   'Use a casual, straightforward first-person voice. Keep answers short and specific. Contractions are fine. Skip buzzwords, stock enthusiasm, and overly polished phrasing.',
+  'Write in a casual, confident first-person voice. Be specific about what I built, led, and changed, and say the results plainly. Use natural contractions. Keep it concise and skip corporate jargon or fake modesty.',
 ];
 export const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
   apiKey: '',
   model: 'gpt-4.1-mini',
   profile: '',
-  writingInstructions: 'Write in a casual, confident first-person voice. Be specific about what I built, led, and changed, and say the results plainly. Use natural contractions. Keep it concise and skip corporate jargon or fake modesty.',
+  writingInstructions: 'Keep open answers short, casual, and confident, usually 1–3 sentences. Mention one relevant detail from the job posting when it fits. Say what I built and the results plainly, without corporate fluff.',
   resumeText: '',
   resumeFile: null,
   debug: false,

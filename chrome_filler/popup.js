@@ -20,6 +20,7 @@ let pendingWrites = 0;
 let lastQueuedRevision = -1;
 let draftStored = false;
 let lastError = '';
+let pageTabId = null;
 
 function setStatus(id, message, kind = '') {
   const element = $(id);
@@ -164,8 +165,12 @@ async function withTimeout(promise, milliseconds = 7000) {
 
 async function refreshPage(rescan = false) {
   const button = $('rescan-button');
+  const doAll = $('do-all-button');
+  pageTabId = null;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
+  doAll.hidden = true;
+  doAll.disabled = true;
   $('page-indicator').classList.remove('ready');
   $('page-status').textContent = rescan ? 'Scanning page…' : 'Checking page…';
   try {
@@ -185,6 +190,7 @@ async function refreshPage(rescan = false) {
       $('page-status').textContent = 'Open an application page.';
       return;
     }
+    pageTabId = tab.id;
     const status = await withTimeout(chrome.runtime.sendMessage({ type: rescan ? 'WC_SCAN_TAB' : 'WC_GET_TAB_SCAN_STATUS', tabId: tab.id }));
     if (status?.error) throw new Error('Could not scan this page.');
     // Storage is authoritative; the content script may be applying the toggle.
@@ -192,6 +198,8 @@ async function refreshPage(rescan = false) {
     const count = Number.isFinite(status?.count) ? Math.max(0, status.count) : 0;
     $('page-status').textContent = !enabled ? 'AI filling is paused.' : !status.scanned ? 'Scan page to highlight fillable fields.' : count ? `${count} ${count === 1 ? 'field' : 'fields'} ready to write` : 'No fillable fields found. Try scanning again after the page loads.';
     $('page-indicator').classList.toggle('ready', enabled && status.scanned && count > 0);
+    doAll.hidden = !(enabled && status.scanned && count > 0);
+    doAll.disabled = doAll.hidden;
   } catch {
     $('page-status').textContent = 'Open an application page, or refresh it.';
   } finally {
@@ -466,6 +474,20 @@ $('setup-action').addEventListener('click', () => {
   (connected ? $('resume-upload-button') : $('api-key')).focus();
 });
 $('rescan-button').addEventListener('click', () => refreshPage(true));
+$('do-all-button').addEventListener('click', async () => {
+  if (!pageTabId) return;
+  const button = $('do-all-button');
+  button.disabled = true;
+  $('page-status').textContent = 'Starting DO ALL…';
+  try {
+    const result = await withTimeout(chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB', tabId: pageTabId }));
+    $('page-status').textContent = result?.started ? `DO ALL started on ${result.count} empty ${result.count === 1 ? 'field' : 'fields'}. Watch the page for progress.` : result?.error || 'Could not start DO ALL.';
+  } catch {
+    $('page-status').textContent = 'Could not start DO ALL. Reload the page and try again.';
+  } finally {
+    button.disabled = false;
+  }
+});
 $('profile-import-button').addEventListener('click', () => $('profile-import').click());
 $('resume-upload-button').addEventListener('click', () => $('resume-upload').click());
 $('profile-import').addEventListener('change', importProfile);

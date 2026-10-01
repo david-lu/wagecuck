@@ -1,8 +1,9 @@
-import { DEFAULT_SETTINGS, SETTINGS_KEY, LOGS_KEY, loadSettings } from './lib/config.js';
-import { AgentError, combinePageSnapshots, errorToPublic, generateAnswer, validateFieldAndPage } from './lib/agent.js';
+import { SETTINGS_KEY, LOGS_KEY, loadSettings } from './lib/config.js';
+import { AgentError, combinePageSnapshots, errorToPublic, generateAnswer, generateBatchAnswers, validateFieldAndPage } from './lib/agent.js';
 import { logEvent } from './lib/logging.js';
 
 const activeRequests = new Map();
+const batchRuns = new Map();
 const REQUEST_ID = /^[a-zA-Z0-9_.:-]{1,120}$/;
 // Restrict before any configuration access. No key/profile/resume is sent to content scripts.
 const storageReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
@@ -49,6 +50,91 @@ async function pageScanStatus(tabId, scan = false) {
   };
 }
 
+async function startFillAllTab(tabId) {
+  if (batchRuns.has(tabId)) return { error: 'DO ALL is already running.' };
+  const frames = await chrome.webNavigation.getAllFrames({ tabId });
+  if (!/^https?:\/\//i.test(frames?.find(frame => frame.frameId === 0)?.url || '')) throw new Error('Open an application page first.');
+  const run = { id: crypto.randomUUID(), controller: new AbortController(), frames: [] };
+  batchRuns.set(tabId, run);
+  try {
+    const replies = await Promise.allSettled(frames.map(frame =>
+      withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_BATCH_SNAPSHOT' }, { frameId: frame.frameId }))));
+    if (run.controller.signal.aborted) return { error: 'DO ALL stopped.' };
+    const snapshots = frames.flatMap((frame, index) => {
+      const reply = replies[index];
+      return reply.status === 'fulfilled' && reply.value?.scanned && reply.value?.enabled !== false && reply.value?.page ? [{ frameId: frame.frameId, ...reply.value }] : [];
+    });
+    const top = snapshots.find(snapshot => snapshot.frameId === 0);
+    if (!top) return { error: 'Scan the page first.' };
+    const targets = snapshots.flatMap(snapshot => (snapshot.targets || []).map(target => ({ id: `${snapshot.frameId}:${target.id}`, field: target.field })));
+    if (!targets.length) return { error: 'There are no empty scanned text fields to fill.' };
+    const page = combinePageSnapshots(top.page, snapshots.filter(snapshot => snapshot !== top).map(snapshot => snapshot.page), frames.length - snapshots.length);
+    const begun = await Promise.allSettled(snapshots.map(snapshot => withDeadline(chrome.tabs.sendMessage(tabId, {
+      type: 'WC_BATCH_BEGIN', runId: run.id, count: targets.length, targets: snapshot.targets || [],
+    }, { frameId: snapshot.frameId }))));
+    run.frames = snapshots.filter((_, index) => begun[index].status === 'fulfilled' && begun[index].value?.started).map(snapshot => snapshot.frameId);
+    if (run.controller.signal.aborted) return { error: 'DO ALL stopped.' };
+    if (!run.frames.includes(0)) return { error: 'The page changed. Scan it again.' };
+    const accepted = targets.filter(target => run.frames.includes(Number(target.id.split(':', 1)[0])));
+    if (!accepted.length) return { error: 'The page changed. Scan it again.' };
+    run.started = true;
+    void runBatch(tabId, run, accepted, page);
+    return { started: true, count: accepted.length };
+  } catch (error) {
+    return { error: errorToPublic(error).message };
+  } finally {
+    if (!run.started) {
+      if (batchRuns.get(tabId) === run) batchRuns.delete(tabId);
+      await Promise.allSettled(run.frames.map(frameId => withDeadline(chrome.tabs.sendMessage(tabId, {
+        type: 'WC_BATCH_DONE', runId: run.id, stopped: true, summary: { filled: 0, skipped: 0, failed: 0 }, errorMessage: '',
+      }, { frameId }))));
+    }
+  }
+}
+
+async function stopFillAllTab(tabId) {
+  const run = batchRuns.get(tabId);
+  if (!run) return { stopped: false };
+  run.controller.abort();
+  return { stopped: true };
+}
+
+async function runBatch(tabId, run, targets, page) {
+  let summary = { filled: 0, skipped: 0, failed: 0 };
+  let errorMessage = '';
+  let fieldError = '';
+  try {
+    await storageReady;
+    const settings = await loadSettings();
+    if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'DO ALL stopped.');
+    await logEvent('generation.started', { requestId: run.id, model: settings.model, fieldType: 'batch', pageChars: page.text.length, frameCount: page.frameCount, unavailableFrames: page.unavailableFrames });
+    const answers = await generateBatchAnswers({ settings, targets, page, signal: run.controller.signal });
+    if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'DO ALL stopped.');
+    for (const frameId of run.frames) {
+      if (run.controller.signal.aborted) break;
+      const local = answers.filter(answer => answer.fieldId.startsWith(`${frameId}:`)).map(answer => ({ ...answer, fieldId: answer.fieldId.slice(String(frameId).length + 1) }));
+      if (!local.length) continue;
+      try {
+        const result = await withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_BATCH_APPLY', runId: run.id, answers: local }, { frameId }));
+        summary.filled += result?.filled || 0;
+        summary.skipped += result?.skipped || 0;
+        summary.failed += result?.failed || 0;
+        fieldError ||= result?.firstError || '';
+      } catch { summary.failed += local.length; }
+    }
+    await logEvent('generation.completed', { requestId: run.id, answerChars: answers.reduce((total, answer) => total + (answer.answer?.length || 0), 0) });
+  } catch (error) {
+    errorMessage = errorToPublic(error).message;
+    await logEvent('generation.failed', { requestId: run.id, code: errorToPublic(error).code }, run.controller.signal.aborted ? 'info' : 'warn');
+  } finally {
+    const stopped = run.controller.signal.aborted;
+    if (batchRuns.get(tabId) === run) batchRuns.delete(tabId);
+    await Promise.allSettled(run.frames.map(frameId => withDeadline(chrome.tabs.sendMessage(tabId, {
+      type: 'WC_BATCH_DONE', runId: run.id, stopped, summary, errorMessage, fieldError,
+    }, { frameId }))));
+  }
+}
+
 async function gatherPageContext(sender, clickedPage) {
   let frames;
   try { frames = await withDeadline(chrome.webNavigation.getAllFrames({ tabId: sender.tab.id })); }
@@ -67,14 +153,19 @@ async function gatherPageContext(sender, clickedPage) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  void storageReady.then(async () => {
-    const values = await chrome.storage.local.get(SETTINGS_KEY);
-    if (!values[SETTINGS_KEY]) await chrome.storage.local.set({ [SETTINGS_KEY]: { ...DEFAULT_SETTINGS } });
-    await logEvent('extension.ready');
-  }).catch(() => {});
+  void storageReady.then(() => logEvent('extension.ready')).catch(() => {});
 });
 
 chrome.runtime.onConnect.addListener(port => {
+  if (port.name === 'wc-batch' && trustedContent(port.sender) && port.sender.frameId === 0) {
+    const run = batchRuns.get(port.sender.tab.id);
+    if (!run) { port.disconnect(); return; }
+    port.onMessage.addListener(message => {
+      if (message?.type !== 'heartbeat' || message.runId !== run.id) port.disconnect();
+    });
+    port.onDisconnect.addListener(() => { if (batchRuns.get(port.sender.tab.id) === run) run.controller.abort(); });
+    return;
+  }
   if (port.name !== 'wc-fill' || !trustedContent(port.sender)) { port.disconnect(); return; }
   let current = null;
   let disconnected = false;
@@ -142,6 +233,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     void pageScanStatus(tabId, message.type === 'WC_SCAN_TAB').then(sendResponse).catch(error => sendResponse({ error: error.message }));
     return true;
   }
+  if (message.type === 'WC_FILL_ALL_TAB' && (trustedContent(sender) || trustedExtensionPage(sender))) {
+    const tabId = trustedContent(sender) ? sender.tab.id : message.tabId;
+    if (!Number.isInteger(tabId) || tabId < 0) { sendResponse({ error: 'No website tab is available.' }); return false; }
+    void startFillAllTab(tabId).then(sendResponse).catch(error => sendResponse({ error: error.message }));
+    return true;
+  }
+  if (message.type === 'WC_STOP_ALL_TAB' && trustedContent(sender)) {
+    void stopFillAllTab(sender.tab.id).then(sendResponse).catch(() => sendResponse({ stopped: false }));
+    return true;
+  }
   if (message.type === 'WC_GET_STATUS' && (trustedContent(sender) || trustedExtensionPage(sender))) {
     void storageReady.then(() => loadSettings()).then(settings => sendResponse({ enabled: settings.enabled, configured: Boolean(settings.apiKey) })).catch(() => sendResponse({ enabled: false, configured: false }));
     return true;
@@ -169,7 +270,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'local' || !changes[SETTINGS_KEY]) return;
   const enabled = changes[SETTINGS_KEY].newValue?.enabled !== false;
-  if (!enabled) for (const operation of activeRequests.keys()) operation.controller.abort();
+  if (!enabled) {
+    for (const operation of activeRequests.keys()) operation.controller.abort();
+    for (const run of batchRuns.values()) run.controller.abort();
+  }
   void chrome.tabs.query({}).then(async tabs => {
     await Promise.allSettled(tabs.filter(tab => Number.isInteger(tab.id)).map(async tab => {
       try {

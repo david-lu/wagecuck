@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AgentError, buildRequest, combinePageSnapshots, errorToPublic, generateAnswer, MAX_PAGE_CHARS, parseResponseAnswer, readSseEvents, validateFieldAndPage } from '../lib/agent.js';
+import { AgentError, buildBatchRequest, buildRequest, combinePageSnapshots, errorToPublic, generateAnswer, generateBatchAnswers, MAX_PAGE_CHARS, parseBatchResponse, parseResponseAnswer, readSseEvents, validateFieldAndPage } from '../lib/agent.js';
 import { DEFAULT_SETTINGS, loadSettings, MAX_RESUME_BYTES, normalizeSettings, saveSettings } from '../lib/config.js';
 import { MAX_LOGS, logEvent, redactMetadata } from '../lib/logging.js';
 
@@ -36,12 +36,50 @@ test('prompt preserves the entire page, profile, resume, question and writing pr
   assert.deepEqual(context.targetField, field);
   assert.ok(request.instructions.includes(settings.writingInstructions));
   assert.match(request.instructions, /untrusted reference data/);
-  assert.match(request.instructions, /Do not invent any personal facts/);
+  assert.match(request.instructions, /Do not invent personal facts/);
   assert.equal(request.stream, true);
   assert.equal(request.store, false);
   assert.equal(request.model, 'gpt-4.1-mini');
   assert.equal(request.text.format.type, 'json_schema');
   assert.ok(!JSON.stringify(request).includes(settings.apiKey));
+});
+
+test('WRITE ALL builds required, field-specific schema and uses one API call', async () => {
+  const targets = [
+    { id: '0:wc-field-1', field: { ...field, label: 'Why this role?', maxLength: 120 } },
+    { id: '2:wc-field-7', field: { ...field, label: 'Email address', type: 'email', maxLength: 80 } },
+    { id: '2:wc-field-8', field: { ...field, label: 'Years of experience', type: 'number', min: '0', max: '20', step: '1' } },
+  ];
+  const request = buildBatchRequest({ settings, targets, page });
+  const schema = request.text.format.schema;
+  assert.deepEqual(schema.required, targets.map(target => target.id));
+  assert.deepEqual(Object.keys(schema.properties), schema.required);
+  assert.match(schema.properties[targets[0].id].description, /Why this role/);
+  assert.match(schema.properties[targets[1].id].description, /Email address/);
+  const narrativePattern = schema.properties[targets[0].id].properties.answer.anyOf[1].pattern;
+  const emailPattern = schema.properties[targets[1].id].properties.answer.anyOf[1].pattern;
+  assert.match('A concise answer.', new RegExp(narrativePattern));
+  assert.doesNotMatch('x'.repeat(121), new RegExp(narrativePattern));
+  assert.match('jordan@example.test', new RegExp(emailPattern));
+  assert.doesNotMatch('not an email', new RegExp(emailPattern));
+  assert.deepEqual(schema.properties[targets[2].id].properties.answer.anyOf[1], {
+    type: 'number', description: schema.properties[targets[2].id].description,
+    minimum: 0, maximum: 20, multipleOf: 1,
+  });
+  assert.ok(request.instructions.includes(settings.writingInstructions));
+  assert.equal(request.store, false);
+  assert.equal(request.stream, true);
+  const batch = JSON.stringify({ [targets[0].id]: { answer: 'I built similar tools.', missingInformation: '' }, [targets[1].id]: { answer: 'jordan@example.test', missingInformation: '' }, [targets[2].id]: { answer: 5, missingInformation: '' } });
+  let calls = 0;
+  const result = await generateBatchAnswers({ settings, targets, page, fetchImpl: async (_url, init) => {
+    calls++;
+    assert.equal(JSON.parse(init.body).text.format.name, 'batch_answers');
+    return streamResponse(successfulEvents(batch));
+  } });
+  assert.equal(calls, 1);
+  assert.deepEqual(result.map(item => item.answer), ['I built similar tools.', 'jordan@example.test', '5']);
+  const invalid = parseBatchResponse(JSON.stringify({ [targets[0].id]: { answer: 'Fine', missingInformation: '' }, [targets[1].id]: { answer: 'not-an-email', missingInformation: '' } }), targets);
+  assert.equal(invalid[1].error.code, 'INVALID_ANSWER');
 });
 
 test('PDF resume is passed as input_file with filename and full base64 data URL', () => {
@@ -63,6 +101,7 @@ test('previous casual instructions upgrade without losing added preferences', ()
   const previous = [
     'Write in a friendly, conversational tone and in the first person. Keep it clear and natural.',
     'Use a casual, straightforward first-person voice. Keep answers short and specific. Contractions are fine. Skip buzzwords, stock enthusiasm, and overly polished phrasing.',
+    'Write in a casual, confident first-person voice. Be specific about what I built, led, and changed, and say the results plainly. Use natural contractions. Keep it concise and skip corporate jargon or fake modesty.',
   ];
   const extra = '\n\nMention my work on creative tools.';
   for (const preset of previous) {

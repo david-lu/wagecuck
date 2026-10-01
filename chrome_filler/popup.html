@@ -25,7 +25,10 @@
   <div class="page-card">
     <span id="page-indicator" class="status-dot" aria-hidden="true"></span>
     <div><span class="eyebrow">CURRENT PAGE</span><p id="page-status" role="status">Ready to scan.</p></div>
-    <button id="rescan-button" type="button" class="small-button" aria-label="Scan the current page">Scan page</button>
+    <div class="page-actions">
+      <button id="rescan-button" type="button" class="small-button" aria-label="Scan the current page">Scan page</button>
+      <button id="do-all-button" type="button" class="small-button" aria-label="DO ALL: fill empty scanned fields" hidden disabled>DO ALL</button>
+    </div>
   </div>
 
   <nav class="tabs" role="tablist" aria-label="Settings">
@@ -58,7 +61,7 @@
           <button id="tone-casual" class="tone-chip" type="button" aria-pressed="false">Casual</button>
         </div>
         <textarea id="writing-instructions" rows="5" maxlength="20000" placeholder="Write professionally, clearly, and in the first person. Keep answers concise. Mention my interest in mentoring when relevant." aria-describedby="writing-help"></textarea>
-        <p id="writing-help" class="hint">Changing the tone keeps your other instructions. Try “Mention my interest in mentoring” or “Keep it under 100 words.”</p>
+        <p id="writing-help" class="hint">Changing the tone keeps your other instructions. Try “Mention my interest in mentoring” or “Keep it to two sentences.”</p>
       </section>
 
       <section id="panel-connection" class="panel" role="tabpanel" aria-labelledby="tab-connection" hidden>

@@ -103,10 +103,16 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
           {status: 429, headers: {'Content-Type': 'application/json'}});
       }
       let output = self.__qaAnswer;
-      const input = JSON.stringify(payload.input || '');
-      if (/Email address/i.test(input) && !/Why do you want to work here/i.test(input)) output = self.__qaEmail;
+      const contextText = payload.input?.[0]?.content?.find(part => part.type === 'input_text')?.text || '{}';
+      const context = JSON.parse(contextText);
+      const target = context.targetField || {};
+      if (target.type === 'email') output = self.__qaEmail;
       if (self.__qaMode === 'invalid') output = 'Not an email address';
-      const structured = JSON.stringify({answer:output, missingInformation:''});
+      const structured = JSON.stringify(Array.isArray(context.targetFields)
+        ? Object.fromEntries(context.targetFields.map(field => [field.fieldId, {
+            answer: field.type === 'email' ? self.__qaEmail : field.type === 'number' ? 5 : self.__qaAnswer, missingInformation: '',
+          }]))
+        : {answer:output, missingInformation:''});
       const completed = {id:'resp_synthetic', object:'response', status:'completed', output:[
         {type:'message', role:'assistant', content:[{type:'output_text',text:structured,annotations:[]}]}]};
       if (payload.stream) {
@@ -293,6 +299,85 @@ class BrowserSuite:
             expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
         finally:
             popup.close()
+
+    def do_all_fills_scanned_empty_fields(self):
+        self.seed()
+        self.mock(delay=25)
+        self.page.goto(self.url)
+        do_all = self.page.locator("#wc-ai-root .wc-do-all-button")
+        expect(do_all).to_be_hidden()
+        do_all.evaluate("node => node.click()")
+        assert self.worker.evaluate("self.__qaRequests") == []
+        self.page.locator("#name").fill("My own name")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(do_all).to_be_visible()
+        popup = self.context.new_page()
+        try:
+            popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
+            expect(popup.locator("#do-all-button")).to_be_visible()
+            popup.locator("#do-all-button").click()
+            expect(popup.locator("#page-status")).to_contain_text("DO ALL started")
+            expect(self.page.locator("#email")).to_have_value("jordan@example.test")
+            expect(self.page.locator("#motivation")).to_have_value(ANSWER)
+            expect(self.page.locator("#bio")).to_have_js_property("innerText", ANSWER)
+            expect(self.page.frame_locator('iframe[title="Same origin questions"]').locator("#frame-answer")).to_have_value(ANSWER)
+            expect(self.page.frame_locator("#cross-frame").locator("#frame-answer")).to_have_value(ANSWER)
+            expect(self.page.locator("#name")).to_have_value("My own name")
+            expect(self.page.locator("#experience")).to_have_value("5")
+            assert self.page.locator("#upload").evaluate("node => node.files.length") == 0
+            assert self.page.locator("#consent").is_checked() is False
+            assert self.page.evaluate("window.fixtureSubmitted") is False
+            requests = self.worker.evaluate("self.__qaRequests")
+            assert len(requests) == 1, "DO ALL must make one API request across the page and frames"
+            context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
+            schema = requests[0]["payload"]["text"]["format"]["schema"]
+            assert len(context["targetFields"]) == len(schema["required"])
+            assert set(schema["required"]) == set(schema["properties"])
+            assert any(field["type"] == "email" for field in context["targetFields"])
+            assert all("answer" in entry["properties"] for entry in schema["properties"].values())
+            expect(do_all).to_be_enabled()
+            self.page.locator("#motivation").fill("")
+            do_all.click()
+            expect(self.page.locator("#motivation")).to_have_value(ANSWER)
+            assert len(self.worker.evaluate("self.__qaRequests")) == 2
+            assert self.page.evaluate("window.fixtureSubmitted") is False
+        finally:
+            popup.close()
+
+    def do_all_stop_cancels_every_frame(self):
+        self.seed()
+        self.mock(delay=3000)
+        self.page.goto(self.url)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        deadline = time.monotonic() + 5
+        while len(self.worker.evaluate("self.__qaRequests")) < 1 and time.monotonic() < deadline:
+            self.page.wait_for_timeout(100)
+        assert len(self.worker.evaluate("self.__qaRequests")) == 1
+        self.page.get_by_role("button", name="Stop", exact=True).click()
+        expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("DO ALL stopped")
+        expect(self.page.locator("#name")).to_have_value("")
+        expect(self.page.locator("#email")).to_have_value("")
+        expect(self.page.frame_locator('iframe[title="Same origin questions"]').locator("#frame-answer")).to_have_value("")
+        expect(self.page.frame_locator("#cross-frame").locator("#frame-answer")).to_have_value("")
+        assert self.page.evaluate("window.fixtureSubmitted") is False
+
+    def do_all_preserves_edits_during_generation(self):
+        self.seed()
+        self.mock(delay=600)
+        self.page.goto(self.url)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        deadline = time.monotonic() + 5
+        while not self.worker.evaluate("self.__qaRequests") and time.monotonic() < deadline:
+            self.page.wait_for_timeout(100)
+        assert len(self.worker.evaluate("self.__qaRequests")) == 1
+        self.page.locator("#motivation").fill("My own answer")
+        expect(self.page.locator("#email")).to_have_value("jordan@example.test")
+        expect(self.page.locator("#motivation")).to_have_value("My own answer")
+        expect(self.page.frame_locator("#cross-frame").locator("#frame-answer")).to_have_value(ANSWER)
+        assert len(self.worker.evaluate("self.__qaRequests")) == 1
+        assert self.page.evaluate("window.fixtureSubmitted") is False
 
     def synthetic_click_does_not_generate(self):
         self.fresh()
@@ -795,7 +880,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable",
+                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",
