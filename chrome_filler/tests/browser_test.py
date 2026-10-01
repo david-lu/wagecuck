@@ -108,6 +108,7 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
       const target = context.targetField || {};
       const choice = (field, batch = false) => field.type === 'checkbox' ? /accessible interfaces/i.test(field.label || '')
         : field.type === 'select' ? (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
+        : field.type === 'radio' ? (field.options || []).find(option => option.value === 'Prefer not to answer')?.value || field.options?.[0]?.value || ''
         : field.type === 'number' && batch ? 5 : field.type === 'email' ? self.__qaEmail : self.__qaAnswer;
       if (target.type) output = choice(target);
       if (self.__qaMode === 'invalid') output = 'Not an email address';
@@ -332,6 +333,8 @@ class BrowserSuite:
             expect(self.page.locator("#existing-work")).to_be_checked()
             expect(self.page.locator("#focus-area")).to_have_value("frontend")
             expect(self.page.locator("#existing-focus")).to_have_value("frontend")
+            expect(self.page.locator('input[name="survey-age"][value="Prefer not to answer"]')).to_be_checked()
+            expect(self.page.locator('input[name="interview-time"][value="morning"]')).to_be_checked()
             expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("left unchecked")
             assert self.page.locator("#upload").evaluate("node => node.files.length") == 0
             assert self.page.locator("#consent").is_checked() is False
@@ -345,6 +348,7 @@ class BrowserSuite:
             assert any(field["type"] == "email" for field in context["targetFields"])
             assert any(field["type"] == "checkbox" for field in context["targetFields"])
             assert any(field["type"] == "select" for field in context["targetFields"])
+            assert len([field for field in context["targetFields"] if field["type"] == "radio" and field["label"] == "What is your age range?"]) == 1
             assert all(field["label"] != "Consent checkbox" for field in context["targetFields"])
             assert all("answer" in entry["properties"] for entry in schema["properties"].values())
             expect(do_all).to_be_enabled()
@@ -587,6 +591,27 @@ class BrowserSuite:
         expect(self.page.locator("#focus-area")).to_have_value("")
         assert self.page.locator("#consent").is_checked() is False
         assert self.page.evaluate("window.fixtureSubmitted") is False
+
+    def lever_radio_group(self):
+        self.fresh()
+        self.page.locator('input[name="survey-age"]').first.scroll_into_view_if_needed()
+        expect(self.button("What is your age range?")).to_have_count(1)
+        outline = self.button("What is your age range?").evaluate("node => node.previousElementSibling.getBoundingClientRect().toJSON()")
+        question = self.page.locator(".application-question").evaluate("node => node.getBoundingClientRect().toJSON()")
+        assert abs(outline["width"] - question["width"]) < 2 and abs(outline["height"] - question["height"]) < 2
+        self.button("What is your age range?").click()
+        expect(self.page.locator('input[name="survey-age"][value="Prefer not to answer"]')).to_be_checked()
+        assert self.page.locator('input[name="survey-age"]:checked').count() == 1
+        assert {event["type"] for event in self.page.evaluate("window.fixtureEvents") if event["id"] == "" and event["value"] == "Prefer not to answer"} >= {"input", "change"}
+        request = self.worker.evaluate("self.__qaRequests")[0]["payload"]
+        context = json.loads(request["input"][0]["content"][0]["text"])
+        radio = context["targetField"]
+        assert radio["type"] == "radio" and radio["label"] == "What is your age range?"
+        assert [option["value"] for option in radio["options"]] == ["17 or younger", "18-20", "21-29", "30-39", "40-49", "50-59", "60 or older", "Prefer not to answer"]
+        assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["enum"] == [option["value"] for option in radio["options"]]
+        self.page.get_by_role("button", name="Undo", exact=True).click()
+        assert self.page.locator('input[name="survey-age"]:checked').count() == 0
+        expect(self.page.locator('input[name="interview-time"][value="morning"]')).to_be_checked()
 
     def cancellation(self):
         self.fresh()
@@ -978,7 +1003,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices",
+                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

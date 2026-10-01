@@ -4,7 +4,7 @@
   globalThis.__wcInputFiller = true;
 
   const SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]';
-  const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox']);
+  const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox', 'radio']);
   const records = new Map();
   const roots = new Set([document]);
   let enabled = true;
@@ -105,6 +105,7 @@
 
   function readValue(field) {
     if (field instanceof HTMLInputElement && field.type === 'checkbox') return field.checked;
+    if (field instanceof HTMLInputElement && field.type === 'radio') return globalThis.WCFieldContext.radioGroup(field).find(option => option.checked)?.value || '';
     return 'value' in field ? field.value : field.innerText;
   }
 
@@ -114,12 +115,13 @@
   }
 
   function selectableOption(field, value) {
+    if (field instanceof HTMLInputElement && field.type === 'radio') return globalThis.WCFieldContext.radioOptions(field).some(option => option.value === value);
     return field instanceof HTMLSelectElement && [...field.options].some(option => option.value === value && value.trim() && !option.disabled && !option.hidden && !option.closest('optgroup[disabled]'));
   }
 
   function normalizedAnswer(field, answer) {
     if (field instanceof HTMLInputElement && field.type === 'checkbox') return typeof answer === 'boolean' ? answer : null;
-    if (field instanceof HTMLSelectElement) return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
+    if (field instanceof HTMLSelectElement || field instanceof HTMLInputElement && field.type === 'radio') return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
     if (typeof answer !== 'string') return null;
     const value = answer.trim();
     if (!value || (field.maxLength > 0 && value.length > field.maxLength) || (field.type === 'number' && !Number.isFinite(Number(value)))) return null;
@@ -133,7 +135,7 @@
   function isVisible(field) {
     if (!field.isConnected || field.closest('[hidden], [inert]')) return false;
     const rect = field.getBoundingClientRect();
-    const minSize = field instanceof HTMLInputElement && field.type === 'checkbox' ? 10 : 18;
+    const minSize = field instanceof HTMLInputElement && ['checkbox', 'radio'].includes(field.type) ? 10 : 18;
     if (rect.width < minSize || rect.height < minSize || (minSize !== 10 && rect.width < 60)) return false;
     for (let node = field; node instanceof Element; node = parentElement(node)) {
       if (node.matches('[hidden], [inert]')) return false;
@@ -147,12 +149,20 @@
     return node.parentElement || (node.getRootNode() instanceof ShadowRoot ? node.getRootNode().host : null);
   }
 
+  function visualTarget(field) {
+    return field.type === 'radio' ? globalThis.WCFieldContext.radioDetails(field).container || field : field;
+  }
+
   function isEligible(field) {
     if (field.getRootNode() === shadow || field.disabled || field.matches(':disabled') || field.readOnly || field.getAttribute('aria-disabled') === 'true' || field.getAttribute('aria-readonly') === 'true') return false;
     if (field.tagName === 'INPUT' && !TYPES.has(field.type)) return false;
     if (field.matches('[role="combobox"],[aria-haspopup="listbox"]')) return false;
     if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 100 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
-    if (field.tagName !== 'SELECT' && field.type !== 'checkbox' && field.maxLength === 0) return false;
+    if (field.type === 'radio') {
+      const options = globalThis.WCFieldContext.radioOptions(field);
+      if (options.length < 2 || options.length > 100 || new Set(options.map(option => option.value)).size !== options.length || options[0] !== field || !globalThis.WCFieldContext.radioDetails(field).label) return false;
+    }
+    if (field.tagName !== 'SELECT' && !['checkbox', 'radio'].includes(field.type) && field.maxLength === 0) return false;
     if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable) return false;
     if (field.isContentEditable && parentElement(field)?.isContentEditable) return false;
     if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field) || globalThis.WCFieldContext.isConsentField(field)) return false;
@@ -226,8 +236,15 @@
         if (!isEligible(field)) continue;
         fields.add(field);
         if (records.has(field)) {
-          records.get(field).button.setAttribute('aria-label', `Fill with AI: ${labelFor(field)}`);
-          if (!records.get(field).active) records.get(field).button.title = `Write an answer for ${labelFor(field)}`;
+          const record = records.get(field);
+          const visual = visualTarget(field);
+          if (record.visual !== visual) {
+            resizeObserver.unobserve(record.visual);
+            record.visual = visual;
+            resizeObserver.observe(visual);
+          }
+          record.button.setAttribute('aria-label', `Fill with AI: ${labelFor(field)}`);
+          if (!record.active) record.button.title = `Write an answer for ${labelFor(field)}`;
           continue;
         }
         const button = document.createElement('button');
@@ -241,11 +258,11 @@
         const outline = document.createElement('div');
         outline.className = 'wc-field-outline';
         outline.setAttribute('aria-hidden', 'true');
-        const record = { field, button, outline, id, active: null, starting: false };
+        const record = { field, visual: visualTarget(field), button, outline, id, active: null, starting: false };
         button.addEventListener('click', event => { if (event.isTrusted) startFill(record); });
         records.set(field, record);
         buttonLayer.append(outline, button);
-        resizeObserver.observe(field);
+        resizeObserver.observe(record.visual);
       }
     }
     for (const [field, record] of records) {
@@ -253,7 +270,7 @@
         record.active?.cancel('Field is no longer available.');
         record.button.remove();
         record.outline.remove();
-        resizeObserver.unobserve(field);
+        resizeObserver.unobserve(record.visual);
         records.delete(field);
       }
     }
@@ -287,7 +304,7 @@
     if (doAllButton) doAllButton.hidden = true;
     for (const [field, record] of records) {
       record.active?.cancel(reason || 'The page scan ended.');
-      resizeObserver.unobserve(field);
+      resizeObserver.unobserve(record.visual);
       record.button.remove();
       record.outline.remove();
     }
@@ -310,21 +327,21 @@
   function positionButtons() {
     positionFrame = null;
     for (const record of records.values()) {
-      const { field, button, outline } = record;
-      const rect = field.getBoundingClientRect();
-      const outlineVisible = rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight && isVisible(field);
+      const { field, visual, button, outline } = record;
+      const rect = visual.getBoundingClientRect();
+      const outlineVisible = rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight && isVisible(visual) && isVisible(field);
       outline.style.display = outlineVisible ? 'block' : 'none';
       outline.style.left = `${rect.left}px`;
       outline.style.top = `${rect.top}px`;
       outline.style.width = `${rect.width}px`;
       outline.style.height = `${rect.height}px`;
-      const choice = field.tagName === 'SELECT' || field.type === 'checkbox';
+      const choice = field.tagName === 'SELECT' || ['checkbox', 'radio'].includes(field.type);
       const compact = !choice && (rect.width < 240 || rect.height < 36);
       const width = compact ? 45 : 80;
       const height = compact ? 26 : 28;
       const x = choice ? rect.right + 8 : rect.right - width - 4;
       // Straddle the top border on roomy fields so the button does not cover text.
-      let y = choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
+      let y = field.type === 'radio' ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
       button.dataset.compact = String(compact);
       if (!button.hasAttribute('aria-busy')) {
         const text = compact ? '✦ AI' : hasAnswer(field) ? '✦ Rewrite' : '✦ Write';
@@ -388,23 +405,33 @@
   }
 
   function writeValue(field, answer) {
-    field.focus({ preventScroll: true });
-    if (field instanceof HTMLInputElement && field.type === 'checkbox') {
+    let target = field;
+    if (field instanceof HTMLInputElement && field.type === 'radio') {
+      const group = globalThis.WCFieldContext.radioGroup(field);
+      target = answer ? group.find(option => option.value === answer) : group.find(option => option.checked);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(target, Boolean(answer));
+    } else if (field instanceof HTMLInputElement && field.type === 'checkbox') {
+      field.focus({ preventScroll: true });
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(field, answer);
     } else if (field instanceof HTMLSelectElement) {
+      field.focus({ preventScroll: true });
       Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(field, answer);
     } else if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+      field.focus({ preventScroll: true });
       const prototype = field instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype;
       Object.getOwnPropertyDescriptor(prototype, 'value').set.call(field, answer);
     } else {
+      field.focus({ preventScroll: true });
       // innerText inserts safe line breaks; textContent would collapse paragraphs
       // in editors whose whitespace style is the default "normal".
       field.innerText = answer;
     }
-    field.dispatchEvent(field.type === 'checkbox' || field.tagName === 'SELECT'
+    target.dispatchEvent(['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT'
       ? new Event('input', { bubbles: true, composed: true })
       : new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: answer }));
-    field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
   function logUI(event, requestId, code = '') {
@@ -452,7 +479,8 @@
     }
     let edited = false;
     let writing = false;
-    field.addEventListener('input', onEdit);
+    const editTargets = field.type === 'radio' ? globalThis.WCFieldContext.radioGroup(field) : [field];
+    editTargets.forEach(target => target.addEventListener('input', onEdit));
     function onEdit() { edited = true; }
     const waiting = toast('Writing your answer', `${labelFor(field)} · You can keep typing; your edits will be preserved.`, 'info', [{ label: 'Cancel', run: () => cancel() }]);
     record.button.setAttribute('aria-busy', 'true');
@@ -475,7 +503,7 @@
       clearInterval(interval);
       clearTimeout(timeout);
       waiting.element.remove();
-      field.removeEventListener('input', onEdit);
+      editTargets.forEach(target => target.removeEventListener('input', onEdit));
       record.active = null;
       record.button.removeAttribute('aria-busy');
       record.button.textContent = '✦ Write';
@@ -541,7 +569,7 @@
         toast('Answer does not fit this field', 'The generated choice or format is no longer available. Scan again and retry.', 'error', [], 14000);
         return;
       }
-      if ((field.type === 'checkbox' || field.tagName === 'SELECT') && answer === original) {
+      if ((['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT') && answer === original) {
         settle({ status: 'skipped' });
         toast('No change needed', field.type === 'checkbox' ? 'The answer is to leave this box as it is.' : 'This option is already selected.', 'info', [], 10000);
         return;
@@ -643,7 +671,7 @@
         result.firstError ||= 'An answer did not match its field or available choices.';
         continue;
       }
-      if (answer === readValue(field) && (field.type === 'checkbox' || field.tagName === 'SELECT')) {
+      if (answer === readValue(field) && (['checkbox', 'radio'].includes(field.type) || field.tagName === 'SELECT')) {
         if (field.type === 'checkbox' && answer === false) result.unchecked++;
         else result.skipped++;
         continue;

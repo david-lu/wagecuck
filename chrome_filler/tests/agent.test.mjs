@@ -96,23 +96,31 @@ test('WRITE ALL reserves enough output for a 28-field form and reasoning', () =>
   assert.equal(classicRequest.reasoning, undefined);
 });
 
-test('checkboxes and dropdowns use boolean and exact-option schemas', () => {
+test('checkboxes, dropdowns, and radio groups use exact choice schemas', () => {
   const checkbox = { ...field, label: 'Accessible interfaces', type: 'checkbox', currentValue: 'false', maxLength: null };
   const dropdown = { ...field, label: 'Preferred focus', type: 'select', currentValue: '', maxLength: null, options: [
     { value: 'frontend', label: 'Frontend engineering' }, { value: 'design-systems', label: 'Design systems' },
   ] };
+  const radio = { ...field, label: 'What is your age range?', type: 'radio', currentValue: '', maxLength: null, options: [
+    { value: '21-29', label: '21-29' }, { value: '30-39', label: '30-39' }, { value: 'Prefer not to answer', label: 'Prefer not to answer' },
+  ] };
   const request = buildBatchRequest({ settings, targets: [
-    { id: '0:wc-field-1', field: checkbox }, { id: '0:wc-field-2', field: dropdown },
+    { id: '0:wc-field-1', field: checkbox }, { id: '0:wc-field-2', field: dropdown }, { id: '0:wc-field-3', field: radio },
   ], page });
   const fields = request.text.format.schema.properties;
   assert.equal(fields['0:wc-field-1'].properties.answer.anyOf[1].type, 'boolean');
   assert.deepEqual(fields['0:wc-field-2'].properties.answer.anyOf[1].enum, ['frontend', 'design-systems']);
+  assert.deepEqual(fields['0:wc-field-3'].properties.answer.anyOf[1].enum, ['21-29', '30-39', 'Prefer not to answer']);
   assert.match(fields['0:wc-field-2'].description, /Frontend engineering = frontend/);
+  assert.match(fields['0:wc-field-3'].description, /What is your age range/);
   assert.equal(parseResponseAnswer(JSON.stringify({ answer: false, missingInformation: '' }), checkbox), false);
   assert.equal(parseResponseAnswer(JSON.stringify({ answer: true, missingInformation: '' }), checkbox), true);
   assert.equal(parseResponseAnswer(JSON.stringify({ answer: 'design-systems', missingInformation: '' }), dropdown), 'design-systems');
+  assert.equal(parseResponseAnswer(JSON.stringify({ answer: '30-39', missingInformation: '' }), radio), '30-39');
   assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: 'backend', missingInformation: '' }), dropdown), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: '40-49', missingInformation: '' }), radio), error => error.code === 'INVALID_ANSWER');
   assert.throws(() => buildRequest({ settings, field: { ...checkbox, label: 'I consent to the terms' }, page }), error => error.code === 'CONSENT_FIELD');
+  assert.throws(() => buildRequest({ settings, field: { ...radio, label: 'Do you consent to texts?' }, page }), error => error.code === 'CONSENT_FIELD');
 });
 
 test('PDF resume is passed as input_file with filename and full base64 data URL', () => {

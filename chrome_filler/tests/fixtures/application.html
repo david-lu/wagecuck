@@ -39,6 +39,17 @@
         <select id="focus-area"><option value="">Choose an area</option><option value="frontend">Frontend engineering</option><option value="design-systems">Design systems</option><option value="backend" disabled>Backend engineering</option></select>
         <label for="existing-focus">Already chosen focus</label>
         <select id="existing-focus"><option value="">Choose an area</option><option value="frontend" selected>Frontend engineering</option><option value="design-systems">Design systems</option></select>
+        <ul><li class="application-question"><div class="application-label full-width multiple-choice"><div class="text">What is your age range?</div></div><div class="application-field full-width"><ul data-qa="multiple-choice">
+          <li><label><input type="radio" name="survey-age" value="17 or younger"><span class="application-answer-alternative">17 or younger</span></label></li>
+          <li><label><input type="radio" name="survey-age" value="18-20"><span class="application-answer-alternative">18-20</span></label></li>
+          <li><label><input type="radio" name="survey-age" value="21-29"><span class="application-answer-alternative">21-29</span></label></li>
+          <li><label><input type="radio" name="survey-age" value="30-39"><span class="application-answer-alternative">30-39</span></label></li>
+          <li><label><input type="radio" name="survey-age" value="40-49"><span class="application-answer-alternative">40-49</span></label></li>
+          <li><label><input type="radio" name="survey-age" value="50-59"><span class="application-answer-alternative">50-59</span></label></li>
+          <li><label><input type="radio" name="survey-age" value="60 or older"><span class="application-answer-alternative">60 or older</span></label></li>
+          <li><label><input type="radio" name="survey-age" value="Prefer not to answer"><span class="application-answer-alternative">Prefer not to answer</span></label></li>
+        </ul></div></li></ul>
+        <fieldset><legend>Preferred interview time</legend><label><input type="radio" name="interview-time" value="morning" checked> Morning</label><label><input type="radio" name="interview-time" value="afternoon"> Afternoon</label></fieldset>
         <label for="custom-focus">Custom focus dropdown</label><input id="custom-focus" role="combobox" aria-haspopup="listbox" aria-expanded="false">
         <div id="shadow-question"></div>
         <label for="password">Account password</label><input id="password" type="password" value="never-send-this-password">

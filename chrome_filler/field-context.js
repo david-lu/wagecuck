@@ -125,6 +125,42 @@
     return heading ? safeText(heading, { field, limit: 500 }) : '';
   }
 
+  function radioGroup(field) {
+    if (field?.tagName !== 'INPUT' || field.type !== 'radio' || !field.name) return [];
+    return [...field.getRootNode().querySelectorAll('input[type="radio"]')]
+      .filter(option => option.name === field.name && option.form === field.form);
+  }
+
+  function radioOptions(field) {
+    return radioGroup(field).filter(option => {
+      if (!option.value.trim() || !option.isConnected || option.disabled || option.matches(':disabled') || option.getAttribute('aria-disabled') === 'true') return false;
+      const rect = option.getBoundingClientRect();
+      if (rect.width < 10 || rect.height < 10) return false;
+      for (let node = option; node instanceof Element; node = composedParent(node)) {
+        if (node.matches('[hidden],[inert]')) return false;
+        const style = getComputedStyle(node);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse' || style.opacity === '0') return false;
+      }
+      return true;
+    });
+  }
+
+  function radioDetails(field) {
+    const options = radioGroup(field);
+    if (options.length < 2) return { container: null, label: '', source: '' };
+    let container = composedParent(field);
+    while (container && !options.every(option => container.contains(option))) container = composedParent(container);
+    for (let depth = 0, candidate = container; candidate && depth < 5 && !GLOBAL_CONTAINER.test(candidate.tagName); candidate = composedParent(candidate), depth++) {
+      const label = cleanText(groupHeading(candidate, field));
+      if (label) return { container: candidate, label: label.slice(0, 500), source: candidate.tagName === 'FIELDSET' ? 'fieldset-legend' : 'group-label' };
+    }
+    return { container, label: '', source: '' };
+  }
+
+  function radioOptionLabel(option) {
+    return associatedLabels(option).map(item => item.text).join(' ') || cleanText(option.getAttribute('aria-label')) || option.value;
+  }
+
   function tableLabel(field) {
     const cell = nearest(field, 'td,th');
     const row = cell && nearest(cell, 'tr');
@@ -224,6 +260,10 @@
   }
 
   function labelDetails(field) {
+    if (field.type === 'radio') {
+      const group = radioDetails(field);
+      if (group.label) return { label: group.label, sources: [group.source] };
+    }
     const labelled = references(field, 'aria-labelledby');
     if (labelled.length) return { label: unique(labelled.map(item => item.text)).join(' ').slice(0, 500), sources: ['aria-labelledby'] };
     const aria = cleanText(field.getAttribute('aria-label'));
@@ -263,7 +303,8 @@
     }
     const options = field.tagName === 'SELECT' ? [...field.options]
       .filter(option => option.value.trim() && !option.disabled && !option.hidden && !option.closest('optgroup[disabled]'))
-      .map(option => ({ value: option.value, label: cleanText(option.textContent).slice(0, 200) || option.value })) : undefined;
+      .map(option => ({ value: option.value, label: cleanText(option.textContent).slice(0, 200) || option.value }))
+      : field.type === 'radio' ? radioOptions(field).map(option => ({ value: option.value, label: radioOptionLabel(option).slice(0, 200) })) : undefined;
     return {
       label: details.label,
       type: field.tagName === 'SELECT' ? 'select' : field.tagName === 'TEXTAREA' || field.isContentEditable ? 'textarea' : field.type || 'text',
@@ -275,7 +316,7 @@
       step: field.getAttribute('step') || null,
       pattern: field.getAttribute('pattern') || null,
       context: unique(context).join('\n').slice(0, 2400),
-      currentValue: field.type === 'checkbox' ? String(field.checked) : 'value' in field ? field.value : field.innerText || '',
+      currentValue: field.type === 'checkbox' ? String(field.checked) : field.type === 'radio' ? radioGroup(field).find(option => option.checked)?.value || '' : 'value' in field ? field.value : field.innerText || '',
       options,
       name: field.getAttribute('name') || '',
       id: field.id || '',
@@ -307,10 +348,10 @@
   }
 
   function isConsentField(field) {
-    if (field.type !== 'checkbox') return false;
+    if (!['checkbox', 'radio'].includes(field.type)) return false;
     const description = words(`${labelFor(field)} ${fieldInfo(field).context}`);
     return /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature)\b/i.test(description);
   }
 
-  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, isSensitiveField, isSearchField, isConsentField });
+  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, radioGroup, radioOptions, radioDetails, isSensitiveField, isSearchField, isConsentField });
 })();
