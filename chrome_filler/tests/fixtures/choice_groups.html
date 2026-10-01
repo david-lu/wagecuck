@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Choice group application</title>
-<style>body{font:16px system-ui,sans-serif;max-width:760px;margin:30px auto}section{margin:24px 0;padding:16px}label{display:block;margin:8px 0}input[type=radio],input[type=checkbox]{width:16px;height:16px}.styled-choice{position:absolute;width:1px!important;height:1px!important;opacity:0}.question-title{font-weight:700}[role=radio],[role=checkbox],[role=switch]{display:block;margin:8px 0;padding:8px;border:1px solid #999;cursor:pointer}</style>
+<style>body{font:16px system-ui,sans-serif;max-width:760px;margin:30px auto}section{margin:24px 0;padding:16px}label{display:block;margin:8px 0}input[type=radio],input[type=checkbox]{width:16px;height:16px}.styled-choice{position:absolute;width:1px!important;height:1px!important;opacity:0}.question-title{font-weight:700}[role=radio],[role=checkbox],[role=switch]{display:block;margin:8px 0;padding:8px;border:1px solid #999;cursor:pointer}.workable-native{position:absolute;width:1px!important;height:1px!important;opacity:0}</style>
 </head>
 <body>
 <h1>Application questions</h1>
@@ -11,6 +11,16 @@
     <fieldset><label><input class="styled-choice" type="radio" name="wrapper_one" value=""> YES</label></fieldset>
     <fieldset><label><input class="styled-choice" type="radio" name="wrapper_two" value="on"> NO</label></fieldset>
   </section>
+  <fieldset role="radiogroup" aria-labelledby="workable-yes-no-label" id="workable-yes-no">
+    <div id="workable-yes-no-label">Are you eligible to work in the country you are applying?</div>
+    <div role="radio" aria-checked="false" aria-labelledby="workable-yes-no-label workable-yes-label" tabindex="0"><label><input class="workable-native" type="radio" name="workable-eligibility" value="true" aria-hidden="true" tabindex="-1"><span id="workable-yes-label">YES</span></label></div>
+    <div role="radio" aria-checked="false" aria-labelledby="workable-yes-no-label workable-no-label" tabindex="-1"><label><input class="workable-native" type="radio" name="workable-eligibility" value="false" aria-hidden="true" tabindex="-1"><span id="workable-no-label">NO</span></label></div>
+  </fieldset>
+  <fieldset role="radiogroup" aria-labelledby="workable-certification-label" id="workable-certification">
+    <div id="workable-certification-label">Can you confirm that everything in this application is true and your own?</div>
+    <div role="radio" aria-checked="false"><label><input class="workable-native" type="radio" name="workable-certification" value="true" aria-hidden="true" tabindex="-1"><span>YES</span></label></div>
+    <div role="radio" aria-checked="false"><label><input class="workable-native" type="radio" name="workable-certification" value="false" aria-hidden="true" tabindex="-1"><span>NO</span></label></div>
+  </fieldset>
   <section class="form-field" id="greenhouse-question">
     <div><div class="question-label">Do you have strong experience with Terraform or Terragrunt? Pick no more than 2.</div></div>
     <div class="choices">
@@ -41,7 +51,16 @@
   <input type="checkbox" id="unlabelled-hidden-choice" style="display:none">
 </form>
 <script>
-  document.querySelectorAll('[role="radio"]').forEach(option => option.addEventListener('click', () => {
+  document.querySelectorAll('#workable-yes-no [role="radio"] label').forEach(label => label.addEventListener('click', () => {
+    const option = label.closest('[role="radio"]');
+    const group = option.closest('[role="radiogroup"]');
+    group.querySelectorAll('[role="radio"]').forEach(peer => {
+      const selected = peer === option;
+      peer.setAttribute('aria-checked', String(selected));
+      peer.querySelector('input').checked = selected;
+    });
+  }));
+  document.querySelectorAll('#custom-radio-question [role="radio"]').forEach(option => option.addEventListener('click', () => {
     option.parentElement.querySelectorAll('[role="radio"]').forEach(peer => peer.setAttribute('aria-checked', String(peer === option)));
     option.dispatchEvent(new Event('input', { bubbles: true }));
     option.dispatchEvent(new Event('change', { bubbles: true }));

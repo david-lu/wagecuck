@@ -529,7 +529,7 @@
     const choiceKind = globalThis.WCFieldContext.choiceKind(field);
     if (field.getRootNode() === shadow || field.disabled || field.matches(':disabled') || (field.readOnly && !isSupportedCombobox(field)) || field.getAttribute('aria-disabled') === 'true' || (field.getAttribute('aria-readonly') === 'true' && !isSupportedCombobox(field))) return false;
     if (field.tagName === 'INPUT' && !TYPES.has(field.type) && !choiceKind && !isSupportedCombobox(field)) return false;
-    if (choiceKind && field.querySelector(`input[type="${choiceKind}"]`)) return false;
+    if (choiceKind && !globalThis.WCFieldContext.isChoiceOption(field, choiceKind)) return false;
     if (field.type === 'file' && !isResumeField(field)) return false;
     if (field.matches('[role="combobox"],[aria-haspopup="listbox"]') && !isSupportedCombobox(field) && !isAshbyAutocomplete(field)) return false;
     if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 100 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
@@ -836,7 +836,12 @@
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(field, checked);
       field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
       field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-    } else field.click();
+    } else {
+      const input = globalThis.WCFieldContext.nestedChoiceInput(field);
+      const label = input?.closest('label');
+      if (label && field.contains(label)) label.click();
+      else field.click();
+    }
   }
 
   async function writeAshbyAutocomplete(field, answer) {

@@ -38,7 +38,7 @@ export function validateField(field) {
   const label = normalize(field.label);
   const narrative = /\b(describe|explain|experience|approach|discuss|tell us|how (?:do|would|did)|why)\b/i.test(label);
   if (sensitive.test(identifiers) || /\bsin\b/i.test(identifiers) || /(^|\s)(cc-[\w-]+|one-time-code|current-password|new-password)(\s|$)/i.test(field.autocomplete || '') || (!narrative && sensitive.test(normalize(`${field.label || ''} ${field.placeholder || ''}`)))) throw new AgentError('SENSITIVE_FIELD', 'AI filling is unavailable for passwords, API keys, payment details, identity numbers, and verification codes.');
-  if (['checkbox', 'checkbox_group', 'radio', 'select'].includes(field.type) && /\b(certif\w*|attest\w*|have read|read and understand|electronic signature)\b/i.test(normalize(`${field.label || ''} ${field.context || ''} ${field.name || ''} ${field.id || ''}`))) throw new AgentError('ATTESTATION_FIELD', 'Factual certifications and electronic signatures must be completed manually.');
+  if (['checkbox', 'checkbox_group', 'radio', 'select'].includes(field.type) && /\b(certif\w*|attest\w*|have read|read and understand|electronic signature)\b|\bconfirm\b.{0,160}\b(?:everything|information|application)\b.{0,160}\b(?:true|accurate|correct|complete)\b/i.test(normalize(`${field.label || ''} ${field.context || ''} ${field.name || ''} ${field.id || ''}`))) throw new AgentError('ATTESTATION_FIELD', 'Factual certifications and electronic signatures must be completed manually.');
   return field;
 }
 

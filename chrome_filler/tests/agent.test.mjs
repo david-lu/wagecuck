@@ -129,6 +129,7 @@ test('checkboxes, dropdowns, and radio groups use exact choice schemas', () => {
   assert.deepEqual(buildRequest({ settings, field: { ...radio, label: 'Do you consent to texts?' }, page }).text.format.schema.properties.answer.enum, radio.options.map(option => option.value));
   assert.deepEqual(buildRequest({ settings, field: { ...dropdown, label: 'Agreement to Arbitrate' }, page }).text.format.schema.properties.answer.enum, dropdown.options.map(option => option.value));
   assert.throws(() => buildRequest({ settings, field: { ...checkbox, label: 'I certify the application is accurate' }, page }), error => error.code === 'ATTESTATION_FIELD');
+  assert.throws(() => buildRequest({ settings, field: { ...radio, label: 'Can you confirm that everything in this application is true and your own?' }, page }), error => error.code === 'ATTESTATION_FIELD');
   assert.throws(() => buildRequest({ settings, field: { ...dropdown, label: 'I have read the policy' }, page }), error => error.code === 'ATTESTATION_FIELD');
 });
 

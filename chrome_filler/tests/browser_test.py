@@ -109,7 +109,7 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
       const choice = (field, batch = false) => field.type === 'checkbox_group' ? (field.options || []).filter(option => /accessible interfaces|design systems|I utilize Terraform daily|I prefer not to answer/i.test(option.label)).map(option => option.value)
         : field.type === 'checkbox' ? /accessible interfaces|open to remote work|open to hybrid work|open to relocation|I agree to the application terms/i.test(field.label || '')
         : field.type === 'select' ? (field.options || []).find(option => option.value === self.__qaAnswer)?.value || (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
-        : field.type === 'radio' ? (field.options || []).find(option => option.value === 'Prefer not to answer')?.value || field.options?.[0]?.value || ''
+        : field.type === 'radio' ? (field.options || []).find(option => option.value === self.__qaAnswer)?.value || (field.options || []).find(option => option.value === 'Prefer not to answer')?.value || field.options?.[0]?.value || ''
         : field.type === 'number' && batch ? 5 : field.type === 'email' ? self.__qaEmail : self.__qaAnswer;
       if (target.type) output = choice(target);
       if (self.__qaMode === 'invalid') output = 'Not an email address';
@@ -946,7 +946,7 @@ class BrowserSuite:
         self.page.goto(self.url.replace("application.html", "choice_groups.html"))
         self.page.locator('input[name="wrapper_two"]').evaluate("node => { node.checked = true; }")
         self.page.locator("#wc-ai-root .wc-scan-button").click()
-        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(8)
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(9)
         for selector in ("#workable-question", "#greenhouse-question", "#ashby-question", "#custom-radio-question", "#custom-checkbox-question"):
             assert self.page.locator(selector).evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
         assert self.page.locator("#hybrid-choice-label").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
@@ -977,6 +977,8 @@ class BrowserSuite:
         self.page.locator("#wc-ai-root .wc-scan-button").click()
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
         expect(self.page.locator('input[name="wrapper_one"]')).to_be_checked()
+        expect(self.page.locator('#workable-yes-no [role="radio"]').first).to_have_attribute("aria-checked", "true")
+        expect(self.page.locator('input[name="workable-eligibility"]').first).to_be_checked()
         expect(self.page.locator('input[name="terraform_group"]').first).to_be_checked()
         expect(self.page.locator('input[name="Prefer not"]')).to_be_checked()
         expect(self.page.locator('#custom-radio-question [role="radio"]').first).to_have_attribute("aria-checked", "true")
@@ -987,7 +989,32 @@ class BrowserSuite:
         requests = self.worker.evaluate("self.__qaRequests")
         assert len(requests) == 1
         context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
-        assert [field["type"] for field in context["targetFields"]] == ["radio", "checkbox_group", "checkbox_group", "radio", "checkbox_group", "checkbox", "checkbox", "checkbox"]
+        assert [field["type"] for field in context["targetFields"]] == ["radio", "radio", "checkbox_group", "checkbox_group", "radio", "checkbox_group", "checkbox", "checkbox", "checkbox"]
+
+    def workable_nested_yes_no_radios(self):
+        self.seed()
+        self.mock(delay=25, answer="false")
+        self.page.goto(self.url.replace("application.html", "choice_groups.html"))
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.button("Are you eligible to work in the country you are applying?")).to_have_count(1)
+        expect(self.button("Can you confirm that everything in this application is true and your own?")).to_have_count(0)
+        self.button("Are you eligible to work in the country you are applying?").click()
+        expect(self.page.locator('#workable-yes-no [role="radio"]').nth(1)).to_have_attribute("aria-checked", "true")
+        expect(self.page.locator('input[name="workable-eligibility"]').nth(1)).to_be_checked()
+        expect(self.page.locator('input[name="workable-eligibility"]').first).not_to_be_checked()
+        request = self.worker.evaluate("self.__qaRequests")[-1]["payload"]
+        field = json.loads(request["input"][0]["content"][0]["text"])["targetField"]
+        assert field["type"] == "radio" and field["label"] == "Are you eligible to work in the country you are applying?"
+        assert field["options"] == [{"value": "true", "label": "YES"}, {"value": "false", "label": "NO"}]
+        assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["enum"] == ["true", "false"]
+
+        self.page.reload()
+        self.mock(delay=25, answer="true")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.button("Are you eligible to work in the country you are applying?").click()
+        expect(self.page.locator('#workable-yes-no [role="radio"]').first).to_have_attribute("aria-checked", "true")
+        expect(self.page.locator('input[name="workable-eligibility"]').first).to_be_checked()
+        expect(self.page.locator('input[name="workable-eligibility"]').nth(1)).not_to_be_checked()
 
     def mixed_choice_and_controlled_combobox(self):
         self.seed()
@@ -1531,7 +1558,7 @@ def main():
             names = (
                 "manual_scan_gate", "panel_stays_above_page_overlays", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "popup_scan_updates_page_count", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "agreement_dropdowns_fill_and_certifications_stay_manual", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "ashby_live_markup_and_control_panel", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
-                "shadow_and_numeric_validation", "disable_during_generation",
+                "shadow_and_numeric_validation", "disable_during_generation", "workable_nested_yes_no_radios",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",
                 "popup_import_pdf_and_keyboard",
                 "label_combinations", "bounded_field_context",

@@ -6,6 +6,7 @@
   const GLOBAL_CONTAINER = /^(HTML|BODY|FORM|MAIN|NAV|HEADER|FOOTER)$/;
   const LOCAL_CONTAINER = 'fieldset,[role="group"],.form-group,.field,.question,[data-field],.field-container,.input-group';
   const SENSITIVE = /\b(password|passcode|otp|one time code|verification code|security code|credit card|card number|cvv|cvc|social security|social insurance|ssn|api key|access token|secret key|captcha)\b/i;
+  const MANUAL_ATTESTATION = /\b(certif\w*|attest\w*|have read|read and understand|electronic signature)\b|\bconfirm\b.{0,160}\b(?:everything|information|application)\b.{0,160}\b(?:true|accurate|correct|complete)\b/i;
 
   function composedParent(node) {
     return node?.parentElement || node?.getRootNode?.()?.host || null;
@@ -154,7 +155,7 @@
     for (let container = composedParent(field), depth = 0; container && depth < 9 && !GLOBAL_CONTAINER.test(container.tagName); container = composedParent(container), depth++) {
       const selector = type === 'checkbox' ? 'input[type="checkbox"],[role="checkbox"],[role="switch"]' : 'input[type="radio"],[role="radio"]';
       const members = [...container.querySelectorAll(selector)]
-        .filter(option => choiceKind(option) === type && !option.querySelector(selector) && (option.form || option.closest('form')) === (field.form || field.closest('form')) && choiceAvailable(option));
+        .filter(option => choiceKind(option) === type && isChoiceOption(option, type) && (option.form || option.closest('form')) === (field.form || field.closest('form')) && choiceAvailable(option));
       if (members.length < 2 || members.length > 100 || !members.includes(field)) continue;
       const otherControls = [...container.querySelectorAll(CONTROL_SELECTOR)].filter(option => choiceKind(option) !== type && !(option.tagName === 'INPUT' && option.type === 'hidden'));
       if (otherControls.length > 1 || otherControls.some(option => !auxiliaryChoiceText(option))) continue;
@@ -177,12 +178,27 @@
     return role === 'switch' ? 'checkbox' : role === 'radio' || role === 'checkbox' ? role : field?.tagName === 'INPUT' && ['radio', 'checkbox'].includes(field.type) ? field.type : '';
   }
 
+  function nestedChoiceInput(field) {
+    const type = choiceKind(field);
+    if (!type || field instanceof HTMLInputElement) return null;
+    const inputs = field.querySelectorAll(`input[type="${type}"]`);
+    return inputs.length === 1 ? inputs[0] : null;
+  }
+
+  function isChoiceOption(field, type) {
+    if (field instanceof HTMLInputElement) return !field.closest(type === 'radio' ? '[role="radio"]' : '[role="checkbox"],[role="switch"]');
+    if (field.querySelector(type === 'radio' ? '[role="radio"]' : '[role="checkbox"],[role="switch"]')) return false;
+    return !field.querySelector(`input[type="${type}"]`) || Boolean(nestedChoiceInput(field));
+  }
+
   function choiceValue(field) {
-    return field instanceof HTMLInputElement ? field.value : field.getAttribute('value') || field.getAttribute('data-value') || '';
+    return field instanceof HTMLInputElement ? field.value : field.getAttribute('value') || field.getAttribute('data-value') || nestedChoiceInput(field)?.value || '';
   }
 
   function choiceChecked(field) {
-    return field instanceof HTMLInputElement ? field.checked : field.getAttribute('aria-checked') === 'true';
+    if (field instanceof HTMLInputElement) return field.checked;
+    const aria = field.getAttribute('aria-checked');
+    return aria === null ? Boolean(nestedChoiceInput(field)?.checked) : aria === 'true';
   }
 
   function choiceAvailable(option) {
@@ -225,7 +241,7 @@
     const group = choiceContainer(field, 'checkbox');
     if (!group) return null;
     const labels = group.members.map(option => (associatedLabels(option).map(item => item.text).join(' ') || cleanText(option.getAttribute('aria-label')) || cleanText(option.textContent) || choiceValue(option)).slice(0, 200));
-    if (labels.some(value => /\b(certif\w*|attest\w*|have read|read and understand|electronic signature)\b/i.test(value))) return null;
+    if (labels.some(value => MANUAL_ATTESTATION.test(value))) return null;
     const rawValues = group.members.map(choiceValue);
     const values = new Set(rawValues).size === group.members.length && rawValues.every(value => value.trim() && value !== 'on') ? rawValues : labels;
     if (new Set(values).size !== group.members.length || values.some(value => !value.trim() || value.length > 500)) return null;
@@ -462,8 +478,8 @@
   function isManualAttestationField(field) {
     if (!['checkbox', 'radio'].includes(choiceKind(field)) && field.tagName !== 'SELECT' && field.getAttribute('role') !== 'combobox') return false;
     const description = words(`${labelFor(field)} ${fieldInfo(field).context}`);
-    return /\b(certif\w*|attest\w*|have read|read and understand|electronic signature)\b/i.test(description);
+    return MANUAL_ATTESTATION.test(description);
   }
 
-  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, radioGroup, radioOptions, radioDetails, radioChoices, checkboxDetails, choiceKind, choiceChecked, choiceAvailable, visibleChoiceLabel, isSensitiveField, isSearchField, isManualAttestationField });
+  globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, radioGroup, radioOptions, radioDetails, radioChoices, checkboxDetails, choiceKind, nestedChoiceInput, isChoiceOption, choiceChecked, choiceAvailable, visibleChoiceLabel, isSensitiveField, isSearchField, isManualAttestationField });
 })();
