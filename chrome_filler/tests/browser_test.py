@@ -248,6 +248,18 @@ class BrowserSuite:
         expect(self.button("What project are you proud of")).to_have_count(0)
         self.screenshot("discovered-fields")
 
+    def root_scroll_container_buttons(self):
+        self.fresh()
+        self.page.evaluate("""() => {
+          document.body.style.height = '900px';
+          document.body.style.overflow = 'auto';
+          document.querySelector('main').style.paddingTop = '1600px';
+        }""")
+        self.page.locator("#name").scroll_into_view_if_needed()
+        assert self.page.evaluate("window.scrollY > 0")
+        expect(self.button("Full name")).to_be_visible()
+        expect(self.page.locator("#wc-ai-root .wc-field-outline").first).to_be_visible()
+
     def manual_scan_gate(self):
         self.seed()
         self.mock()
@@ -783,7 +795,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "discovery", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable",
+                "manual_scan_gate", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

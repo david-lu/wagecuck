@@ -268,6 +268,9 @@
       button.style.height = `${height}px`;
       let visible = rect.right > 0 && rect.left < innerWidth && y >= 0 && y + height <= innerHeight && isVisible(field);
       for (let node = parentElement(field); visible && node; node = parentElement(node)) {
+        // The document's scrollport is the viewport, even when BODY has overflow:auto
+        // and its layout rect has scrolled above the visible page.
+        if (node === document.body || node === document.documentElement) continue;
         const style = getComputedStyle(node);
         if (/(auto|scroll|hidden|clip)/.test(style.overflow + style.overflowX + style.overflowY)) {
           const clip = node.getBoundingClientRect();
