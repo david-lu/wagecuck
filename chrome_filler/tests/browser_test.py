@@ -214,7 +214,7 @@ class BrowserSuite:
         return scope.get_by_role("button", name=re.compile(r"Fill with AI: .*" + re.escape(label), re.I), include_hidden=True)
 
     def resume_button(self, label):
-        return self.page.get_by_role("button", name=re.compile(r"Attach resume: .*" + re.escape(label), re.I), include_hidden=True)
+        return self.page.get_by_role("button", name=f"Attach resume: {label}", exact=True, include_hidden=True)
 
     @staticmethod
     def saved_resume():
@@ -259,8 +259,10 @@ class BrowserSuite:
             expect(self.button(label)).to_have_count(0)
         expect(self.resume_button("Resume file")).to_have_count(1)
         expect(self.resume_button("Upload CV")).to_have_count(1)
-        assert self.page.locator('#wc-ai-root .wc-fill-button[aria-label^="Attach resume:"]').count() == 3
+        expect(self.resume_button("Resume/CV")).to_have_count(1)
+        assert self.page.locator('#wc-ai-root .wc-fill-button[aria-label^="Attach resume:"]').count() == 4
         expect(self.resume_button("Portfolio attachment")).to_have_count(0)
+        expect(self.resume_button("Cover Letter")).to_have_count(0)
         count = self.page.locator(".wc-fill-button").count()
         self.page.evaluate("document.body.appendChild(document.createElement('div'))")
         self.page.wait_for_timeout(400)
@@ -329,12 +331,14 @@ class BrowserSuite:
         self.page.locator("#name").fill("My own name")
         self.page.locator("#wc-ai-root .wc-scan-button").click()
         expect(do_all).to_be_visible()
+        expect(do_all).to_have_text("FILL ALL")
         popup = self.context.new_page()
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
             expect(popup.locator("#do-all-button")).to_be_visible()
+            expect(popup.locator("#do-all-button")).to_contain_text("FILL ALL")
             popup.locator("#do-all-button").click()
-            expect(popup.locator("#page-status")).to_contain_text("WRITE ALL started")
+            expect(popup.locator("#page-status")).to_contain_text("FILL ALL started")
             expect(self.page.locator("#email")).to_have_value("jordan@example.test")
             expect(self.page.locator("#motivation")).to_have_value(ANSWER)
             expect(self.page.locator("#bio")).to_have_js_property("innerText", ANSWER)
@@ -355,7 +359,7 @@ class BrowserSuite:
             assert self.page.locator("#consent").is_checked() is False
             assert self.page.evaluate("window.fixtureSubmitted") is False
             requests = self.worker.evaluate("self.__qaRequests")
-            assert len(requests) == 1, "DO ALL must make one API request across the page and frames"
+            assert len(requests) == 1, "FILL ALL must make one API request across the page and frames"
             context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
             schema = requests[0]["payload"]["text"]["format"]["schema"]
             assert len(context["targetFields"]) == len(schema["required"])
@@ -396,6 +400,9 @@ class BrowserSuite:
         self.page.wait_for_function("() => document.querySelector('#hidden-resume').files.length === 1")
         assert self.page.locator("#hidden-resume").evaluate("node => node.files[0]?.name") == "resume.pdf"
         assert self.page.locator("#button-resume").evaluate("node => node.files[0]?.name") == "resume.pdf"
+        expect(self.page.locator('[aria-labelledby="upload-label-greenhouse-resume"]')).to_contain_text("resume.pdf")
+        assert self.page.locator("#greenhouse-resume").count() == 0, "Greenhouse replaces the file input after upload"
+        assert self.page.locator("#greenhouse-cover").evaluate("node => node.files.length") == 0
         assert self.page.locator("#portfolio-upload").evaluate("node => node.files.length") == 0
         assert self.page.locator("#upload").evaluate("node => node.files.length") == 1
         assert self.page.evaluate("window.fixtureSubmitted") is False
@@ -404,6 +411,19 @@ class BrowserSuite:
         assert len(requests) == 1
         context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
         assert all(field["type"] != "file" for field in context["targetFields"])
+
+    def greenhouse_resume_upload(self):
+        self.seed(apiKey="", resumeFile=self.saved_resume())
+        self.page.goto(self.url)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator('[aria-labelledby="upload-label-greenhouse-resume"]').scroll_into_view_if_needed()
+        self.page.evaluate("window.dispatchEvent(new Event('scroll'))")
+        expect(self.resume_button("Resume/CV")).to_be_visible()
+        self.resume_button("Resume/CV").click()
+        expect(self.page.locator('[aria-labelledby="upload-label-greenhouse-resume"]')).to_contain_text("resume.pdf")
+        assert [event["type"] for event in self.page.evaluate("window.fixtureEvents.filter(event => event.id === 'greenhouse-resume')")] == ["input", "change"]
+        assert self.page.locator("#greenhouse-cover").evaluate("node => node.files.length") == 0
+        assert self.page.evaluate("window.fixtureSubmitted") is False
 
     def resume_upload_without_pdf(self):
         self.fresh()
@@ -447,7 +467,7 @@ class BrowserSuite:
             self.page.wait_for_timeout(100)
         assert len(self.worker.evaluate("self.__qaRequests")) == 1
         self.page.get_by_role("button", name="Stop", exact=True).click()
-        expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("DO ALL stopped")
+        expect(self.page.locator("#wc-ai-root .wc-toast").last).to_contain_text("FILL ALL stopped")
         expect(self.page.locator("#name")).to_have_value("")
         expect(self.page.locator("#email")).to_have_value("")
         expect(self.page.frame_locator('iframe[title="Same origin questions"]').locator("#frame-answer")).to_have_value("")
@@ -1079,7 +1099,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "react_select_dropdown", "resume_upload_single_and_all", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
+                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

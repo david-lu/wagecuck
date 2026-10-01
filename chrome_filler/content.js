@@ -83,15 +83,15 @@
     doAllButton = document.createElement('button');
     doAllButton.type = 'button';
     doAllButton.className = 'wc-do-all-button';
-    doAllButton.textContent = 'DO ALL';
+    doAllButton.textContent = 'FILL ALL';
     doAllButton.title = 'Fill empty scanned fields and attach your saved PDF resume; never submit';
-    doAllButton.setAttribute('aria-label', 'DO ALL: fill empty scanned fields');
+    doAllButton.setAttribute('aria-label', 'FILL ALL: fill empty scanned fields');
     doAllButton.hidden = true;
     doAllButton.addEventListener('click', event => {
       if (!event.isTrusted || doAllButton.disabled) return;
       chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB' }).then(result => {
-        if (result?.error) toast('Couldn’t start DO ALL', result.error, 'error', [], 12000);
-      }).catch(() => toast('Couldn’t start DO ALL', 'Reload the page and try again.', 'error', [], 12000));
+        if (result?.error) toast('Couldn’t start FILL ALL', result.error, 'error', [], 12000);
+      }).catch(() => toast('Couldn’t start FILL ALL', 'Reload the page and try again.', 'error', [], 12000));
     });
     toastLayer = document.createElement('div');
     toastLayer.className = 'wc-toasts';
@@ -207,9 +207,22 @@
     return field.type === 'radio' ? globalThis.WCFieldContext.radioDetails(field).container || field : field;
   }
 
+  function resumeQuestionLabel(field) {
+    const group = field.closest('[role="group"][aria-labelledby]');
+    if (!group || group.querySelectorAll('input[type="file"]').length !== 1) return '';
+    return group.getAttribute('aria-labelledby').split(/\s+/)
+      .map(id => field.getRootNode().getElementById?.(id))
+      .filter(node => node && group.contains(node))
+      .map(node => node.textContent.trim()).filter(Boolean).join(' ').slice(0, 500);
+  }
+
+  function resumeLabelFor(field) {
+    return resumeQuestionLabel(field) || labelFor(field);
+  }
+
   function isResumeField(field) {
     if (!(field instanceof HTMLInputElement) || field.type !== 'file' || field.multiple) return false;
-    const ownDescription = `${labelFor(field)} ${field.name} ${field.id}`.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]/g, ' ');
+    const ownDescription = `${resumeLabelFor(field)} ${field.name} ${field.id}`.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]/g, ' ');
     if (/\b(cover letter|portfolio|transcript|certificate|photo|identity document)\b/i.test(ownDescription)) return false;
     const trigger = resumeTrigger(field);
     const description = `${ownDescription} ${trigger?.textContent || ''} ${trigger?.getAttribute('aria-label') || ''}`;
@@ -221,6 +234,8 @@
   function resumeTrigger(field) {
     const label = [...(field.labels || [])].find(item => isVisible(item));
     if (label) return label;
+    const localButtons = [...(parentElement(field)?.querySelectorAll('button,[role="button"]') || [])].filter(item => isVisible(item));
+    if (localButtons.length === 1) return localButtons[0];
     for (let parent = parentElement(field), depth = 0; parent && depth < 3 && !parent.matches('form,main,body,html'); parent = parentElement(parent), depth++) {
       const buttons = [...parent.querySelectorAll('button,[role="button"]')].filter(item => isVisible(item) && /\b(resume|r[eé]sum[eé]|curriculum vitae|cv)\b/i.test(`${item.textContent} ${item.getAttribute('aria-label') || ''}`));
       if (buttons.length === 1) return buttons[0];
@@ -331,8 +346,8 @@
             record.visual = visual;
             resizeObserver.observe(visual);
           }
-          record.button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${labelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
-          if (!record.active) record.button.title = field.type === 'file' ? `Attach saved resume to ${labelFor(field)}` : `Write an answer for ${labelFor(field)}`;
+          record.button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${resumeLabelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
+          if (!record.active) record.button.title = field.type === 'file' ? `Attach saved resume to ${resumeLabelFor(field)}` : `Write an answer for ${labelFor(field)}`;
           continue;
         }
         const button = document.createElement('button');
@@ -341,8 +356,8 @@
         button.className = 'wc-fill-button';
         button.dataset.wcField = id;
         button.textContent = field.type === 'file' ? 'Attach PDF' : '✦ Write';
-        button.title = field.type === 'file' ? `Attach saved resume to ${labelFor(field)}` : `Write an answer for ${labelFor(field)}`;
-        button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${labelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
+        button.title = field.type === 'file' ? `Attach saved resume to ${resumeLabelFor(field)}` : `Write an answer for ${labelFor(field)}`;
+        button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${resumeLabelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
         const outline = document.createElement('div');
         outline.className = 'wc-field-outline';
         outline.setAttribute('aria-hidden', 'true');
@@ -798,7 +813,7 @@
     }
     batch = { id: message.runId, sourceUrl: location.href, targets, progress: null };
     if (window.top === window) {
-      batch.progress = toast('DO ALL', `Filling ${message.count} ${message.count === 1 ? 'field' : 'fields'}...`, 'info', [{ label: 'Stop', run: () => {
+      batch.progress = toast('FILL ALL', `Filling ${message.count} ${message.count === 1 ? 'field' : 'fields'}...`, 'info', [{ label: 'Stop', run: () => {
         chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => {});
         if (batch?.progress) batch.progress.detail.textContent = 'Stopping...';
       } }]);
@@ -886,7 +901,7 @@
     if (window.top === window) {
       const { filled = 0, failed = 0, skipped = 0, unchecked = 0 } = message.summary || {};
       const detail = message.errorMessage || `${filled} filled${unchecked ? `, ${unchecked} left unchecked` : ''}${failed ? `, ${failed} could not be filled` : ''}${skipped ? `, ${skipped} skipped` : ''}. ${message.fieldError ? `${message.fieldError} ` : ''}Review the answers before submitting.`;
-      toast(message.stopped ? 'DO ALL stopped' : message.errorMessage ? 'DO ALL failed' : 'DO ALL finished', detail, message.errorMessage ? 'error' : filled ? 'success' : 'info', [], 20000);
+      toast(message.stopped ? 'FILL ALL stopped' : message.errorMessage ? 'FILL ALL failed' : 'FILL ALL finished', detail, message.errorMessage ? 'error' : filled ? 'success' : 'info', [], 20000);
     }
     return { finished: true };
   }

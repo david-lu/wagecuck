@@ -45,7 +45,7 @@ test('prompt preserves the entire page, profile, resume, question and writing pr
   assert.ok(!JSON.stringify(request).includes(settings.apiKey));
 });
 
-test('WRITE ALL builds required, field-specific schema and uses one API call', async () => {
+test('FILL ALL builds required, field-specific schema and uses one API call', async () => {
   const targets = [
     { id: '0:wc-field-1', field: { ...field, label: 'Why this role?', maxLength: 120 } },
     { id: '2:wc-field-7', field: { ...field, label: 'Email address', type: 'email', maxLength: 80 } },
@@ -85,7 +85,7 @@ test('WRITE ALL builds required, field-specific schema and uses one API call', a
   assert.equal(invalid[1].error.code, 'INVALID_ANSWER');
 });
 
-test('WRITE ALL reserves enough output for a 28-field form and reasoning', () => {
+test('FILL ALL reserves enough output for a 28-field form and reasoning', () => {
   const targets = Array.from({ length: 28 }, (_, index) => ({ id: `0:wc-field-${index + 1}`, field }));
   const reasoningRequest = buildBatchRequest({ settings: { ...settings, model: 'gpt-6.1-sol' }, targets, page });
   assert.equal(reasoningRequest.max_output_tokens, 25_000 + 28 * 512);

@@ -51,7 +51,7 @@ async function pageScanStatus(tabId, scan = false) {
 }
 
 async function startFillAllTab(tabId) {
-  if (batchRuns.has(tabId)) return { error: 'DO ALL is already running.' };
+  if (batchRuns.has(tabId)) return { error: 'FILL ALL is already running.' };
   const frames = await chrome.webNavigation.getAllFrames({ tabId });
   if (!/^https?:\/\//i.test(frames?.find(frame => frame.frameId === 0)?.url || '')) throw new Error('Open an application page first.');
   const run = { id: crypto.randomUUID(), controller: new AbortController(), frames: [] };
@@ -59,7 +59,7 @@ async function startFillAllTab(tabId) {
   try {
     const replies = await Promise.allSettled(frames.map(frame =>
       withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_BATCH_SNAPSHOT' }, { frameId: frame.frameId }), 15000)));
-    if (run.controller.signal.aborted) return { error: 'DO ALL stopped.' };
+    if (run.controller.signal.aborted) return { error: 'FILL ALL stopped.' };
     const snapshots = frames.flatMap((frame, index) => {
       const reply = replies[index];
       return reply.status === 'fulfilled' && reply.value?.scanned && reply.value?.enabled !== false && reply.value?.page ? [{ frameId: frame.frameId, ...reply.value }] : [];
@@ -75,7 +75,7 @@ async function startFillAllTab(tabId) {
       type: 'WC_BATCH_BEGIN', runId: run.id, count: targets.length + uploadTargets.length, targets: snapshot.targets || [], uploadTargets: snapshot.uploadTargets || [],
     }, { frameId: snapshot.frameId }))));
     run.frames = snapshots.filter((_, index) => begun[index].status === 'fulfilled' && begun[index].value?.started).map(snapshot => snapshot.frameId);
-    if (run.controller.signal.aborted) return { error: 'DO ALL stopped.' };
+    if (run.controller.signal.aborted) return { error: 'FILL ALL stopped.' };
     if (!run.frames.includes(0)) return { error: 'The page changed. Scan it again.' };
     const accepted = targets.filter(target => run.frames.includes(Number(target.id.split(':', 1)[0])));
     const acceptedUploads = uploadTargets.filter(target => run.frames.includes(Number(target.id.split(':', 1)[0])));
@@ -110,7 +110,7 @@ async function runBatch(tabId, run, targets, uploadTargets, page) {
   try {
     await storageReady;
     const settings = await loadSettings();
-    if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'DO ALL stopped.');
+    if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'FILL ALL stopped.');
     for (const frameId of run.frames) {
       if (run.controller.signal.aborted) break;
       const ids = uploadTargets.filter(target => target.id.startsWith(`${frameId}:`)).map(target => target.id.slice(String(frameId).length + 1));
@@ -126,7 +126,7 @@ async function runBatch(tabId, run, targets, uploadTargets, page) {
     if (!targets.length) return;
     await logEvent('generation.started', { requestId: run.id, model: settings.model, fieldType: 'batch', pageChars: page.text.length, frameCount: page.frameCount, unavailableFrames: page.unavailableFrames });
     const answers = await generateBatchAnswers({ settings, targets, page, signal: run.controller.signal });
-    if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'DO ALL stopped.');
+    if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'FILL ALL stopped.');
     for (const frameId of run.frames) {
       if (run.controller.signal.aborted) break;
       const local = answers.filter(answer => answer.fieldId.startsWith(`${frameId}:`)).map(answer => ({ ...answer, fieldId: answer.fieldId.slice(String(frameId).length + 1) }));

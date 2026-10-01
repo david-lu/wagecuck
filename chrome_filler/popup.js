@@ -515,12 +515,12 @@ $('do-all-button').addEventListener('click', async () => {
   if (!pageTabId) return;
   const button = $('do-all-button');
   button.disabled = true;
-  $('page-status').textContent = 'Starting WRITE ALL…';
+  $('page-status').textContent = 'Starting FILL ALL…';
   try {
     const result = await withTimeout(chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB', tabId: pageTabId }));
-    $('page-status').textContent = result?.started ? `WRITE ALL started on ${result.count} empty ${result.count === 1 ? 'field' : 'fields'}. Watch the page for progress.` : result?.error || 'Could not start WRITE ALL.';
+    $('page-status').textContent = result?.started ? `FILL ALL started on ${result.count} empty ${result.count === 1 ? 'field' : 'fields'}. Watch the page for progress.` : result?.error || 'Could not start FILL ALL.';
   } catch {
-    $('page-status').textContent = 'Could not start WRITE ALL. Reload the page and try again.';
+    $('page-status').textContent = 'Could not start FILL ALL. Reload the page and try again.';
   } finally {
     button.disabled = false;
   }

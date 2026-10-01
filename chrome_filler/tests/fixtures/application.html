@@ -18,6 +18,9 @@
     .select__control input { border: 0; width: 100%; padding: 4px; }
     [role=listbox] { background: white; border: 1px solid #a5b4cb; }
     [role=option] { padding: 5px; cursor: pointer; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .file-upload { margin: 16px 0; }
+    .file-upload button { min-width: 90px; padding: 8px; }
     .spacer { height: 850px; }
     iframe { height: 210px; width: 100%; border: 1px solid #bbc6da; margin-top: 15px; }
   </style>
@@ -68,6 +71,14 @@
         <label for="upload">Resume file</label><input id="upload" type="file">
         <label for="hidden-resume">Upload CV</label><input id="hidden-resume" type="file" accept=".pdf" style="display:none">
         <div><input id="button-resume" type="file" accept="application/pdf" style="display:none"><button type="button">Upload resume</button></div>
+        <div role="group" aria-labelledby="upload-label-greenhouse-resume" class="file-upload">
+          <div id="upload-label-greenhouse-resume">Resume/CV</div>
+          <div class="file-upload__wrapper"><div><button type="button">Attach</button><label class="visually-hidden" for="greenhouse-resume">Attach</label><input id="greenhouse-resume" class="visually-hidden" type="file" accept=".pdf,.doc,.docx,.txt,.rtf"></div></div>
+        </div>
+        <div role="group" aria-labelledby="upload-label-greenhouse-cover" class="file-upload">
+          <div id="upload-label-greenhouse-cover">Cover Letter</div>
+          <div class="file-upload__wrapper"><div><button type="button">Attach</button><label class="visually-hidden" for="greenhouse-cover">Attach</label><input id="greenhouse-cover" class="visually-hidden" type="file" accept=".pdf,.doc,.docx,.txt,.rtf"></div></div>
+        </div>
         <label for="portfolio-upload">Portfolio attachment</label><input id="portfolio-upload" type="file" accept=".pdf">
         <label for="otp">One-time verification code</label><input id="otp" value="never-send-otp">
         <label for="card">Credit card number</label><input id="card" value="never-send-card">
@@ -90,6 +101,9 @@
     shadow.innerHTML = '<style>label { display:block; font-weight:bold; margin:16px 0 6px; } textarea { width:100%; height:100px; font:inherit; }</style><label for="shadow-answer">How do you collaborate with operators?</label><textarea id="shadow-answer"></textarea><p>SHADOW_CONTEXT_SENTINEL: Operators help validate accessible interfaces.</p>';
     shadow.append(document.createTextNode('DIRECT_SHADOW_TEXT_SENTINEL: Build software with operators.'));
     ['input', 'change'].forEach(type => document.addEventListener(type, event => window.fixtureEvents.push({ type, id: event.target.id, value: event.target.value })));
+    document.getElementById('greenhouse-resume').addEventListener('change', event => {
+      event.target.closest('.file-upload').querySelector('.file-upload__wrapper').textContent = event.target.files[0]?.name || '';
+    });
     document.getElementById('add-field').onclick = () => {
       if (document.getElementById('dynamic')) return;
       const label = document.createElement('label'); label.htmlFor = 'dynamic'; label.textContent = 'What project are you proud of?';

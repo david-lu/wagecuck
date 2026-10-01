@@ -156,10 +156,10 @@ export function buildRequest({ settings: value, field, page }) {
 
 export function buildBatchRequest({ settings: value, targets, page }) {
   const settings = normalizeSettings(value);
-  if (!Array.isArray(targets) || !targets.length || targets.length > 100) throw new AgentError('INVALID_REQUEST', 'DO ALL needs 1-100 scanned fields.');
+  if (!Array.isArray(targets) || !targets.length || targets.length > 100) throw new AgentError('INVALID_REQUEST', 'FILL ALL needs 1-100 scanned fields.');
   const ids = new Set();
   for (const target of targets) {
-    if (!target || typeof target.id !== 'string' || !/^[0-9]+:wc-field-[0-9]+$/.test(target.id) || ids.has(target.id)) throw new AgentError('INVALID_REQUEST', 'DO ALL field IDs are invalid. Scan again.');
+    if (!target || typeof target.id !== 'string' || !/^[0-9]+:wc-field-[0-9]+$/.test(target.id) || ids.has(target.id)) throw new AgentError('INVALID_REQUEST', 'FILL ALL field IDs are invalid. Scan again.');
     ids.add(target.id);
     validateFieldAndPage(target.field, page);
   }
@@ -188,8 +188,8 @@ export function buildBatchRequest({ settings: value, targets, page }) {
 export function parseBatchResponse(raw, targets) {
   let result;
   try { result = JSON.parse(raw); }
-  catch { throw new AgentError('INVALID_RESPONSE', 'The model returned an unexpected DO ALL format. Nothing was inserted.'); }
-  if (!result || typeof result !== 'object' || Array.isArray(result)) throw new AgentError('INVALID_RESPONSE', 'The model returned an unexpected DO ALL format. Nothing was inserted.');
+  catch { throw new AgentError('INVALID_RESPONSE', 'The model returned an unexpected FILL ALL format. Nothing was inserted.'); }
+  if (!result || typeof result !== 'object' || Array.isArray(result)) throw new AgentError('INVALID_RESPONSE', 'The model returned an unexpected FILL ALL format. Nothing was inserted.');
   const fields = new Map(targets.map(target => [target.id, target.field]));
   const answers = [];
   for (const [fieldId, field] of fields) {
