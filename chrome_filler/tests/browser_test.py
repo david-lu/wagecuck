@@ -455,6 +455,37 @@ class BrowserSuite:
         finally:
             popup.close()
 
+    def fill_all_skips_invalid_choice_and_continues(self):
+        self.seed()
+        self.mock(delay=25)
+        self.page.goto(self.url)
+        self.page.evaluate("""() => {
+          const label = document.createElement('label');
+          label.htmlFor = 'malformed-choice';
+          label.textContent = 'Preferred test track';
+          const select = document.createElement('select');
+          select.id = 'malformed-choice';
+          select.innerHTML = '<option value="">Choose a track</option>';
+          const option = document.createElement('option');
+          option.value = 'x'.repeat(501);
+          option.textContent = 'Long option';
+          select.append(option);
+          document.querySelector('#application').prepend(label, select);
+        }""")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.button("Preferred test track")).to_have_count(1)
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(self.page.locator("#motivation")).to_have_value(ANSWER)
+        expect(self.page.locator("#email")).to_have_value("jordan@example.test")
+        expect(self.page.locator("#malformed-choice")).to_have_value("")
+        expect(self.toast()).to_contain_text("1 scanned field")
+        expect(self.toast()).to_contain_text("1 skipped")
+        requests = self.worker.evaluate("self.__qaRequests")
+        assert len(requests) == 1, "Valid fields should still use one batch request"
+        context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
+        assert all(field["label"] != "Preferred test track" for field in context["targetFields"])
+        assert self.page.evaluate("window.fixtureSubmitted") is False
+
     def resume_upload_single_and_all(self):
         self.seed(resumeFile=self.saved_resume())
         self.mock(delay=25)
@@ -1179,7 +1210,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "do_all_fills_scanned_empty_fields", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
+                "manual_scan_gate", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

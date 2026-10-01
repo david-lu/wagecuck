@@ -1,5 +1,5 @@
 import { SETTINGS_KEY, LOGS_KEY, loadSettings } from './lib/config.js';
-import { AgentError, combinePageSnapshots, errorToPublic, generateAnswer, generateBatchAnswers, validateFieldAndPage } from './lib/agent.js';
+import { AgentError, combinePageSnapshots, errorToPublic, generateAnswer, generateBatchAnswers, validateField, validateFieldAndPage, validatePageContext } from './lib/agent.js';
 import { logEvent } from './lib/logging.js';
 
 const activeRequests = new Map();
@@ -124,8 +124,21 @@ async function runBatch(tabId, run, targets, uploadTargets, page) {
       } catch { summary.failed += ids.length; fieldError ||= 'The resume could not be attached.'; }
     }
     if (!targets.length) return;
+    validatePageContext(page);
+    const validTargets = [];
+    let invalidTargets = 0;
+    for (const target of targets) {
+      try { validateField(target.field); validTargets.push(target); }
+      catch (error) {
+        if (!(error instanceof AgentError)) throw error;
+        summary.skipped++;
+        invalidTargets++;
+      }
+    }
+    if (invalidTargets) fieldError += `${fieldError ? ' ' : ''}${invalidTargets} scanned field${invalidTargets === 1 ? '' : 's'} had invalid choices or unsupported details and ${invalidTargets === 1 ? 'was' : 'were'} skipped.`;
+    if (!validTargets.length) return;
     await logEvent('generation.started', { requestId: run.id, model: settings.model, fieldType: 'batch', pageChars: page.text.length, frameCount: page.frameCount, unavailableFrames: page.unavailableFrames });
-    const answers = await generateBatchAnswers({ settings, targets, page, signal: run.controller.signal });
+    const answers = await generateBatchAnswers({ settings, targets: validTargets, page, signal: run.controller.signal });
     if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'FILL ALL stopped.');
     for (const frameId of run.frames) {
       if (run.controller.signal.aborted) break;

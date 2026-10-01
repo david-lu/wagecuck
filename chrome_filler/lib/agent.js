@@ -18,9 +18,8 @@ function assertObject(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new AgentError('INVALID_REQUEST', `The ${name} is invalid. Reload the page and try again.`);
 }
 
-export function validateFieldAndPage(field, page) {
+export function validateField(field) {
   assertObject(field, 'field');
-  assertObject(page, 'page context');
   if (typeof field.type !== 'string' || !ALLOWED_FIELD_TYPES.has(field.type)) throw new AgentError('UNSUPPORTED_FIELD', 'This field is not supported for AI filling.');
   for (const key of ['label', 'placeholder', 'context', 'currentValue', 'autocomplete', 'name', 'id']) {
     if (field[key] !== undefined && typeof field[key] !== 'string') throw new AgentError('INVALID_REQUEST', 'The field metadata is invalid.');
@@ -33,9 +32,6 @@ export function validateFieldAndPage(field, page) {
   if (field.type === 'select' || field.type === 'radio') {
     if (!Array.isArray(field.options) || !field.options.length || field.options.length > 300 || field.options.some(option => !option || typeof option.value !== 'string' || !option.value.trim() || option.value.length > 500 || typeof option.label !== 'string' || !option.label.trim() || option.label.length > 200)) throw new AgentError('INVALID_REQUEST', 'The choice options are invalid. Scan the page again.');
   }
-  if (typeof page.text !== 'string' || typeof page.title !== 'string' || typeof page.url !== 'string' || !/^https?:\/\//i.test(page.url)) throw new AgentError('INVALID_REQUEST', 'The page context is invalid.');
-  const contextSize = JSON.stringify({ title: page.title, url: page.url, text: page.text, fields: page.fields || [], contextNote: page.contextNote || '' }).length;
-  if (page.text.length > MAX_PAGE_CHARS || contextSize > MAX_PAGE_CHARS) throw new AgentError('PAGE_TOO_LARGE', 'This page exceeds the 500,000-character context limit, including field metadata. Nothing was sent; open a smaller page and try again.');
   const normalize = value => String(value || '').replace(/([a-z\d])([A-Z])/g, '$1 $2').replace(/([A-Z])([A-Z][a-z])/g, '$1 $2').replace(/[_\-.[\]:]+/g, ' ').replace(/\s+/g, ' ');
   const sensitive = /\b(password|passcode|otp|one time code|verification code|security code|credit card|card number|cc number|cc csc|cc exp|cvv|cvc|social security|social insurance|ssn|captcha|api key|access token|secret key)\b/i;
   const identifiers = normalize(`${field.name || ''} ${field.id || ''} ${field.autocomplete || ''}`);
@@ -43,6 +39,20 @@ export function validateFieldAndPage(field, page) {
   const narrative = /\b(describe|explain|experience|approach|discuss|tell us|how (?:do|would|did)|why)\b/i.test(label);
   if (sensitive.test(identifiers) || /\bsin\b/i.test(identifiers) || /(^|\s)(cc-[\w-]+|one-time-code|current-password|new-password)(\s|$)/i.test(field.autocomplete || '') || (!narrative && sensitive.test(normalize(`${field.label || ''} ${field.placeholder || ''}`)))) throw new AgentError('SENSITIVE_FIELD', 'AI filling is unavailable for passwords, API keys, payment details, identity numbers, and verification codes.');
   if (['checkbox', 'radio'].includes(field.type) && /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature)\b/i.test(normalize(`${field.label || ''} ${field.context || ''} ${field.name || ''} ${field.id || ''}`))) throw new AgentError('CONSENT_FIELD', 'Consent and agreement choices must be completed manually.');
+  return field;
+}
+
+export function validatePageContext(page) {
+  assertObject(page, 'page context');
+  if (typeof page.text !== 'string' || typeof page.title !== 'string' || typeof page.url !== 'string' || !/^https?:\/\//i.test(page.url)) throw new AgentError('INVALID_REQUEST', 'The page context is invalid.');
+  const contextSize = JSON.stringify({ title: page.title, url: page.url, text: page.text, fields: page.fields || [], contextNote: page.contextNote || '' }).length;
+  if (page.text.length > MAX_PAGE_CHARS || contextSize > MAX_PAGE_CHARS) throw new AgentError('PAGE_TOO_LARGE', 'This page exceeds the 500,000-character context limit, including field metadata. Nothing was sent; open a smaller page and try again.');
+  return page;
+}
+
+export function validateFieldAndPage(field, page) {
+  validateField(field);
+  validatePageContext(page);
   return { field, page };
 }
 
