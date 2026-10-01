@@ -1,8 +1,8 @@
 """Real unpacked-extension UI regression tests; no API key or paid network request.
 
-Run from the repository root: .venv/Scripts/python.exe input-filler/tests/browser_test.py
+Run from the repository root: filler/.venv/Scripts/python.exe chrome_filler/tests/browser_test.py
 Requires the repository's Playwright dependency and its bundled Chromium browser.
-Artifacts, screenshots, and a machine-readable report go to .artifacts/input-filler.
+Artifacts, screenshots, and a machine-readable report go to chrome_filler/.artifacts.
 """
 from __future__ import annotations
 
@@ -22,9 +22,9 @@ from playwright.sync_api import expect, sync_playwright
 
 
 ROOT = Path(__file__).resolve().parents[2]
-EXTENSION = ROOT / "input-filler"
+EXTENSION = ROOT / "chrome_filler"
 FIXTURES = EXTENSION / "tests" / "fixtures"
-ARTIFACTS = ROOT / ".artifacts" / "input-filler"
+ARTIFACTS = EXTENSION / ".artifacts"
 ANSWER = (
     "I want to join Northstar Robotics because its focus on safer, accessible warehouses "
     "connects with my experience building dependable tools for operations teams. I would "

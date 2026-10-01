@@ -240,9 +240,11 @@ class ProviderResponseError(Exception):
 
 
 def add_agent_arguments(parser):
-    # Explicit path: read the caller's working directory, never search parents.
+    # Read the app directory first, then the shared repository configuration.
     # Shell values take precedence; interpolation cannot alter literal API keys.
     load_dotenv(Path.cwd() / ".env", override=False, interpolate=False)
+    if Path.cwd().name == "filler" and (Path.cwd().parent / "job_search").is_dir():
+        load_dotenv(Path.cwd().parent / ".env", override=False, interpolate=False)
     parser.add_argument(
         "--agent-provider",
         choices=("openai", "ollama"),

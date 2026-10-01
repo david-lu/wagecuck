@@ -5,7 +5,7 @@ A standalone Chrome extension inside wagecuck. It puts a **✦ Write** button at
 ## Install in Chrome
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and select this `input-filler` folder.
+2. Click **Load unpacked** and select this `chrome_filler` folder.
 3. Pin **Wagecuck · AI Input Filler** from Chrome’s extensions menu.
 4. Click its icon and follow the setup banner: **Connect AI** with your OpenAI API key, then add your résumé or background in **About you**. You can upload PDF, TXT, or Markdown, paste résumé text, or import a wagecuck profile JSON.
 5. In **Your voice**, choose a tone or write your preferences: for example, “Write professionally in two short paragraphs. Mention my interest in accessible products. Avoid buzzwords.” Tone changes keep your other instructions. Edits save automatically; the footer shows saving or saved status, and **Save** is available when you need it.
@@ -53,15 +53,15 @@ npm run check
 From the wagecuck repository root, use the existing Python Playwright installation for the real unpacked-extension UI tests:
 
 ```powershell
-.venv\Scripts\python.exe input-filler\tests\browser_test.py
+filler\.venv\Scripts\python.exe chrome_filler\tests\browser_test.py
 ```
 
-The browser tests launch an isolated Chromium profile, serve synthetic application pages, and replace the worker’s API transport with deterministic streaming responses. They make no paid API calls and do not read `.env`. Screenshots and the test report are written to `.artifacts/input-filler/`. They exercise the real manifest, content script, background worker, popup, storage, and frame messaging.
+The browser tests launch an isolated Chromium profile, serve synthetic application pages, and replace the worker’s API transport with deterministic streaming responses. They make no paid API calls and do not read `.env`. Screenshots and the test report are written to `chrome_filler/.artifacts/`. They exercise the real manifest, content script, background worker, popup, storage, and frame messaging.
 
 To try the synthetic page manually:
 
 ```powershell
-.venv\Scripts\python.exe -m http.server 8787 --bind 127.0.0.1 --directory input-filler/tests/fixtures
+filler\.venv\Scripts\python.exe -m http.server 8787 --bind 127.0.0.1 --directory chrome_filler/tests/fixtures
 ```
 
 Open `http://127.0.0.1:8787/application.html` in Chrome. Clicking AI manually uses your configured API key and makes a real API request.

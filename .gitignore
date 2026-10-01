@@ -9,7 +9,7 @@ __pycache__/
 runs/
 *.sqlite*
 .env
-profiles/*
-!profiles/.gitkeep
+filler/profiles/*
+!filler/profiles/.gitkeep
 research-cache/
 
