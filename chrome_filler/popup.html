@@ -43,7 +43,7 @@
       <div class="subnav"><button id="back-profile" type="button" class="back-button" aria-label="Back to main menu">&#8592; Back</button><div><span class="eyebrow">ABOUT YOU</span><h2 id="profile-title">Edit profile</h2></div></div>
       <div class="form-scroll">
         <div class="section-heading"><h3>Resume</h3><p>Upload it once. The agent can use it for every answer.</p></div>
-        <div class="upload-card"><span class="upload-icon" aria-hidden="true">&#9635;</span><div><strong>Your resume</strong><p>PDF, TXT, or Markdown</p></div><button id="resume-upload-button" class="small-button" type="button">Upload</button></div>
+        <div class="upload-card"><span class="upload-icon" aria-hidden="true">&#9635;</span><div><strong>Your resume</strong><p>PDF attaches to applications; TXT and Markdown give AI context only</p></div><button id="resume-upload-button" class="small-button" type="button">Upload</button></div>
         <input id="resume-upload" class="file-input" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" aria-label="Choose a resume file" tabindex="-1">
         <div id="resume-attachment" class="attachment" hidden><span id="resume-file-name"></span><button id="resume-remove" type="button" class="text-button" aria-label="Remove resume">Remove</button></div>
         <p id="resume-status" class="inline-status" role="status" hidden></p>
@@ -104,7 +104,7 @@
         <div id="model-custom" hidden><label class="field-label" for="model">Custom model ID</label><input id="model" type="text" autocomplete="off" spellcheck="false" placeholder="gpt-5-mini" maxlength="100" aria-describedby="model-help"></div>
         <p id="model-help" class="hint">These options work with structured answers and PDF resumes. Access and billing depend on your OpenAI API account. <a href="https://developers.openai.com/api/docs/models" target="_blank" rel="noopener noreferrer">Compare models</a>.</p>
 
-        <details id="data-note" class="editor-details privacy-note"><summary>What gets shared?</summary><p>When you click Write or WRITE ALL, the page context, profile facts, notes, writing preferences, and resume are sent to OpenAI. Your settings stay in this browser. Review answers before submitting.</p></details>
+        <details id="data-note" class="editor-details privacy-note"><summary>What gets shared?</summary><p>When AI writes answers, the page context, profile facts, notes, writing preferences, and resume are sent to OpenAI. Attaching a saved PDF to an application does not call the model. Your settings stay in this browser. Review answers and uploads before submitting.</p></details>
         <details id="advanced-settings" class="editor-details"><summary>Diagnostics</summary>
           <details id="troubleshooting" class="troubleshooting"><summary>Troubleshooting</summary>
             <label class="debug-label"><input id="debug-toggle" type="checkbox"> Enable detailed diagnostics</label>

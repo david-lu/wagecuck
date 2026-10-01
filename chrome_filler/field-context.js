@@ -321,6 +321,7 @@
       name: field.getAttribute('name') || '',
       id: field.id || '',
       autocomplete: field.getAttribute('autocomplete') || '',
+      accept: field.type === 'file' ? field.accept : '',
       labelSources: details.sources,
     };
   }

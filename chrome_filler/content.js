@@ -4,7 +4,7 @@
   globalThis.__wcInputFiller = true;
 
   const SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]';
-  const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox', 'radio']);
+  const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox', 'radio', 'file']);
   const records = new Map();
   const roots = new Set([document]);
   let enabled = true;
@@ -83,7 +83,7 @@
     doAllButton.type = 'button';
     doAllButton.className = 'wc-do-all-button';
     doAllButton.textContent = 'DO ALL';
-    doAllButton.title = 'Fill empty scanned text fields; never submit';
+    doAllButton.title = 'Fill empty scanned fields and attach your saved PDF resume; never submit';
     doAllButton.setAttribute('aria-label', 'DO ALL: fill empty scanned fields');
     doAllButton.hidden = true;
     doAllButton.addEventListener('click', event => {
@@ -104,12 +104,14 @@
   }
 
   function readValue(field) {
+    if (field instanceof HTMLInputElement && field.type === 'file') return field.files?.length || 0;
     if (field instanceof HTMLInputElement && field.type === 'checkbox') return field.checked;
     if (field instanceof HTMLInputElement && field.type === 'radio') return globalThis.WCFieldContext.radioGroup(field).find(option => option.checked)?.value || '';
     return 'value' in field ? field.value : field.innerText;
   }
 
   function hasAnswer(field) {
+    if (field instanceof HTMLInputElement && field.type === 'file') return Boolean(field.files?.length);
     const value = readValue(field);
     return typeof value === 'boolean' ? value : Boolean(String(value).trim());
   }
@@ -150,23 +152,51 @@
   }
 
   function visualTarget(field) {
+    if (field.type === 'file') return resumeVisualTarget(field) || field;
     return field.type === 'radio' ? globalThis.WCFieldContext.radioDetails(field).container || field : field;
+  }
+
+  function isResumeField(field) {
+    if (!(field instanceof HTMLInputElement) || field.type !== 'file' || field.multiple) return false;
+    const ownDescription = `${labelFor(field)} ${field.name} ${field.id}`.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]/g, ' ');
+    if (/\b(cover letter|portfolio|transcript|certificate|photo|identity document)\b/i.test(ownDescription)) return false;
+    const trigger = resumeTrigger(field);
+    const description = `${ownDescription} ${trigger?.textContent || ''} ${trigger?.getAttribute('aria-label') || ''}`;
+    if (!/\b(resume|r[eé]sum[eé]|curriculum vitae|cv)\b/i.test(description)) return false;
+    const accepted = field.accept.toLowerCase().split(',').map(value => value.trim()).filter(Boolean);
+    return !accepted.length || accepted.some(value => value === '.pdf' || value === 'application/pdf' || value === 'application/*' || value === '*/*');
+  }
+
+  function resumeTrigger(field) {
+    const label = [...(field.labels || [])].find(item => isVisible(item));
+    if (label) return label;
+    for (let parent = parentElement(field), depth = 0; parent && depth < 3 && !parent.matches('form,main,body,html'); parent = parentElement(parent), depth++) {
+      const buttons = [...parent.querySelectorAll('button,[role="button"]')].filter(item => isVisible(item) && /\b(resume|r[eé]sum[eé]|curriculum vitae|cv)\b/i.test(`${item.textContent} ${item.getAttribute('aria-label') || ''}`));
+      if (buttons.length === 1) return buttons[0];
+    }
+    return null;
+  }
+
+  function resumeVisualTarget(field) {
+    if (isVisible(field)) return field;
+    return resumeTrigger(field);
   }
 
   function isEligible(field) {
     if (field.getRootNode() === shadow || field.disabled || field.matches(':disabled') || field.readOnly || field.getAttribute('aria-disabled') === 'true' || field.getAttribute('aria-readonly') === 'true') return false;
     if (field.tagName === 'INPUT' && !TYPES.has(field.type)) return false;
+    if (field.type === 'file' && !isResumeField(field)) return false;
     if (field.matches('[role="combobox"],[aria-haspopup="listbox"]')) return false;
     if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 100 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
     if (field.type === 'radio') {
       const options = globalThis.WCFieldContext.radioOptions(field);
       if (options.length < 2 || options.length > 100 || new Set(options.map(option => option.value)).size !== options.length || options[0] !== field || !globalThis.WCFieldContext.radioDetails(field).label) return false;
     }
-    if (field.tagName !== 'SELECT' && !['checkbox', 'radio'].includes(field.type) && field.maxLength === 0) return false;
+    if (field.tagName !== 'SELECT' && !['checkbox', 'radio', 'file'].includes(field.type) && field.maxLength === 0) return false;
     if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable) return false;
     if (field.isContentEditable && parentElement(field)?.isContentEditable) return false;
     if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field) || globalThis.WCFieldContext.isConsentField(field)) return false;
-    return isVisible(field);
+    return field.type === 'file' ? Boolean(resumeVisualTarget(field)) : isVisible(field);
   }
 
   function fieldInfo(field) {
@@ -174,7 +204,7 @@
   }
 
   function targetSignature(info) {
-    return JSON.stringify(['label', 'type', 'placeholder', 'context', 'required', 'maxLength', 'min', 'max', 'step', 'pattern', 'options'].map(key => info[key]));
+    return JSON.stringify(['label', 'type', 'placeholder', 'context', 'required', 'maxLength', 'min', 'max', 'step', 'pattern', 'options', 'accept'].map(key => info[key]));
   }
 
   function collectRoots(root = document, found = []) {
@@ -243,8 +273,8 @@
             record.visual = visual;
             resizeObserver.observe(visual);
           }
-          record.button.setAttribute('aria-label', `Fill with AI: ${labelFor(field)}`);
-          if (!record.active) record.button.title = `Write an answer for ${labelFor(field)}`;
+          record.button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${labelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
+          if (!record.active) record.button.title = field.type === 'file' ? `Attach saved resume to ${labelFor(field)}` : `Write an answer for ${labelFor(field)}`;
           continue;
         }
         const button = document.createElement('button');
@@ -252,9 +282,9 @@
         button.type = 'button';
         button.className = 'wc-fill-button';
         button.dataset.wcField = id;
-        button.textContent = '✦ Write';
-        button.title = `Write an answer for ${labelFor(field)}`;
-        button.setAttribute('aria-label', `Fill with AI: ${labelFor(field)}`);
+        button.textContent = field.type === 'file' ? 'Attach PDF' : '✦ Write';
+        button.title = field.type === 'file' ? `Attach saved resume to ${labelFor(field)}` : `Write an answer for ${labelFor(field)}`;
+        button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${labelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
         const outline = document.createElement('div');
         outline.className = 'wc-field-outline';
         outline.setAttribute('aria-hidden', 'true');
@@ -329,27 +359,27 @@
     for (const record of records.values()) {
       const { field, visual, button, outline } = record;
       const rect = visual.getBoundingClientRect();
-      const outlineVisible = rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight && isVisible(visual) && isVisible(field);
+      const outlineVisible = rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight && isVisible(visual);
       outline.style.display = outlineVisible ? 'block' : 'none';
       outline.style.left = `${rect.left}px`;
       outline.style.top = `${rect.top}px`;
       outline.style.width = `${rect.width}px`;
       outline.style.height = `${rect.height}px`;
-      const choice = field.tagName === 'SELECT' || ['checkbox', 'radio'].includes(field.type);
+      const choice = field.tagName === 'SELECT' || ['checkbox', 'radio', 'file'].includes(field.type);
       const compact = !choice && (rect.width < 240 || rect.height < 36);
-      const width = compact ? 45 : 80;
+      const width = field.type === 'file' ? 100 : compact ? 45 : 80;
       const height = compact ? 26 : 28;
       const x = choice ? rect.right + 8 : rect.right - width - 4;
       // Straddle the top border on roomy fields so the button does not cover text.
       let y = field.type === 'radio' ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
       button.dataset.compact = String(compact);
       if (!button.hasAttribute('aria-busy')) {
-        const text = compact ? '✦ AI' : hasAnswer(field) ? '✦ Rewrite' : '✦ Write';
+        const text = field.type === 'file' ? hasAnswer(field) ? 'PDF attached' : 'Attach PDF' : compact ? '✦ AI' : hasAnswer(field) ? '✦ Rewrite' : '✦ Write';
         if (button.textContent !== text) button.textContent = text;
       }
       button.style.width = `${width}px`;
       button.style.height = `${height}px`;
-      let visible = rect.right > 0 && rect.left < innerWidth && y >= 0 && y + height <= innerHeight && isVisible(field);
+      let visible = rect.right > 0 && rect.left < innerWidth && y >= 0 && y + height <= innerHeight && isVisible(visual);
       for (let node = parentElement(field); visible && node; node = parentElement(node)) {
         // The document's scrollport is the viewport, even when BODY has overflow:auto
         // and its layout rect has scrolled above the visible page.
@@ -438,6 +468,49 @@
     chrome.runtime.sendMessage({ type: 'WC_LOG_EVENT', event, metadata: { requestId, ...(code ? { code } : {}) } }).catch(() => {});
   }
 
+  function attachResume(record, resumeFile, signature, sourceUrl) {
+    const field = record.field;
+    if (!records.has(field) || records.get(field) !== record || !enabled || !scanned || location.href !== sourceUrl || !isEligible(field) || hasAnswer(field) || targetSignature(fieldInfo(field)) !== signature) return 'skipped';
+    if (!resumeFile) throw new Error('Add a PDF resume in Edit profile first.');
+    if (resumeFile.type !== 'application/pdf' || !/\.pdf$/i.test(resumeFile.name) || !Number.isInteger(resumeFile.size) || resumeFile.size < 1 || resumeFile.size > 5 * 1024 * 1024 || !/^data:application\/pdf;base64,[A-Za-z0-9+/]+={0,2}$/.test(resumeFile.dataUrl || '')) throw new Error('The saved resume is invalid. Upload the PDF again in Edit profile.');
+    const bytes = Uint8Array.from(atob(resumeFile.dataUrl.slice(resumeFile.dataUrl.indexOf(',') + 1)), character => character.charCodeAt(0));
+    if (bytes.length !== resumeFile.size || String.fromCharCode(...bytes.slice(0, 5)) !== '%PDF-') throw new Error('The saved PDF could not be read. Upload it again in Edit profile.');
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([bytes], resumeFile.name, { type: 'application/pdf' }));
+    field.files = transfer.files;
+    field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    if (field.files?.length !== 1 || field.files[0].name !== resumeFile.name || field.files[0].size !== resumeFile.size || field.validity && !field.validity.valid) throw new Error('The website did not accept the PDF. Upload it manually.');
+    schedulePosition();
+    return 'filled';
+  }
+
+  async function startResumeAttach(record) {
+    const field = record.field;
+    const signature = targetSignature(fieldInfo(field));
+    const sourceUrl = location.href;
+    if (hasAnswer(field)) {
+      toast('Resume already attached', 'This upload already has a file. Remove it on the website before attaching a different one.', 'info', [], 10000);
+      return { status: 'skipped' };
+    }
+    record.starting = true;
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'WC_GET_RESUME_FOR_UPLOAD' });
+      const status = attachResume(record, response?.resumeFile, signature, sourceUrl);
+      if (status === 'filled') {
+        logUI('ui.filled', crypto.randomUUID());
+        toast('Resume attached', 'Review the uploaded PDF before submitting your application.', 'success', [], 12000);
+      }
+      return { status };
+    } catch (error) {
+      toast('Couldn’t attach resume', error.message || 'Upload the PDF manually.', 'error', [{ label: 'Edit profile', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) }], 16000);
+      return { status: 'failed' };
+    } finally {
+      record.starting = false;
+      schedulePosition();
+    }
+  }
+
   async function startFill(record) {
     if (!scanned || scannedUrl !== location.href || record.active || record.starting || !enabled || !isEligible(record.field)) return;
     record.starting = true;
@@ -453,6 +526,7 @@
       record.starting = false;
     }
     if (!scanned || scannedUrl !== location.href || !records.has(record.field) || record.active || !isEligible(record.field)) return;
+    if (record.field.type === 'file') return startResumeAttach(record);
     if (!configured) {
       toast('One quick step before you start', 'Connect your OpenAI account using an API key, then add your background.', 'info', [{ label: 'Set up AI', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) }], 14000);
       return { status: 'failed', code: 'NOT_CONFIGURED' };
@@ -618,7 +692,9 @@
     scan();
     return {
       scanned: true, enabled, page: collectPage(),
-      targets: [...records.values()].filter(record => !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field))
+      targets: [...records.values()].filter(record => record.field.type !== 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field))
+        .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
+      uploadTargets: [...records.values()].filter(record => record.field.type === 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field))
         .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
     };
   }
@@ -626,13 +702,13 @@
   function beginBatch(message) {
     if (!enabled || !scanned || scannedUrl !== location.href || batch) return { started: false };
     const targets = new Map();
-    for (const target of message.targets || []) {
+    for (const target of [...(message.targets || []), ...(message.uploadTargets || [])]) {
       const record = [...records.values()].find(item => item.id === target.id);
       if (record) targets.set(target.id, { record, signature: targetSignature(target.field) });
     }
     batch = { id: message.runId, sourceUrl: location.href, targets, progress: null };
     if (window.top === window) {
-      batch.progress = toast('DO ALL', `Writing ${message.count} ${message.count === 1 ? 'answer' : 'answers'} in one agent run...`, 'info', [{ label: 'Stop', run: () => {
+      batch.progress = toast('DO ALL', `Filling ${message.count} ${message.count === 1 ? 'field' : 'fields'}...`, 'info', [{ label: 'Stop', run: () => {
         chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => {});
         if (batch?.progress) batch.progress.detail.textContent = 'Stopping...';
       } }]);
@@ -647,6 +723,22 @@
     }
     if (doAllButton) doAllButton.disabled = true;
     return { started: true };
+  }
+
+  function attachBatchResumes(message) {
+    if (!batch || batch.id !== message.runId) return { filled: 0, skipped: message.ids?.length || 0, failed: 0, unchecked: 0 };
+    const result = { filled: 0, skipped: 0, failed: 0, unchecked: 0, firstError: '' };
+    for (const id of message.ids || []) {
+      const target = batch.targets.get(id);
+      if (!target || target.record.field.type !== 'file') { result.skipped++; continue; }
+      try {
+        result[attachResume(target.record, message.resumeFile, target.signature, batch.sourceUrl)]++;
+      } catch (error) {
+        result.failed++;
+        result.firstError ||= error.message || 'The resume could not be attached.';
+      }
+    }
+    return result;
   }
 
   function applyBatch(message) {
@@ -752,6 +844,8 @@
       respond(beginBatch(message));
     } else if (message?.type === 'WC_BATCH_APPLY') {
       respond(applyBatch(message));
+    } else if (message?.type === 'WC_BATCH_ATTACH_RESUME') {
+      respond(attachBatchResumes(message));
     } else if (message?.type === 'WC_BATCH_DONE') {
       respond(finishBatch(message));
     } else if (message?.type === 'WC_SETTINGS_CHANGED') {

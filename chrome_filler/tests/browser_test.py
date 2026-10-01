@@ -6,6 +6,7 @@ Artifacts, screenshots, and a machine-readable report go to chrome_filler/.artif
 """
 from __future__ import annotations
 
+import base64
 import functools
 import json
 import re
@@ -212,6 +213,15 @@ class BrowserSuite:
         scope = frame or self.page
         return scope.get_by_role("button", name=re.compile(r"Fill with AI: .*" + re.escape(label), re.I), include_hidden=True)
 
+    def resume_button(self, label):
+        return self.page.get_by_role("button", name=re.compile(r"Attach resume: .*" + re.escape(label), re.I), include_hidden=True)
+
+    @staticmethod
+    def saved_resume():
+        payload = (FIXTURES / "resume.pdf").read_bytes()
+        return {"name": "resume.pdf", "type": "application/pdf", "size": len(payload),
+                "dataUrl": "data:application/pdf;base64," + base64.b64encode(payload).decode("ascii")}
+
     def toast(self):
         return self.page.locator("#wc-ai-root .wc-toast").last
 
@@ -245,8 +255,12 @@ class BrowserSuite:
         assert self.page.locator("#wc-ai-root .wc-field-outline").count() == self.page.locator("#wc-ai-root .wc-fill-button").count()
         for label in ("Full name", "Email address", "Brief professional biography", "Years of experience", "Accessible interfaces", "Backend systems", "Which area best matches your background", "How do you collaborate with operators"):
             expect(self.button(label)).to_have_count(1)
-        for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Resume file", "Consent checkbox", "Custom focus dropdown", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
+        for label in ("Account password", "Search openings", "Disabled field", "Read-only field", "Consent checkbox", "Custom focus dropdown", "One-time verification code", "Credit card number", "Hidden parent field", "Disabled fieldset input", "Zero-length input"):
             expect(self.button(label)).to_have_count(0)
+        expect(self.resume_button("Resume file")).to_have_count(1)
+        expect(self.resume_button("Upload CV")).to_have_count(1)
+        assert self.page.locator('#wc-ai-root .wc-fill-button[aria-label^="Attach resume:"]').count() == 3
+        expect(self.resume_button("Portfolio attachment")).to_have_count(0)
         count = self.page.locator(".wc-fill-button").count()
         self.page.evaluate("document.body.appendChild(document.createElement('div'))")
         self.page.wait_for_timeout(400)
@@ -359,6 +373,53 @@ class BrowserSuite:
             assert self.page.evaluate("window.fixtureSubmitted") is False
         finally:
             popup.close()
+
+    def resume_upload_single_and_all(self):
+        self.seed(resumeFile=self.saved_resume())
+        self.mock(delay=25)
+        self.page.goto(self.url)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#upload").scroll_into_view_if_needed()
+        expect(self.resume_button("Resume file")).to_be_visible()
+        expect(self.resume_button("Upload CV")).to_have_count(1)
+        self.resume_button("Resume file").click()
+        self.page.wait_for_function("() => document.querySelector('#upload').files.length === 1")
+        assert self.page.locator("#upload").evaluate("node => node.files[0]?.name") == "resume.pdf"
+        assert self.page.locator("#upload").evaluate("node => node.files[0]?.size") == self.saved_resume()["size"]
+        assert [event["type"] for event in self.page.evaluate("window.fixtureEvents.filter(event => event.id === 'upload')")] == ["input", "change"]
+        assert not self.worker.evaluate("self.__qaRequests"), "Attaching a resume should not call the model"
+        self.resume_button("Resume file").click()
+        assert self.page.locator("#upload").evaluate("node => node.files.length") == 1
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        self.page.wait_for_function("() => document.querySelector('#hidden-resume').files.length === 1")
+        assert self.page.locator("#hidden-resume").evaluate("node => node.files[0]?.name") == "resume.pdf"
+        assert self.page.locator("#button-resume").evaluate("node => node.files[0]?.name") == "resume.pdf"
+        assert self.page.locator("#portfolio-upload").evaluate("node => node.files.length") == 0
+        assert self.page.locator("#upload").evaluate("node => node.files.length") == 1
+        assert self.page.evaluate("window.fixtureSubmitted") is False
+        expect(self.page.locator("#motivation")).to_have_value(ANSWER)
+        requests = self.worker.evaluate("self.__qaRequests")
+        assert len(requests) == 1
+        context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
+        assert all(field["type"] != "file" for field in context["targetFields"])
+
+    def resume_upload_without_pdf(self):
+        self.fresh()
+        self.page.locator("#upload").scroll_into_view_if_needed()
+        self.resume_button("Resume file").click()
+        expect(self.toast()).to_contain_text("Add a PDF resume")
+        assert self.page.locator("#upload").evaluate("node => node.files.length") == 0
+        assert not self.worker.evaluate("self.__qaRequests")
+
+    def resume_upload_without_api_key(self):
+        self.seed(apiKey="", resumeFile=self.saved_resume())
+        self.mock()
+        self.page.goto(self.url)
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#upload").scroll_into_view_if_needed()
+        self.resume_button("Resume file").click()
+        self.page.wait_for_function("() => document.querySelector('#upload').files.length === 1")
+        assert not self.worker.evaluate("self.__qaRequests")
 
     def do_all_stop_cancels_every_frame(self):
         self.seed()
@@ -1003,7 +1064,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
+                "manual_scan_gate", "do_all_fills_scanned_empty_fields", "resume_upload_single_and_all", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

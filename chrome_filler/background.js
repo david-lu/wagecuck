@@ -5,7 +5,7 @@ import { logEvent } from './lib/logging.js';
 const activeRequests = new Map();
 const batchRuns = new Map();
 const REQUEST_ID = /^[a-zA-Z0-9_.:-]{1,120}$/;
-// Restrict before any configuration access. No key/profile/resume is sent to content scripts.
+// Restrict storage before configuration access. Only the saved PDF is sent to a content script for an explicit attach action.
 const storageReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 storageReady.catch(() => console.error('[Wagecuck Input Filler] Could not restrict settings storage. Generation is disabled.'));
 
@@ -67,19 +67,21 @@ async function startFillAllTab(tabId) {
     const top = snapshots.find(snapshot => snapshot.frameId === 0);
     if (!top) return { error: 'Scan the page first.' };
     const targets = snapshots.flatMap(snapshot => (snapshot.targets || []).map(target => ({ id: `${snapshot.frameId}:${target.id}`, field: target.field })));
-    if (!targets.length) return { error: 'There are no empty scanned text fields to fill.' };
+    const uploadTargets = snapshots.flatMap(snapshot => (snapshot.uploadTargets || []).map(target => ({ id: `${snapshot.frameId}:${target.id}`, field: target.field })));
+    if (!targets.length && !uploadTargets.length) return { error: 'There are no empty scanned fields to fill.' };
     const page = combinePageSnapshots(top.page, snapshots.filter(snapshot => snapshot !== top).map(snapshot => snapshot.page), frames.length - snapshots.length);
     const begun = await Promise.allSettled(snapshots.map(snapshot => withDeadline(chrome.tabs.sendMessage(tabId, {
-      type: 'WC_BATCH_BEGIN', runId: run.id, count: targets.length, targets: snapshot.targets || [],
+      type: 'WC_BATCH_BEGIN', runId: run.id, count: targets.length + uploadTargets.length, targets: snapshot.targets || [], uploadTargets: snapshot.uploadTargets || [],
     }, { frameId: snapshot.frameId }))));
     run.frames = snapshots.filter((_, index) => begun[index].status === 'fulfilled' && begun[index].value?.started).map(snapshot => snapshot.frameId);
     if (run.controller.signal.aborted) return { error: 'DO ALL stopped.' };
     if (!run.frames.includes(0)) return { error: 'The page changed. Scan it again.' };
     const accepted = targets.filter(target => run.frames.includes(Number(target.id.split(':', 1)[0])));
-    if (!accepted.length) return { error: 'The page changed. Scan it again.' };
+    const acceptedUploads = uploadTargets.filter(target => run.frames.includes(Number(target.id.split(':', 1)[0])));
+    if (!accepted.length && !acceptedUploads.length) return { error: 'The page changed. Scan it again.' };
     run.started = true;
-    void runBatch(tabId, run, accepted, page);
-    return { started: true, count: accepted.length };
+    void runBatch(tabId, run, accepted, acceptedUploads, page);
+    return { started: true, count: accepted.length + acceptedUploads.length };
   } catch (error) {
     return { error: errorToPublic(error).message };
   } finally {
@@ -99,7 +101,7 @@ async function stopFillAllTab(tabId) {
   return { stopped: true };
 }
 
-async function runBatch(tabId, run, targets, page) {
+async function runBatch(tabId, run, targets, uploadTargets, page) {
   let summary = { filled: 0, skipped: 0, failed: 0, unchecked: 0 };
   let errorMessage = '';
   let fieldError = '';
@@ -107,6 +109,19 @@ async function runBatch(tabId, run, targets, page) {
     await storageReady;
     const settings = await loadSettings();
     if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'DO ALL stopped.');
+    for (const frameId of run.frames) {
+      if (run.controller.signal.aborted) break;
+      const ids = uploadTargets.filter(target => target.id.startsWith(`${frameId}:`)).map(target => target.id.slice(String(frameId).length + 1));
+      if (!ids.length) continue;
+      try {
+        const result = await withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_BATCH_ATTACH_RESUME', runId: run.id, ids, resumeFile: settings.resumeFile }, { frameId }));
+        summary.filled += result?.filled || 0;
+        summary.skipped += result?.skipped || 0;
+        summary.failed += result?.failed || 0;
+        fieldError ||= result?.firstError || '';
+      } catch { summary.failed += ids.length; fieldError ||= 'The resume could not be attached.'; }
+    }
+    if (!targets.length) return;
     await logEvent('generation.started', { requestId: run.id, model: settings.model, fieldType: 'batch', pageChars: page.text.length, frameCount: page.frameCount, unavailableFrames: page.unavailableFrames });
     const answers = await generateBatchAnswers({ settings, targets, page, signal: run.controller.signal });
     if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'DO ALL stopped.');
@@ -246,6 +261,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === 'WC_GET_STATUS' && (trustedContent(sender) || trustedExtensionPage(sender))) {
     void storageReady.then(() => loadSettings()).then(settings => sendResponse({ enabled: settings.enabled, configured: Boolean(settings.apiKey) })).catch(() => sendResponse({ enabled: false, configured: false }));
+    return true;
+  }
+  if (message.type === 'WC_GET_RESUME_FOR_UPLOAD' && trustedContent(sender)) {
+    void storageReady.then(() => loadSettings()).then(settings => sendResponse({ resumeFile: settings.enabled ? settings.resumeFile : null })).catch(() => sendResponse({ resumeFile: null }));
     return true;
   }
   if (message.type === 'WC_GET_LOGS' && trustedExtensionPage(sender)) {

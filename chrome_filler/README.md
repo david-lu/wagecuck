@@ -1,6 +1,6 @@
 # AI Input Filler
 
-The popup opens on a simple **SCAN PAGE** then **WRITE ALL** flow. Scanning reveals purple outlines and individual Write buttons on supported form fields. WRITE ALL drafts answers for unanswered fields across available frames in one agent request, including factual checkboxes and native dropdowns. Review the results before submitting; the extension never submits the form.
+The popup opens on a simple **SCAN PAGE** then **WRITE ALL** flow. Scanning reveals purple outlines and individual Write buttons on supported form fields. Resume/CV PDF inputs get an **Attach PDF** button. WRITE ALL attaches the saved PDF to empty resume inputs and drafts answers for unanswered fields across available frames in one agent request, including factual checkboxes and native dropdowns. Review the results before submitting; the extension never submits the form.
 
 ## Install in Chrome
 
@@ -28,7 +28,7 @@ Password, search, payment, identity-number, verification-code, hidden, disabled,
 
 ## Résumé and data
 
-PDF files are limited to 5 MB and included directly using [OpenAI file inputs](https://developers.openai.com/api/docs/guides/file-inputs). Text files can be up to 1 MB; extracted text must fit the editor’s limit. DOCX is not supported: export it to PDF or paste the text.
+PDF files are limited to 5 MB, can be attached to detected resume/CV fields, and are included in AI context using [OpenAI file inputs](https://developers.openai.com/api/docs/guides/file-inputs) when generating answers. Attaching the PDF alone does not call OpenAI. Text files can be up to 1 MB and provide AI context only; extracted text must fit the editor’s limit. DOCX is not supported: export it to PDF or paste the text. Some websites may block programmatic file attachment; if the extension reports that the site rejected the PDF, upload it manually.
 
 Settings, profile, and résumé are stored in `chrome.storage.local`, with access restricted to trusted extension pages. Your API key stays in the extension’s background worker and popup; content scripts do not receive it. Local storage is **not encrypted**. The extension sends page context and saved applicant data to OpenAI only when you click a field's AI button or **DO ALL**. Requests use `store: false`; this does not disable OpenAI’s separate [API abuse-monitoring retention](https://developers.openai.com/api/docs/guides/your-data).
 
