@@ -125,6 +125,8 @@ test('checkboxes, dropdowns, and radio groups use exact choice schemas', () => {
   assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: '40-49', missingInformation: '' }), radio), error => error.code === 'INVALID_ANSWER');
   assert.throws(() => buildRequest({ settings, field: { ...checkbox, label: 'I consent to the terms' }, page }), error => error.code === 'CONSENT_FIELD');
   assert.throws(() => buildRequest({ settings, field: { ...radio, label: 'Do you consent to texts?' }, page }), error => error.code === 'CONSENT_FIELD');
+  assert.throws(() => buildRequest({ settings, field: { ...dropdown, label: 'AI Policy for Application' }, page }), error => error.code === 'CONSENT_FIELD');
+  assert.throws(() => buildRequest({ settings, field: { ...dropdown, label: 'Agreement to Arbitrate' }, page }), error => error.code === 'CONSENT_FIELD');
 });
 
 test('checkbox groups use one array answer with listed choices', () => {

@@ -122,7 +122,9 @@
     const legend = [...group.children].find(child => child.tagName === 'LEGEND');
     if (legend) return safeText(legend, { field });
     const heading = [...group.children].find(child => !child.querySelector(CONTROL_SELECTOR) && (/^(H[2-6])$/.test(child.tagName) || /(?:^|[\s_-])(question|label|prompt|heading|title)(?:$|[\s_-])/i.test(child.className || '')));
-    return heading ? safeText(heading, { field, limit: 500 }) : '';
+    // Some form builders use a question label whose `for` points to the
+    // question ID, rather than to any individual radio or checkbox.
+    return heading ? safeText(heading, { limit: 500 }) : '';
   }
 
   function namedRadioGroup(field) {
@@ -359,6 +361,11 @@
   }
 
   function labelDetails(field) {
+    if (field instanceof HTMLInputElement && (field.type === 'checkbox' && field.closest('.ashby-application-form-input-yesno') || field.matches('.ashby-application-form-input-autocomplete[role="combobox"]'))) {
+      const question = nearest(field, '.ashby-application-form-field-entry');
+      const heading = question && groupHeading(question, field);
+      if (heading) return { label: heading.slice(0, 500), sources: ['ashby-question'] };
+    }
     const checkbox = checkboxDetails(field);
     if (checkbox) return { label: checkbox.label, sources: ['checkbox-group'] };
     if (choiceKind(field) === 'radio') {
@@ -453,9 +460,9 @@
   }
 
   function isConsentField(field) {
-    if (!['checkbox', 'radio'].includes(choiceKind(field))) return false;
+    if (!['checkbox', 'radio'].includes(choiceKind(field)) && field.tagName !== 'SELECT' && field.getAttribute('role') !== 'combobox') return false;
     const description = words(`${labelFor(field)} ${fieldInfo(field).context}`);
-    return /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature)\b/i.test(description);
+    return /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature|agreement to arbitrate|arbitration agreement|ai policy for application)\b/i.test(description);
   }
 
   globalThis.WCFieldContext = Object.freeze({ labelFor, fieldInfo, radioGroup, radioOptions, radioDetails, radioChoices, checkboxDetails, choiceKind, choiceChecked, choiceAvailable, visibleChoiceLabel, isSensitiveField, isSearchField, isConsentField });

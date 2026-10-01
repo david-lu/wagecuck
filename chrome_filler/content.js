@@ -21,7 +21,14 @@
   let shadow;
   let scanButton;
   let doAllButton;
+  let panelStatus;
+  let panelState;
+  let panelCount;
+  let controlPanel;
+  let scannedInputCount = null;
+  let localScannedCount = 0;
   let batch = null;
+  let batchPending = false;
   let batchFeedback = '';
   let batchFeedbackTimer;
   let scanPending = false;
@@ -32,22 +39,42 @@
     :host { all:initial!important; position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important; z-index:2147483646!important; pointer-events:none!important; color-scheme:light!important; }
     *, *::before, *::after { box-sizing:border-box; }
     button { font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; cursor:pointer; }
-    .wc-scan-button { all:initial; box-sizing:border-box; position:fixed; right:16px; bottom:16px; z-index:1; display:flex; align-items:center; justify-content:center; min-height:38px; padding:0 15px; border:1px solid #6d28d9; border-radius:10px; background:#7c3aed; color:#fff; box-shadow:0 4px 16px #3b176b55; font:650 13px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; }
-    .wc-scan-button:hover { background:#6d28d9; }
-    .wc-scan-button:focus-visible { outline:3px solid #c4b5fd; outline-offset:3px; }
+    .wc-control-panel { position:fixed; right:16px; bottom:16px; z-index:1; width:252px; padding:11px; border:2px solid #e31800; border-radius:15px; background:linear-gradient(145deg,#fffdf4,#fff3cf); box-shadow:0 10px 30px #54150038,0 2px 5px #54150018; color:#4b1708; font:12px/1.3 system-ui,sans-serif; pointer-events:auto; }
+    .wc-panel-head { display:flex; align-items:center; gap:9px; margin-bottom:11px; }
+    .wc-panel-logo { display:block; width:36px; height:36px; flex:none; border-radius:9px; box-shadow:0 1px 4px #54150022; }
+    .wc-panel-copy { min-width:0; }
+    .wc-panel-copy strong { display:block; color:#b6200e; font-size:14px; line-height:1.1; letter-spacing:-.2px; }
+    .wc-panel-status-line { display:flex; align-items:center; gap:6px; margin-top:4px; }
+    .wc-panel-state { width:7px; height:7px; flex:none; border-radius:50%; background:#aaa096; }
+    .wc-panel-state[data-state=ready] { background:#e9a900; box-shadow:0 0 0 3px #ffeaaa; }
+    .wc-panel-state[data-state=busy] { background:#e31800; box-shadow:0 0 0 3px #ffd8c9; }
+    .wc-panel-status { display:block; color:#754633; font-size:10px; }
+    .wc-panel-count { display:grid; place-items:center; min-width:34px; height:34px; margin-left:auto; padding:0 7px; flex:none; border:1px solid #d7a500; border-radius:10px; background:#ffcc00; color:#571808; font:800 15px/1 system-ui,sans-serif; }
+    .wc-panel-count[hidden] { display:none; }
+    .wc-panel-actions { display:flex; gap:7px; }
+    .wc-scan-button,.wc-do-all-button { all:initial; box-sizing:border-box; display:flex; flex:1; align-items:center; justify-content:center; gap:7px; min-width:0; min-height:38px; padding:0 8px; border-radius:9px; font:750 12px/1 system-ui,sans-serif; text-align:center; cursor:pointer; transition:background .15s,box-shadow .15s; }
+    .wc-scan-button { border:1px solid #bd210f; background:#e31800; color:#fff; box-shadow:0 2px 5px #e3180033; }
+    .wc-scan-button:hover { background:#bd210f; }
+    .wc-scan-button:focus-visible,.wc-do-all-button:focus-visible { outline:3px solid #ffcc00; outline-offset:2px; }
     .wc-scan-button[disabled] { opacity:.72; cursor:progress; }
-    .wc-do-all-button { all:initial; box-sizing:border-box; position:fixed; right:16px; bottom:62px; z-index:1; min-height:38px; padding:0 15px; border:1px solid #4c1d95; border-radius:10px; background:#5b21b6; color:#fff; box-shadow:0 4px 16px #3b176b55; font:700 13px/1 system-ui,sans-serif; cursor:pointer; pointer-events:auto; }
-    .wc-do-all-button:hover { background:#4c1d95; }
-    .wc-do-all-button:focus-visible { outline:3px solid #c4b5fd; outline-offset:3px; }
+    .wc-do-all-button { border:1px solid #d7a500; background:#ffcc00; color:#4b1708; box-shadow:0 2px 5px #ae720033; }
+    .wc-do-all-button:hover { background:#efbb00; }
     .wc-do-all-button[disabled] { opacity:.55; cursor:default; }
+    .wc-do-all-button[disabled][aria-busy=true] { opacity:.8; cursor:progress; }
     .wc-do-all-button[hidden] { display:none; }
-    .wc-fill-button { all:initial; box-sizing:border-box; position:fixed; display:flex; align-items:center; justify-content:center; gap:5px; width:80px; height:28px; padding:0 8px; border:1px solid #b6ca83; border-radius:8px; background:#eaf5c7; color:#263415; box-shadow:0 1px 4px #18241418; font:650 12px/1 system-ui,sans-serif; cursor:pointer; opacity:0; visibility:hidden; pointer-events:none; transition:background .15s,box-shadow .15s,opacity .12s; }
+    .wc-scan-button[aria-busy=true]::before,.wc-do-all-button[aria-busy=true]::before { content:''; box-sizing:border-box; width:12px; height:12px; flex:none; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:wc-spin .7s linear infinite; }
+    .wc-panel-progress { height:3px; margin-top:9px; overflow:hidden; border-radius:99px; background:#f4d8aa; visibility:hidden; }
+    .wc-control-panel[data-busy=true] .wc-panel-progress { visibility:visible; }
+    .wc-panel-progress::before { content:''; display:block; width:38%; height:100%; border-radius:inherit; background:#e31800; }
+    .wc-control-panel[data-busy=true] .wc-panel-progress::before { animation:wc-progress 1.3s ease-in-out infinite alternate; }
+    @keyframes wc-progress { from { transform:translateX(-100%); } to { transform:translateX(265%); } }
+    .wc-fill-button { all:initial; box-sizing:border-box; position:fixed; display:flex; align-items:center; justify-content:center; gap:5px; width:80px; height:28px; padding:0 8px; border:1px solid #d7a500; border-radius:8px; background:#ffdc4d; color:#571808; box-shadow:0 1px 4px #4b170824; font:700 12px/1 system-ui,sans-serif; cursor:pointer; opacity:0; visibility:hidden; pointer-events:none; transition:background .15s,box-shadow .15s,opacity .12s; }
     .wc-fill-button[data-show=true] { opacity:1; visibility:visible; pointer-events:auto; }
-    .wc-fill-button:hover { background:#d9eda1; box-shadow:0 2px 7px #18241430; }
-    .wc-fill-button:focus-visible, .wc-toast button:focus-visible { outline:3px solid #586e2e; outline-offset:2px; }
-    .wc-fill-button[aria-busy=true] { background:#f4f1e9; border-color:#d5d0c5; }
+    .wc-fill-button:hover { background:#ffcc00; box-shadow:0 2px 7px #4b170838; }
+    .wc-fill-button:focus-visible, .wc-toast button:focus-visible { outline:3px solid #e31800; outline-offset:2px; }
+    .wc-fill-button[aria-busy=true] { background:#fff2b3; border-color:#d7a500; }
     .wc-fill-button[data-compact=true] .wc-button-status { display:none; }
-    .wc-spinner { width:11px; height:11px; border:2px solid #a0ad87; border-top-color:#263415; border-radius:50%; animation:wc-spin .8s linear infinite; }
+    .wc-spinner { width:11px; height:11px; border:2px solid #ebba8a; border-top-color:#e31800; border-radius:50%; animation:wc-spin .8s linear infinite; }
     @keyframes wc-spin { to { transform:rotate(360deg); } }
     .wc-toasts { position:fixed; left:16px; bottom:16px; display:flex; flex-direction:column; gap:10px; width:min(360px,calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; padding:3px; pointer-events:none; }
     .wc-toast { padding:14px 15px; border:1px solid #d8d7cd; border-radius:13px; background:#fcfbf7; color:#292d22; box-shadow:0 8px 35px #18241422; font:13px/1.5 system-ui,sans-serif; pointer-events:auto; animation:wc-in .18s ease-out; }
@@ -70,6 +97,36 @@
     const style = document.createElement('style');
     style.textContent = css;
     buttonLayer = document.createElement('div');
+    controlPanel = document.createElement('div');
+    controlPanel.className = 'wc-control-panel';
+    controlPanel.setAttribute('role', 'group');
+    controlPanel.setAttribute('aria-label', 'Wagecuck controls');
+    const panelHead = document.createElement('div');
+    panelHead.className = 'wc-panel-head';
+    const logo = document.createElement('img');
+    logo.className = 'wc-panel-logo';
+    logo.src = chrome.runtime.getURL('icons/wagecuck-mark.svg');
+    logo.alt = 'Wagecuck';
+    const panelCopy = document.createElement('div');
+    panelCopy.className = 'wc-panel-copy';
+    const panelTitle = document.createElement('strong');
+    panelTitle.textContent = 'Wagecuck';
+    panelStatus = document.createElement('span');
+    panelStatus.className = 'wc-panel-status';
+    panelStatus.textContent = 'Scan to find fields';
+    panelState = document.createElement('span');
+    panelState.className = 'wc-panel-state';
+    panelState.setAttribute('aria-hidden', 'true');
+    const panelStatusLine = document.createElement('div');
+    panelStatusLine.className = 'wc-panel-status-line';
+    panelStatusLine.append(panelState, panelStatus);
+    panelCopy.append(panelTitle, panelStatusLine);
+    panelCount = document.createElement('span');
+    panelCount.className = 'wc-panel-count';
+    panelCount.hidden = true;
+    panelHead.append(logo, panelCopy, panelCount);
+    const panelActions = document.createElement('div');
+    panelActions.className = 'wc-panel-actions';
     scanButton = document.createElement('button');
     scanButton.type = 'button';
     scanButton.className = 'wc-scan-button';
@@ -91,28 +148,38 @@
     doAllButton = document.createElement('button');
     doAllButton.type = 'button';
     doAllButton.className = 'wc-do-all-button';
-    doAllButton.textContent = 'FILL ALL';
+    doAllButton.textContent = 'FILL';
     doAllButton.title = 'Fill empty scanned fields and attach your saved PDF resume; never submit';
-    doAllButton.setAttribute('aria-label', 'FILL ALL: fill empty scanned fields');
+    doAllButton.setAttribute('aria-label', 'FILL: fill empty scanned fields');
     doAllButton.hidden = true;
     doAllButton.addEventListener('click', event => {
       if (!event.isTrusted || doAllButton.disabled) return;
       if (batch) {
         batch.stopping = true;
         updateBatchButton();
-        chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => toast('Couldn’t stop FILL ALL', 'Reload the page and try again.', 'error', [], 12000));
+        chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => toast('Couldn’t stop FILL', 'Reload the page and try again.', 'error', [], 12000));
         return;
       }
+      batchPending = true;
+      updateBatchButton();
       chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB' }).then(result => {
-        if (result?.error) toast('Couldn’t start FILL ALL', result.error, 'error', [], 12000);
-      }).catch(() => toast('Couldn’t start FILL ALL', 'Reload the page and try again.', 'error', [], 12000));
+        if (result?.error) toast('Couldn’t start FILL', result.error, 'error', [], 12000);
+      }).catch(() => toast('Couldn’t start FILL', 'Reload the page and try again.', 'error', [], 12000)).finally(() => {
+        batchPending = false;
+        updateBatchButton();
+      });
     });
     toastLayer = document.createElement('div');
     toastLayer.className = 'wc-toasts';
     toastLayer.setAttribute('aria-live', 'assertive');
     toastLayer.setAttribute('aria-relevant', 'additions text');
+    panelActions.append(scanButton, doAllButton);
+    const panelProgress = document.createElement('div');
+    panelProgress.className = 'wc-panel-progress';
+    panelProgress.setAttribute('aria-hidden', 'true');
+    controlPanel.append(panelHead, panelActions, panelProgress);
     shadow.append(style, buttonLayer);
-    if (window.top === window) shadow.append(scanButton, doAllButton);
+    if (window.top === window) shadow.append(controlPanel);
     shadow.append(toastLayer);
     document.documentElement.append(host);
     for (const record of records.values()) buttonLayer.append(record.button);
@@ -124,16 +191,35 @@
     scanButton.setAttribute('aria-busy', String(scanPending));
     scanButton.textContent = scanPending ? 'Scanning…' : scanned ? 'Scan again' : 'Scan page';
     scanButton.setAttribute('aria-label', scanPending ? 'Scanning page for fillable fields' : scanned ? 'Scan page again for fillable fields' : 'Scan page for fillable fields');
+    updatePanelStatus();
   }
 
   function updateBatchButton() {
     if (!doAllButton) return;
-    doAllButton.disabled = scanPending || Boolean(batch?.stopping);
-    doAllButton.textContent = batch ? batch.stopping ? 'Stopping…' : 'Filling… · Stop' : batchFeedback || 'FILL ALL';
-    doAllButton.setAttribute('aria-label', batch ? batch.stopping ? 'Stopping FILL ALL' : 'Stop FILL ALL' : 'FILL ALL: fill empty scanned fields');
+    doAllButton.disabled = scanPending || batchPending || Boolean(batch?.stopping);
+    doAllButton.setAttribute('aria-busy', String(batchPending || Boolean(batch)));
+    doAllButton.textContent = batch ? batch.stopping ? 'Stopping…' : 'Stop' : batchPending ? 'Starting…' : batchFeedback || 'FILL';
+    doAllButton.setAttribute('aria-label', batch ? batch.stopping ? 'Stopping FILL' : 'Stop filling' : batchPending ? 'Starting FILL' : 'FILL: fill empty scanned fields');
+    updatePanelStatus();
+  }
+
+  function updatePanelStatus() {
+    if (!panelStatus) return;
+    const busy = scanPending || batchPending || Boolean(batch);
+    const count = scannedInputCount ?? records.size;
+    panelStatus.textContent = scanPending ? 'Finding inputs…' : batch?.stopping ? 'Stopping fill…' : batch ? 'Writing answers…' : batchPending ? 'Preparing answers…' : scanned ? `${count} ${count === 1 ? 'input' : 'inputs'} found` : 'Scan to find inputs';
+    panelCount.hidden = !scanned || scanPending;
+    if (!panelCount.hidden) {
+      panelCount.textContent = String(count);
+      panelCount.setAttribute('aria-label', `${count} fillable ${count === 1 ? 'input' : 'inputs'} found`);
+    }
+    panelState.dataset.state = busy ? 'busy' : scanned && count ? 'ready' : 'idle';
+    controlPanel.dataset.busy = String(busy);
   }
 
   function readValue(field) {
+    const yesNo = ashbyYesNo(field);
+    if (yesNo) return yesNo.buttons.find(button => button.getAttribute('aria-pressed') === 'true')?.textContent?.trim() || '';
     if (isSupportedCombobox(field)) return comboboxSelectedText(field) || field.value || field.getAttribute('aria-valuetext') || '';
     if (field instanceof HTMLInputElement && field.type === 'file') return field.files?.length || 0;
     const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
@@ -151,12 +237,14 @@
   }
 
   function selectableOption(field, value) {
+    if (ashbyYesNo(field)) return ['Yes', 'No'].includes(value);
     if (isSupportedCombobox(field)) return (comboboxOptions.get(field) || []).some(option => option.value === value);
     if (globalThis.WCFieldContext.choiceKind(field) === 'radio') return globalThis.WCFieldContext.radioChoices(field).some(option => option.value === value);
     return field instanceof HTMLSelectElement && [...field.options].some(option => option.value === value && value.trim() && !option.disabled && !option.hidden && !option.closest('optgroup[disabled]'));
   }
 
   function normalizedAnswer(field, answer) {
+    if (ashbyYesNo(field)) return typeof answer === 'string' && selectableOption(field, answer) ? answer : null;
     const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
     if (checkbox) {
       const values = new Set(checkbox.options.map(option => option.value));
@@ -200,7 +288,20 @@
     return Boolean(field.id && comboboxShell(field)?.querySelector('.select__control'));
   }
 
+  function isAshbyAutocomplete(field) {
+    return field instanceof HTMLInputElement && field.matches('input.ashby-application-form-input-autocomplete[role="combobox"][aria-autocomplete="list"][aria-haspopup="listbox"]');
+  }
+
+  function ashbyYesNo(field) {
+    if (!(field instanceof HTMLInputElement) || field.type !== 'checkbox') return null;
+    const container = field.closest('.ashby-application-form-input-yesno');
+    if (!container || container.querySelectorAll('input[type="checkbox"]').length !== 1) return null;
+    const buttons = ['yes', 'no'].map(value => container.querySelector(`button[data-option="${value}"]`));
+    return buttons.every(Boolean) ? { container, buttons } : null;
+  }
+
   function isSupportedCombobox(field) {
+    if (isAshbyAutocomplete(field)) return false;
     if (field.getAttribute('role') !== 'combobox' || field.querySelector('[role="combobox"]')) return false;
     const ids = `${field.getAttribute('aria-controls') || ''} ${field.getAttribute('aria-owns') || ''}`.trim();
     return isReactSelect(field) || Boolean(ids && ids.split(/\s+/).every(id => /^[^\s]+$/.test(id)) && field.getAttribute('aria-haspopup') !== 'grid');
@@ -264,6 +365,9 @@
   }
 
   function visualTarget(field) {
+    const yesNo = ashbyYesNo(field);
+    if (yesNo) return yesNo.container;
+    if (isAshbyAutocomplete(field)) return field;
     if (isSupportedCombobox(field)) return comboboxTrigger(field);
     if (field.type === 'file') return resumeVisualTarget(field) || field;
     const checkbox = globalThis.WCFieldContext.checkboxDetails(field);
@@ -387,7 +491,7 @@
     if (field.tagName === 'INPUT' && !TYPES.has(field.type) && !choiceKind && !isSupportedCombobox(field)) return false;
     if (choiceKind && field.querySelector(`input[type="${choiceKind}"]`)) return false;
     if (field.type === 'file' && !isResumeField(field)) return false;
-    if (field.matches('[role="combobox"],[aria-haspopup="listbox"]') && !isSupportedCombobox(field)) return false;
+    if (field.matches('[role="combobox"],[aria-haspopup="listbox"]') && !isSupportedCombobox(field) && !isAshbyAutocomplete(field)) return false;
     if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 100 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
     if (choiceKind === 'radio') {
       const options = globalThis.WCFieldContext.radioChoices(field);
@@ -399,11 +503,22 @@
     if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) && !field.isContentEditable && !choiceKind && !isSupportedCombobox(field)) return false;
     if (field.isContentEditable && parentElement(field)?.isContentEditable) return false;
     if (globalThis.WCFieldContext.isSensitiveField(field) || globalThis.WCFieldContext.isSearchField(field) || globalThis.WCFieldContext.isConsentField(field)) return false;
+    if (ashbyYesNo(field)) return ashbyYesNo(field).buttons.every(button => !button.disabled) && isVisible(visualTarget(field));
     return field.type === 'file' ? Boolean(resumeVisualTarget(field)) : isSupportedCombobox(field) ? isVisible(visualTarget(field)) : choiceKind ? globalThis.WCFieldContext.choiceAvailable(field) && isVisible(visualTarget(field)) : isVisible(field);
   }
 
   function fieldInfo(field) {
     const info = globalThis.WCFieldContext.fieldInfo(field);
+    if (ashbyYesNo(field)) {
+      info.type = 'select';
+      info.options = [{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }];
+      info.currentValue = readValue(field);
+      info.required ||= Boolean(field.closest('.ashby-application-form-field-entry')?.querySelector('.ashby-application-form-question-title[class*="required"]'));
+    }
+    if (isAshbyAutocomplete(field)) {
+      info.type = 'text';
+      info.context = `${info.context}\nChoose the exact location from this page's autocomplete suggestions.`.trim();
+    }
     if (isSupportedCombobox(field)) {
       info.type = 'select';
       info.options = comboboxOptions.get(field) || [];
@@ -487,8 +602,10 @@
             bindHoverButton(record);
             resizeObserver.observe(visual);
           }
-          record.button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${resumeLabelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
-          if (!record.active) record.button.title = field.type === 'file' ? `Attach saved resume to ${resumeLabelFor(field)}` : `Write an answer for ${labelFor(field)}`;
+          if (!record.active && !record.button.hasAttribute('aria-busy')) {
+            record.button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${resumeLabelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
+            record.button.title = field.type === 'file' ? `Attach saved resume to ${resumeLabelFor(field)}` : `Write an answer for ${labelFor(field)}`;
+          }
           continue;
         }
         const button = document.createElement('button');
@@ -527,10 +644,13 @@
     for (const root of roots) {
       if (root instanceof ShadowRoot && !root.host.isConnected) roots.delete(root);
     }
+    if (scannedInputCount !== null) scannedInputCount = Math.max(0, scannedInputCount + records.size - localScannedCount);
+    localScannedCount = records.size;
     if (doAllButton) {
       doAllButton.hidden = window.top !== window || scanPending;
       updateBatchButton();
     }
+    updateScanButton();
     schedulePosition();
   }
 
@@ -550,6 +670,9 @@
       chrome.runtime.sendMessage({ type: 'WC_STOP_ALL_TAB' }).catch(() => {});
     }
     scanPending = false;
+    batchPending = false;
+    scannedInputCount = null;
+    localScannedCount = 0;
     clearTimeout(batchFeedbackTimer);
     batchFeedback = '';
     if (doAllButton) doAllButton.hidden = true;
@@ -563,12 +686,14 @@
       unhighlightVisual(record.visual);
     }
     records.clear();
+    updateScanButton();
   }
 
   function activateScan() {
     if (!enabled) return { count: 0, scanned: false, enabled };
     scanned = true;
     scannedUrl = location.href;
+    scannedInputCount = null;
     scan();
     updateScanButton();
     return { count: records.size, scanned, enabled };
@@ -588,9 +713,15 @@
       const compact = !choice && (rect.width < 240 || rect.height < 36);
       const width = field.type === 'file' ? 100 : compact ? 45 : 80;
       const height = compact ? 26 : 28;
-      const x = choice ? rect.right + 8 : rect.right - width - 4;
+      let x = choice ? rect.right + 8 : rect.right - width - 4;
       // Straddle the top border on roomy fields so the button does not cover text.
       let y = globalThis.WCFieldContext.choiceKind(field) === 'radio' || globalThis.WCFieldContext.checkboxDetails(field) ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
+      const panelRect = window.top === window ? shadow?.querySelector('.wc-control-panel')?.getBoundingClientRect() : null;
+      if (panelRect && x < panelRect.right && x + width > panelRect.left && y < panelRect.bottom && y + height > panelRect.top) {
+        const leftOfPanel = panelRect.left - width - 8;
+        if (leftOfPanel >= 2) x = leftOfPanel;
+        else y = panelRect.top - height - 8;
+      }
       button.dataset.compact = String(compact);
       if (!button.hasAttribute('aria-busy')) {
         if (record.undo && readValue(field) !== record.undo.answer) clearUndo(record);
@@ -668,7 +799,38 @@
     } else field.click();
   }
 
+  async function writeAshbyAutocomplete(field, answer) {
+    const original = field.value;
+    field.focus({ preventScroll: true });
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(field, answer);
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: answer }));
+    const list = await waitForComboboxMenu(field);
+    const normalize = value => value.replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+    const options = [...(list?.querySelectorAll('[role="option"]') || [])].filter(option => option.getAttribute('aria-disabled') !== 'true');
+    const exact = options.filter(option => normalize(option.textContent) === normalize(answer));
+    if (exact.length !== 1) {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(field, original);
+      field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: original }));
+      field.blur();
+      throw new Error('No exact location suggestion was available. Choose a suggestion on the page.');
+    }
+    const selected = exact[0].textContent.replace(/\s+/g, ' ').trim();
+    mouseSequence(exact[0]);
+    await new Promise(resolve => setTimeout(resolve, 60));
+    if (field.getAttribute('aria-expanded') === 'true' || normalize(field.value) !== normalize(selected)) throw new Error('The page did not accept the location suggestion.');
+    return field.value;
+  }
+
   async function writeValue(field, answer) {
+    if (isAshbyAutocomplete(field)) return writeAshbyAutocomplete(field, answer);
+    const yesNo = ashbyYesNo(field);
+    if (yesNo) {
+      const target = yesNo.buttons.find(button => button.textContent.trim() === answer);
+      if (!target || target.disabled) throw new Error('The Yes/No choice is no longer available.');
+      target.click();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return;
+    }
     if (isSupportedCombobox(field)) {
       if (field.getAttribute('aria-expanded') !== 'true') mouseSequence(comboboxTrigger(field));
       const list = await waitForComboboxMenu(field);
@@ -941,16 +1103,17 @@
         return;
       }
       try {
-        await writeValue(field, answer);
-        if (readValue(field) !== answer) throw new Error('The website did not keep the answer.');
+        const written = await writeValue(field, answer);
+        const expected = written === undefined ? answer : written;
+        if (readValue(field) !== expected) throw new Error('The website did not keep the answer.');
         if (field.validity && !field.validity.valid) {
-          if (!isSupportedCombobox(field)) await writeValue(field, original);
+          if (!isSupportedCombobox(field) && !isAshbyAutocomplete(field) && !ashbyYesNo(field)) await writeValue(field, original);
           throw new Error('The answer did not meet the field’s format. Your previous text was restored.');
         }
         logUI('ui.filled', requestId);
         settle({ status: 'filled' });
-        if (!isSupportedCombobox(field)) {
-          const undo = { original, answer, requestId };
+        if (!isSupportedCombobox(field) && !isAshbyAutocomplete(field) && !ashbyYesNo(field)) {
+          const undo = { original, answer: expected, requestId };
           undo.timer = setTimeout(() => { if (record.undo === undo) { clearUndo(record); schedulePosition(); } }, 25000);
           record.undo = undo;
         }
@@ -999,6 +1162,7 @@
     }
     clearTimeout(batchFeedbackTimer);
     batchFeedback = '';
+    batchPending = false;
     batch = { id: message.runId, sourceUrl: location.href, targets, stopping: false };
     if (window.top === window) {
       const keepalive = chrome.runtime.connect({ name: 'wc-batch' });
@@ -1059,12 +1223,12 @@
       }
       const original = readValue(field);
       try {
-        await writeValue(field, answer);
-        if (readValue(field) !== answer || (field.validity && !field.validity.valid)) throw new Error('The page rejected an answer.');
+        const written = await writeValue(field, answer);
+        if (readValue(field) !== (written === undefined ? answer : written) || (field.validity && !field.validity.valid)) throw new Error('The page rejected an answer.');
         result.filled++;
         logUI('ui.filled', batch.id);
       } catch {
-        if (!isSupportedCombobox(field)) try { await writeValue(field, original); } catch { /* The page may have removed the field. */ }
+        if (!isSupportedCombobox(field) && !isAshbyAutocomplete(field) && !ashbyYesNo(field)) try { await writeValue(field, original); } catch { /* The page may have removed the field. */ }
         result.failed++;
         result.firstError ||= 'The page rejected an answer.';
         logUI('ui.insert_failed', batch.id, 'INSERT_FAILED');
@@ -1083,9 +1247,9 @@
     updateBatchButton();
     if (window.top === window) {
       const { filled = 0, failed = 0, skipped = 0, unchecked = 0 } = message.summary || {};
-      const userStopped = message.stopped && (!message.errorMessage || ['FILL ALL stopped.', 'Generation cancelled.'].includes(message.errorMessage));
+      const userStopped = message.stopped && (!message.errorMessage || ['FILL stopped.', 'FILL ALL stopped.', 'Generation cancelled.'].includes(message.errorMessage));
       const detail = userStopped ? '' : message.errorMessage || message.fieldError || (failed ? `${failed} ${failed === 1 ? 'field could' : 'fields could'} not be filled.` : '');
-      if (detail) toast('FILL ALL needs attention', `${detail} ${filled ? `${filled} filled. ` : ''}${skipped ? `${skipped} skipped. ` : ''}${unchecked ? `${unchecked} left unchecked. ` : ''}Review the form before submitting.`, 'error', [], 20000);
+      if (detail) toast('FILL needs attention', `${detail} ${filled ? `${filled} filled. ` : ''}${skipped ? `${skipped} skipped. ` : ''}${unchecked ? `${unchecked} left unchecked. ` : ''}Review the form before submitting.`, 'error', [], 20000);
       if (!detail) batchFeedback = message.stopped ? 'Stopped' : `${filled} filled`;
       updateBatchButton();
       clearTimeout(batchFeedbackTimer);
@@ -1128,6 +1292,13 @@
       try { respond(collectPage()); } catch { respond(null); }
     } else if (message?.type === 'WC_RESCAN') {
       respond(activateScan());
+    } else if (message?.type === 'WC_TAB_SCAN_COUNT') {
+      if (window.top === window && scanned && scannedUrl === location.href && Number.isInteger(message.count) && message.count >= 0) {
+        scannedInputCount = message.count;
+        localScannedCount = records.size;
+        updatePanelStatus();
+      }
+      respond({ received: true });
     } else if (message?.type === 'WC_GET_PAGE_STATUS') {
       if (scanned && scannedUrl !== location.href) resetScan('The page changed. Scan it again to show fillable fields.');
       respond({ count: records.size, scanned, enabled });

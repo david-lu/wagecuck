@@ -187,6 +187,7 @@ async function refreshPage(rescan = false) {
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
   doAll.disabled = true;
+  $('page-indicator').classList.add('busy');
   $('page-indicator').classList.remove('ready');
   $('page-status').textContent = rescan ? 'Scanning page…' : 'Checking page…';
   try {
@@ -220,6 +221,7 @@ async function refreshPage(rescan = false) {
   } finally {
     button.disabled = !settings.enabled;
     button.removeAttribute('aria-busy');
+    $('page-indicator').classList.remove('busy');
   }
 }
 
@@ -515,14 +517,18 @@ $('do-all-button').addEventListener('click', async () => {
   if (!pageTabId) return;
   const button = $('do-all-button');
   button.disabled = true;
-  $('page-status').textContent = 'Starting FILL ALL…';
+  button.setAttribute('aria-busy', 'true');
+  $('page-indicator').classList.add('busy');
+  $('page-status').textContent = 'Starting FILL…';
   try {
     const result = await withTimeout(chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB', tabId: pageTabId }));
-    $('page-status').textContent = result?.started ? `FILL ALL started on ${result.count} empty ${result.count === 1 ? 'field' : 'fields'}. Watch the page for progress.` : result?.error || 'Could not start FILL ALL.';
+    $('page-status').textContent = result?.started ? `FILL started on ${result.count} empty ${result.count === 1 ? 'input' : 'inputs'}. Watch the page for progress.` : result?.error || 'Could not start FILL.';
   } catch {
-    $('page-status').textContent = 'Could not start FILL ALL. Reload the page and try again.';
+    $('page-status').textContent = 'Could not start FILL. Reload the page and try again.';
   } finally {
     button.disabled = false;
+    button.removeAttribute('aria-busy');
+    $('page-indicator').classList.remove('busy');
   }
 });
 $('profile-import-button').addEventListener('click', () => $('profile-import').click());

@@ -108,7 +108,7 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
       const target = context.targetField || {};
       const choice = (field, batch = false) => field.type === 'checkbox_group' ? (field.options || []).filter(option => /accessible interfaces|design systems|I utilize Terraform daily|I prefer not to answer/i.test(option.label)).map(option => option.value)
         : field.type === 'checkbox' ? /accessible interfaces|open to remote work|open to hybrid work|open to relocation/i.test(field.label || '')
-        : field.type === 'select' ? (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
+        : field.type === 'select' ? (field.options || []).find(option => option.value === self.__qaAnswer)?.value || (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
         : field.type === 'radio' ? (field.options || []).find(option => option.value === 'Prefer not to answer')?.value || field.options?.[0]?.value || ''
         : field.type === 'number' && batch ? 5 : field.type === 'email' ? self.__qaEmail : self.__qaAnswer;
       if (target.type) output = choice(target);
@@ -289,7 +289,7 @@ class BrowserSuite:
         expect(self.button("What project are you proud of")).to_have_count(1)
         assert self.page.locator(".wc-fill-button").count() == count + 1
         self.page.locator("#dynamic").evaluate("node => node.remove()")
-        expect(self.button("What project are you proud of")).to_have_count(0)
+        expect(self.page.get_by_role("button", name=re.compile("Fill with AI: .*What project are you proud of", re.I), include_hidden=True)).to_have_count(0)
         self.screenshot("discovered-fields")
 
     def root_scroll_container_buttons(self):
@@ -386,18 +386,40 @@ class BrowserSuite:
         expect(scan).to_be_visible()
         self.page.evaluate("""() => {
           window.scanButtonStates = [];
+          window.scanFeedbackStates = [];
           const button = document.querySelector('#wc-ai-root').shadowRoot.querySelector('.wc-scan-button');
-          new MutationObserver(() => window.scanButtonStates.push(button.textContent)).observe(button, {childList:true,characterData:true,subtree:true});
+          const panel = button.closest('.wc-control-panel');
+          new MutationObserver(() => {
+            window.scanButtonStates.push(button.textContent);
+            window.scanFeedbackStates.push({busy: button.getAttribute('aria-busy'), spinner: getComputedStyle(button, '::before').content, progress: panel.dataset.busy});
+          }).observe(button, {attributes:true,childList:true,characterData:true,subtree:true});
         }""")
         scan.click()
         expect(scan).to_have_text("Scan again")
         assert "Scanning…" in self.page.evaluate("window.scanButtonStates")
+        assert any(state == {"busy": "true", "spinner": '""', "progress": "true"} for state in self.page.evaluate("window.scanFeedbackStates"))
         assert self.page.locator("#wc-ai-root .wc-fill-button").count() == 0
+        expect(self.page.locator("#wc-ai-root .wc-panel-status")).to_have_text("1 input found")
+        expect(self.page.locator("#wc-ai-root .wc-panel-count")).to_have_text("1")
         fill_all = self.page.locator("#wc-ai-root .wc-do-all-button")
         expect(fill_all).to_be_visible()
         fill_all.click()
         expect(self.page.frame_locator('iframe[title="Application questions"]').locator("#frame-answer")).to_have_value(ANSWER)
         expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
+
+    def popup_scan_updates_page_count(self):
+        self.seed()
+        self.page.goto(self.url.replace("application.html", "frame_only.html"))
+        badge = self.page.locator("#wc-ai-root .wc-panel-count")
+        expect(badge).to_be_hidden()
+        popup = self.context.new_page()
+        try:
+            popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
+            popup.locator("#rescan-button").click()
+            expect(badge).to_have_text("1")
+            expect(self.page.locator("#wc-ai-root .wc-panel-status")).to_have_text("1 input found")
+        finally:
+            popup.close()
 
     def do_all_fills_scanned_empty_fields(self):
         self.seed()
@@ -411,14 +433,14 @@ class BrowserSuite:
         self.page.locator("#existing-work").uncheck()
         self.page.locator("#wc-ai-root .wc-scan-button").click()
         expect(do_all).to_be_visible()
-        expect(do_all).to_have_text("FILL ALL")
+        expect(do_all).to_have_text("FILL")
         popup = self.context.new_page()
         try:
             popup.goto(f"chrome-extension://{self.extension_id}/popup.html")
             expect(popup.locator("#do-all-button")).to_be_visible()
-            expect(popup.locator("#do-all-button")).to_contain_text("FILL ALL")
+            expect(popup.locator("#do-all-button")).to_contain_text("FILL")
             popup.locator("#do-all-button").click()
-            expect(popup.locator("#page-status")).to_contain_text("FILL ALL started")
+            expect(popup.locator("#page-status")).to_contain_text("FILL started")
             expect(self.page.locator("#email")).to_have_value("jordan@example.test")
             expect(self.page.locator("#motivation")).to_have_value(ANSWER)
             expect(self.page.locator("#bio")).to_have_js_property("innerText", ANSWER)
@@ -541,6 +563,27 @@ class BrowserSuite:
         assert self.page.locator("#greenhouse-cover").evaluate("node => node.files.length") == 0
         assert self.page.evaluate("window.fixtureSubmitted") is False
 
+    def agreement_dropdowns_stay_manual(self):
+        self.seed()
+        self.page.goto(self.url)
+        self.page.evaluate("""() => {
+          const form = document.querySelector('#application');
+          form.insertAdjacentHTML('afterbegin', `
+            <label for="ai-policy">AI Policy for Application</label>
+            <select id="ai-policy"><option value="">Select...</option><option value="yes">Yes</option><option value="no">No</option></select>
+            <label for="arbitration">Agreement to Arbitrate</label>
+            <select id="arbitration"><option value="">Select...</option><option value="agree">I agree</option></select>
+            <label for="work-location">Are you open to working in-person?</label>
+            <select id="work-location"><option value="">Select...</option><option value="yes">Yes</option><option value="no">No</option></select>
+          `);
+        }""")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.button("AI Policy for Application")).to_have_count(0)
+        expect(self.button("Agreement to Arbitrate")).to_have_count(0)
+        expect(self.button("Are you open to working in-person?")).to_have_count(1)
+        assert self.page.locator("#ai-policy").evaluate("node => getComputedStyle(node).outlineStyle") != "solid"
+        assert self.page.locator("#arbitration").evaluate("node => getComputedStyle(node).outlineStyle") != "solid"
+
     def resume_upload_without_pdf(self):
         self.fresh()
         self.page.locator("#upload").scroll_into_view_if_needed()
@@ -583,10 +626,20 @@ class BrowserSuite:
             self.page.wait_for_timeout(100)
         assert len(self.worker.evaluate("self.__qaRequests")) == 1
         stop = self.page.locator("#wc-ai-root .wc-do-all-button")
-        expect(stop).to_have_text(re.compile("Filling.*Stop"))
+        expect(stop).to_have_text("Stop")
+        expect(stop).to_have_attribute("aria-busy", "true")
+        expect(self.page.locator("#wc-ai-root .wc-control-panel")).to_have_attribute("data-busy", "true")
+        assert stop.evaluate("node => getComputedStyle(node, '::before').content") == '""'
+        expect(self.page.locator("#wc-ai-root .wc-panel-status")).to_have_text("Writing answers…")
+        self.page.evaluate("""() => {
+          window.fillAllStates = [];
+          const button = document.querySelector('#wc-ai-root').shadowRoot.querySelector('.wc-do-all-button');
+          new MutationObserver(() => window.fillAllStates.push(button.textContent)).observe(button, {childList:true,characterData:true,subtree:true});
+        }""")
         stop.click()
-        expect(stop).to_have_text("Stopping…")
-        expect(stop).to_have_text("FILL ALL")
+        expect(stop).to_have_text("FILL")
+        expect(stop).to_have_attribute("aria-busy", "false")
+        assert any(state.startswith("Stopping") for state in self.page.evaluate("window.fillAllStates"))
         expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
         expect(self.page.locator("#name")).to_have_value("")
         expect(self.page.locator("#email")).to_have_value("")
@@ -915,6 +968,66 @@ class BrowserSuite:
         context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
         assert [field["type"] for field in context["targetFields"]] == ["radio", "text", "select"]
 
+    def ashby_live_markup_and_control_panel(self):
+        self.seed()
+        self.mock(delay=25, answer="Canada")
+        self.page.goto(self.url.replace("application.html", "ashby_controls.html"))
+        panel = self.page.locator("#wc-ai-root .wc-control-panel")
+        expect(panel).to_be_visible()
+        assert panel.evaluate("node => getComputedStyle(node).borderTopColor") == "rgb(227, 24, 0)"
+        assert panel.locator(".wc-panel-logo").evaluate("node => node.complete && node.naturalWidth > 0")
+        expect(panel.locator(".wc-do-all-button")).to_be_hidden()
+        panel.locator(".wc-scan-button").click()
+        expect(panel.locator(".wc-panel-status")).to_have_text("4 inputs found")
+        expect(panel.locator(".wc-panel-count")).to_have_text("4")
+        expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(4)
+        for label in (
+            "Have you written and maintained code used in a product?",
+            "Are you authorized to work in this location?",
+            "Which city and country do you intend to work from?",
+            "Which communities do you belong to? Please select all that apply.",
+        ):
+            expect(self.button(label)).to_have_count(1)
+        expect(self.button("Start typing...")).to_have_count(0)
+        expect(panel.locator(".wc-do-all-button")).to_be_visible()
+        self.screenshot("ashby-control-panel")
+        self.button("Are you authorized to work in this location?").click()
+        expect(self.page.locator('button[data-option="yes"]')).to_have_attribute("aria-pressed", "true")
+        self.button("Which city and country do you intend to work from?").click()
+        expect(self.page.locator(".ashby-application-form-input-autocomplete")).to_have_value("Canada")
+        assert self.page.locator(".ashby-application-form-input-autocomplete").get_attribute("aria-expanded") == "false"
+
+        self.page.reload()
+        self.mock(delay=25, answer="Atlantis")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.button("Which city and country do you intend to work from?").click()
+        expect(self.toast()).to_contain_text("No exact location suggestion")
+        expect(self.page.locator(".ashby-application-form-input-autocomplete")).to_have_value("")
+
+        self.page.reload()
+        self.mock(delay=25, answer="No")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.button("Are you authorized to work in this location?").click()
+        expect(self.page.locator('button[data-option="no"]')).to_have_attribute("aria-pressed", "true")
+        expect(self.page.locator('button[data-option="yes"]')).to_have_attribute("aria-pressed", "false")
+        expect(self.page.locator('.ashby-application-form-input-yesno input')).not_to_be_checked()
+
+        self.page.reload()
+        self.mock(delay=25, answer="Canada")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(self.page.locator("#experience-no")).to_be_checked()
+        expect(self.page.locator('button[data-option="yes"]')).to_have_attribute("aria-pressed", "true")
+        expect(self.page.locator(".ashby-application-form-input-autocomplete")).to_have_value("Canada")
+        expect(self.page.locator("#community-question input").first).to_be_checked()
+        requests = self.worker.evaluate("self.__qaRequests")
+        assert len(requests) == 1
+        context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
+        assert [field["type"] for field in context["targetFields"]] == ["radio", "select", "text", "checkbox_group"]
+        yes_no = context["targetFields"][1]
+        assert yes_no["label"] == "Are you authorized to work in this location?"
+        assert [option["value"] for option in yes_no["options"]] == ["Yes", "No"]
+
     def lever_radio_group(self):
         self.fresh()
         self.page.locator('input[name="survey-age"]').first.scroll_into_view_if_needed()
@@ -1023,9 +1136,14 @@ class BrowserSuite:
 
     def disable_during_generation(self):
         self.fresh()
-        self.mock(delay=5000)
+        self.mock(delay=12000)
+        assert self.worker.evaluate("self.__qaDelay") == 12000
         self.page.locator("#motivation").fill("My original draft.")
         self.button("Why do you want to work here").click()
+        deadline = time.monotonic() + 5
+        while not self.worker.evaluate("self.__qaRequests") and time.monotonic() < deadline:
+            self.page.wait_for_timeout(100)
+        assert len(self.worker.evaluate("self.__qaRequests")) == 1
         expect(self.page.get_by_role("button", name=re.compile("Cancel writing: Why do you want to work here"), include_hidden=True)).to_have_attribute("aria-busy", "true")
         self.page.wait_for_timeout(600)
         self.seed(enabled=False)
@@ -1324,7 +1442,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "lever_radio_group",
+                "manual_scan_gate", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "popup_scan_updates_page_count", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "agreement_dropdowns_stay_manual", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "ashby_live_markup_and_control_panel", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
                 "shadow_and_numeric_validation", "disable_during_generation",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

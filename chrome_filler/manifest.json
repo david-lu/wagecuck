@@ -6,6 +6,7 @@
   "minimum_chrome_version": "120",
   "permissions": ["storage", "webNavigation"],
   "host_permissions": ["https://api.openai.com/*"],
+  "web_accessible_resources": [{"resources": ["icons/wagecuck-mark.svg"], "matches": ["http://*/*", "https://*/*"]}],
   "background": {"service_worker": "background.js", "type": "module"},
   "action": {
     "default_title": "AI Input Filler · Profile and preferences",

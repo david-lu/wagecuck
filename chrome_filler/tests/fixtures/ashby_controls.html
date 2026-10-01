@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Ashby application controls</title>
+<style>
+  body{max-width:700px;margin:28px auto;font:16px system-ui,sans-serif}
+  .ashby-application-form-field-entry,.ashby-application-form-input-radio-group{display:block;margin:18px 0;padding:14px;border:1px solid #bbb}
+  .ashby-application-form-question-title{display:block;margin-bottom:10px;font-weight:700}
+  .ashby-application-form-input-radio-group-option{display:flex;gap:8px;margin:8px 0}
+  .ashby-application-form-input-radio-group-option-radio{width:22px;height:22px;opacity:0}
+  .ashby-application-form-input-yesno button{min-width:70px;min-height:32px;margin-right:8px}
+  .ashby-application-form-input-yesno input{display:none}
+  .ashby-application-form-input-autocomplete{width:240px;min-height:34px}
+  [role=option]{padding:8px;cursor:pointer}
+</style>
+</head>
+<body>
+  <fieldset class="ashby-application-form-input-radio-group">
+    <label class="ashby-application-form-question-title" for="experience-question">Have you written and maintained code used in a product?</label>
+    <div class="ashby-application-form-input-radio-group-option"><input class="ashby-application-form-input-radio-group-option-radio" type="radio" id="experience-no" name="experience-question"><label for="experience-no">No</label></div>
+    <div class="ashby-application-form-input-radio-group-option"><input class="ashby-application-form-input-radio-group-option-radio" type="radio" id="experience-yes" name="experience-question"><label for="experience-yes">Yes</label></div>
+  </fieldset>
+  <div class="ashby-application-form-field-entry">
+    <label class="ashby-application-form-question-title required" for="authorization-question">Are you authorized to work in this location?</label>
+    <div class="ashby-application-form-input-yesno">
+      <button type="button" data-option="yes" aria-pressed="false">Yes</button>
+      <button type="button" data-option="no" aria-pressed="false">No</button>
+      <input type="checkbox" name="authorization-question" tabindex="-1">
+    </div>
+  </div>
+  <div class="ashby-application-form-field-entry">
+    <label class="ashby-application-form-question-title" for="city-question">Which city and country do you intend to work from?</label>
+    <input class="ashby-application-form-input-autocomplete" placeholder="Start typing..." aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" role="combobox" type="text">
+    <div role="listbox" id="city-suggestions" hidden><div role="option">Canada</div><div role="option">United States</div></div>
+  </div>
+  <div class="ashby-application-form-field-entry" id="community-question">
+    <label class="ashby-application-form-question-title" for="community-answer">Which communities do you belong to? Please select all that apply.</label>
+    <label><input type="checkbox" name="community-one"> Accessible interfaces</label>
+    <label><input type="checkbox" name="community-two"> I prefer not to answer</label>
+  </div>
+  <script>
+    const yesNo = document.querySelector('.ashby-application-form-input-yesno');
+    yesNo.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
+      yesNo.querySelectorAll('button').forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+      const input = yesNo.querySelector('input');
+      input.checked = button.dataset.option === 'yes';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }));
+    const city = document.querySelector('.ashby-application-form-input-autocomplete');
+    const suggestions = document.querySelector('#city-suggestions');
+    city.addEventListener('input', () => {
+      city.setAttribute('aria-expanded', 'true');
+      city.setAttribute('aria-controls', 'city-suggestions');
+      suggestions.hidden = false;
+    });
+    suggestions.querySelectorAll('[role="option"]').forEach(option => option.addEventListener('click', () => {
+      city.value = option.textContent;
+      city.setAttribute('aria-expanded', 'false');
+      city.removeAttribute('aria-controls');
+      suggestions.hidden = true;
+    }));
+  </script>
+</body>
+</html>

@@ -38,7 +38,7 @@ export function validateField(field) {
   const label = normalize(field.label);
   const narrative = /\b(describe|explain|experience|approach|discuss|tell us|how (?:do|would|did)|why)\b/i.test(label);
   if (sensitive.test(identifiers) || /\bsin\b/i.test(identifiers) || /(^|\s)(cc-[\w-]+|one-time-code|current-password|new-password)(\s|$)/i.test(field.autocomplete || '') || (!narrative && sensitive.test(normalize(`${field.label || ''} ${field.placeholder || ''}`)))) throw new AgentError('SENSITIVE_FIELD', 'AI filling is unavailable for passwords, API keys, payment details, identity numbers, and verification codes.');
-  if (['checkbox', 'checkbox_group', 'radio'].includes(field.type) && /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature)\b/i.test(normalize(`${field.label || ''} ${field.context || ''} ${field.name || ''} ${field.id || ''}`))) throw new AgentError('CONSENT_FIELD', 'Consent and agreement choices must be completed manually.');
+  if (['checkbox', 'checkbox_group', 'radio', 'select'].includes(field.type) && /\b(consent|agree|accept terms|acknowledg\w*|certif\w*|attest\w*|privacy policy|terms of service|terms and conditions|authorize\b|have read|read and understand|electronic signature|agreement to arbitrate|arbitration agreement|ai policy for application)\b/i.test(normalize(`${field.label || ''} ${field.context || ''} ${field.name || ''} ${field.id || ''}`))) throw new AgentError('CONSENT_FIELD', 'Consent and agreement choices must be completed manually.');
   return field;
 }
 
@@ -173,10 +173,10 @@ export function buildRequest({ settings: value, field, page }) {
 
 export function buildBatchRequest({ settings: value, targets, page }) {
   const settings = normalizeSettings(value);
-  if (!Array.isArray(targets) || !targets.length || targets.length > 100) throw new AgentError('INVALID_REQUEST', 'FILL ALL needs 1-100 scanned fields.');
+  if (!Array.isArray(targets) || !targets.length || targets.length > 100) throw new AgentError('INVALID_REQUEST', 'FILL needs 1-100 scanned fields.');
   const ids = new Set();
   for (const target of targets) {
-    if (!target || typeof target.id !== 'string' || !/^[0-9]+:wc-field-[0-9]+$/.test(target.id) || ids.has(target.id)) throw new AgentError('INVALID_REQUEST', 'FILL ALL field IDs are invalid. Scan again.');
+    if (!target || typeof target.id !== 'string' || !/^[0-9]+:wc-field-[0-9]+$/.test(target.id) || ids.has(target.id)) throw new AgentError('INVALID_REQUEST', 'FILL field IDs are invalid. Scan again.');
     ids.add(target.id);
     validateFieldAndPage(target.field, page);
   }
@@ -205,8 +205,8 @@ export function buildBatchRequest({ settings: value, targets, page }) {
 export function parseBatchResponse(raw, targets) {
   let result;
   try { result = JSON.parse(raw); }
-  catch { throw new AgentError('INVALID_RESPONSE', 'The model returned an unexpected FILL ALL format. Nothing was inserted.'); }
-  if (!result || typeof result !== 'object' || Array.isArray(result)) throw new AgentError('INVALID_RESPONSE', 'The model returned an unexpected FILL ALL format. Nothing was inserted.');
+  catch { throw new AgentError('INVALID_RESPONSE', 'The model returned an unexpected FILL format. Nothing was inserted.'); }
+  if (!result || typeof result !== 'object' || Array.isArray(result)) throw new AgentError('INVALID_RESPONSE', 'The model returned an unexpected FILL format. Nothing was inserted.');
   const fields = new Map(targets.map(target => [target.id, target.field]));
   const answers = [];
   for (const [fieldId, field] of fields) {
