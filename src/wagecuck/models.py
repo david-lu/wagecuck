@@ -300,7 +300,7 @@ class Profile(BaseModel):
 
 class RunOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    mode: Literal["inspect", "fill", "submit"] = "fill"
+    mode: Literal["inspect", "fill", "dry-run", "submit"] = "fill"
     headless: bool = True
     wait_for_user: bool = False
     agent_fill: bool = False
@@ -353,6 +353,7 @@ class FormField(BaseModel):
     options: list[Option] = Field(default_factory=list)
     filled: bool = False
     invalid: bool = False
+    validity_errors: list[str] = Field(default_factory=list)
     autocomplete: str = ""
     placeholder: str = ""
     input_mode: str = ""
@@ -399,6 +400,7 @@ class Snapshot(BaseModel):
     controls: list[Control] = Field(default_factory=list)
     text: str = ""
     errors: list[str] = Field(default_factory=list)
+    forms_valid: bool = True
 
 
 class Action(BaseModel):

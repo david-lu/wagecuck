@@ -6,7 +6,14 @@ import asyncio
 from collections import Counter
 from dataclasses import dataclass
 
-from .browser import fill, match_option, prepared_snapshot, snapshot, verify_action_results
+from .browser import (
+    fill,
+    match_option,
+    prepared_snapshot,
+    snapshot,
+    validate_forms,
+    verify_action_results,
+)
 from .controls.registry import handler_for
 from .field_roles import fill_priority
 from .field_values import FieldValueError, normalize_field_value
@@ -198,6 +205,7 @@ class FieldExecution:
             "code": self.code,
             "present": self.present,
             "verified": self.verified,
+            "validity_errors": field.validity_errors,
             "source": action.source,
             "answer_basis": action.answer_basis,
             "made_up": action.made_up,
@@ -426,7 +434,11 @@ async def execute_actions(
                 needs_replan = True
                 break
             current_fields = candidate.fields
+    forms_valid = True
+    if structural_checkpoint is None:
+        forms_valid = await validate_forms(page)
     after = structural_checkpoint or await settled_snapshot(page, polls=settle_polls)
+    after.forms_valid = forms_valid
     preserve_requirements(after.fields, assessed_fields or [])
     if current_fields and contract_change_requires_replan(current_fields, after.fields, actions):
         needs_replan = True

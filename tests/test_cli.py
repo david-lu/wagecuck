@@ -87,7 +87,7 @@ def test_dry_run_uses_live_fill_pipeline_with_synthetic_profile(monkeypatch):
 
     assert cli.main(["run", "https://example.test/apply", "--dry-run"]) == 0
     assert seen["profile"] is profile
-    assert seen["options"].mode == "fill"
+    assert seen["options"].mode == "dry-run"
 
 
 def test_dry_run_rejects_real_profile_data(monkeypatch):
@@ -122,7 +122,7 @@ def test_dry_run_fills_live_local_form_without_submitting(portal, tmp_path, monk
     assert exit_code == 0
     assert result["status"] == "ready"
     assert result["mode"] == "dry-run"
-    assert result["execution_mode"] == "fill"
+    assert result["execution_mode"] == "dry-run"
     assert result["network_disabled_before_filling"] is False
     assert result["final_submission_enabled"] is False
     assert result["fields_filled"] > 0

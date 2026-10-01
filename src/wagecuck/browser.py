@@ -106,6 +106,54 @@ def _same_logical_control(left: FormField, right: FormField) -> bool:
     )
 
 
+async def _begin_interaction_tracking(target) -> None:
+    await target.evaluate(
+        """element => {
+        const seen = {input: false, change: false, focus: false, blur: false};
+        const listeners = {};
+        for (const name of Object.keys(seen)) {
+          listeners[name] = () => { seen[name] = true; };
+          element.addEventListener(name, listeners[name]);
+        }
+        element.__wagecuckInteraction = {seen, listeners};
+    }"""
+    )
+
+
+async def _complete_interaction(target) -> None:
+    """Emit missing standard events and settle the modified control without duplicates."""
+    await target.evaluate(
+        """element => {
+        const tracked = element.__wagecuckInteraction;
+        const seen = tracked?.seen || {input: false, change: false, focus: false, blur: false};
+        if (!seen.focus) element.focus();
+        if (!seen.input) element.dispatchEvent(new Event('input', {bubbles: true}));
+        if (!seen.change) element.dispatchEvent(new Event('change', {bubbles: true}));
+        if (!seen.blur) element.blur();
+        if (tracked) {
+          for (const [name, listener] of Object.entries(tracked.listeners)) {
+            element.removeEventListener(name, listener);
+          }
+          delete element.__wagecuckInteraction;
+        }
+    }"""
+    )
+
+
+async def validate_forms(page: Page) -> bool:
+    """Run native constraint validation without dispatching a submit event."""
+    valid = True
+    for frame in page.frames:
+        try:
+            states = await frame.locator("form").evaluate_all(
+                "forms => forms.map(form => form.checkValidity())"
+            )
+        except PlaywrightError:
+            continue
+        valid = valid and all(states)
+    return valid
+
+
 async def current_target(page: Page, action: Action, target):
     """Reacquire a control when a framework replaced its DOM node during input."""
     if await target.count():
@@ -171,11 +219,22 @@ async def fill(page: Page, action: Action):
         else:
             action.value = normalize_field_value(field, action.value)
             value = render_field_value(field, action.value)
+        if field.kind != "file":
+            await _begin_interaction_tracking(target)
         await handler.write(page, target, action, value)
         target = await current_target(page, action, target)
+        if field.kind != "file":
+            await _complete_interaction(target)
+            target = await current_target(page, action, target)
         expected = render_field_value(field, action.value) if action.random_choice else value
-        if not await _matches_control(page, target, action, expected):
+        if not await handler.matches(page, target, action, expected):
             raise ValueError("Value not retained")
+        if handler.validates_natively and not await native_value_is_valid(target):
+            raise ApplicationError(
+                Code.VALIDATION_FAILED,
+                f"Browser constraint validation rejected field: {field.label}",
+                [field.label],
+            )
     except ApplicationError:
         raise
     except (FieldValueError, PlaywrightError, ValueError) as exc:

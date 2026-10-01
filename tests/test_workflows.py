@@ -5,7 +5,8 @@ import httpx
 import pytest
 
 from wagecuck import ApplicationRunner
-from wagecuck.captcha import CapSolver
+from wagecuck import runner as runner_module
+from wagecuck.captcha import CapSolver, Challenge
 from wagecuck.models import Code
 
 
@@ -113,6 +114,42 @@ async def test_fill_mode_reports_ready_when_captcha_is_deferred_to_submit(portal
     assert result.status == "ready" and result.code == Code.READY
     assert "CAPTCHA" in result.message
     assert result.evidence and "CAPTCHA detected" in result.evidence[0]
+    assert not result.submission_attempted and not server.submissions
+
+
+async def test_dry_run_validates_deferred_captcha_configuration(
+    portal, profile, options, monkeypatch
+):
+    monkeypatch.delenv("CAPSOLVER_API_KEY", raising=False)
+    base, server = portal
+    result = await ApplicationRunner().run(
+        f"{base}/captcha-form", profile, options.model_copy(update={"mode": "dry-run"})
+    )
+    assert result.code == Code.CAPTCHA_KEY_MISSING
+    assert result.status == "failed"
+    assert not result.submission_attempted and not server.submissions
+
+
+async def test_dry_run_checks_captcha_that_appears_after_filling(
+    portal, profile, options, monkeypatch
+):
+    monkeypatch.delenv("CAPSOLVER_API_KEY", raising=False)
+    calls = 0
+
+    async def staged_challenge(page):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return None
+        return Challenge("recaptcha_v2", "public-site-key", 0, page.url)
+
+    monkeypatch.setattr(runner_module, "detect_challenge", staged_challenge)
+    base, server = portal
+    result = await ApplicationRunner().run(
+        f"{base}/single", profile, options.model_copy(update={"mode": "dry-run"})
+    )
+    assert result.code == Code.CAPTCHA_KEY_MISSING
+    assert calls >= 2
     assert not result.submission_attempted and not server.submissions
 
 

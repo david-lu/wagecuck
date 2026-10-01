@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Input Filler · Wagecuck</title>
+  <link rel="stylesheet" href="popup.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="brand-icon" aria-hidden="true">✦</div>
+    <div class="brand"><h1>Input Filler<span>by wagecuck</span></h1><p>Answers that sound like you.</p></div>
+    <label class="switch" title="Turn AI buttons on or off instantly">
+      <input id="enable-toggle" type="checkbox" checked aria-label="Enable AI filling">
+      <span class="switch-track" aria-hidden="true"></span>
+    </label>
+  </header>
+
+  <div id="setup-banner" class="setup-banner">
+    <div><strong id="setup-title">Make it yours</strong><p id="setup-description">Add your background and connect AI to get started.</p></div>
+    <button id="setup-action" type="button" class="small-button">Connect AI</button>
+  </div>
+
+  <div class="page-card">
+    <span id="page-indicator" class="status-dot" aria-hidden="true"></span>
+    <div><span class="eyebrow">CURRENT PAGE</span><p id="page-status" role="status">Looking for fields…</p></div>
+    <button id="rescan-button" type="button" class="small-button" aria-label="Find fields on the current page">Find fields</button>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Settings">
+    <button id="tab-profile" class="tab" type="button" role="tab" aria-selected="true" aria-controls="panel-profile" tabindex="0">About you</button>
+    <button id="tab-writing" class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-writing" tabindex="-1">Your voice</button>
+    <button id="tab-connection" class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-connection" tabindex="-1">Connect AI</button>
+  </nav>
+
+  <form id="settings-form" novalidate>
+    <main class="panels">
+      <section id="panel-profile" class="panel" role="tabpanel" aria-labelledby="tab-profile">
+        <div class="section-heading"><h2>Tell AI a little about you.</h2><p>Your résumé is a great place to start.</p></div>
+        <div class="upload-card"><span class="upload-icon" aria-hidden="true">▤</span><div><strong>Your résumé</strong><p>PDF, TXT, or Markdown</p></div><button id="resume-upload-button" class="small-button" type="button">Upload résumé</button></div>
+        <input id="resume-upload" class="file-input" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" aria-label="Choose a résumé file" tabindex="-1">
+        <div id="resume-attachment" class="attachment" hidden><span id="resume-file-name"></span><button id="resume-remove" type="button" class="text-button" aria-label="Remove résumé">Remove</button></div>
+        <p id="resume-status" class="inline-status" role="status" hidden></p>
+        <details id="resume-editor" class="editor-details"><summary>Or paste your résumé</summary><textarea id="resume-text" rows="4" maxlength="100000" placeholder="Paste your résumé here…" aria-label="Résumé text" aria-describedby="resume-help"></textarea><p id="resume-help" class="hint">PDF up to 5 MB. Text up to 1 MB or 100,000 characters.</p></details>
+        <div class="label-row"><label for="profile">A little more about you <span class="optional">optional</span></label><button id="profile-import-button" class="text-button" type="button">Import</button></div>
+        <input id="profile-import" class="file-input" type="file" accept=".json,.txt,.md,application/json,text/plain,text/markdown" aria-label="Choose a profile file" tabindex="-1">
+        <textarea id="profile" rows="4" maxlength="100000" placeholder="Your experience, what you're looking for, and why it matters to you…" aria-describedby="profile-help"></textarea>
+        <p id="profile-help" class="hint">AI uses these facts to write more personal answers.</p>
+        <p id="profile-import-status" class="inline-status" role="status" hidden></p>
+      </section>
+
+      <section id="panel-writing" class="panel" role="tabpanel" aria-labelledby="tab-writing" hidden>
+        <div class="section-heading"><h2>Make it sound like you.</h2><p>Pick a tone, then add anything AI should mention or avoid.</p></div>
+        <label class="field-label" for="writing-instructions">How should your answers sound?</label>
+        <div class="tone-options" aria-label="Writing style presets">
+          <button id="tone-professional" class="tone-chip" type="button" aria-pressed="false">Professional</button>
+          <button id="tone-casual" class="tone-chip" type="button" aria-pressed="false">Casual</button>
+        </div>
+        <textarea id="writing-instructions" rows="5" maxlength="20000" placeholder="Write professionally, clearly, and in the first person. Keep answers concise. Mention my interest in mentoring when relevant." aria-describedby="writing-help"></textarea>
+        <p id="writing-help" class="hint">Changing the tone keeps your other instructions. Try “Mention my interest in mentoring” or “Keep it under 100 words.”</p>
+      </section>
+
+      <section id="panel-connection" class="panel" role="tabpanel" aria-labelledby="tab-connection" hidden>
+        <div class="section-heading"><h2>One key, and you're ready.</h2><p>Connect your OpenAI account to write answers.</p></div>
+        <a class="key-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">Get an OpenAI API key <span aria-hidden="true">↗</span></a>
+        <label class="field-label" for="api-key">Paste your API key</label>
+        <div class="password-field"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" maxlength="512" aria-describedby="key-help"><button id="reveal-key" type="button" class="text-button" aria-label="Show API key" aria-pressed="false">Show</button></div>
+        <p id="key-help" class="hint">OpenAI bills API usage separately from a ChatGPT subscription.</p>
+        <details id="data-note" class="editor-details privacy-note"><summary>What gets shared?</summary><p>When you ask AI to write a field, the page context, your background, writing preferences, and résumé are sent to OpenAI to draft that answer.</p><p>Your settings stay in this browser. Your API key is stored locally without encryption. Review answers before submitting.</p></details>
+        <details id="advanced-settings" class="editor-details"><summary>Advanced settings</summary>
+          <label class="field-label" for="model">OpenAI model</label>
+          <input id="model" type="text" autocomplete="off" spellcheck="false" placeholder="gpt-4.1-mini" maxlength="100" aria-describedby="model-help">
+          <p id="model-help" class="hint">A model available to your account that supports text and PDF input.</p>
+        <details id="troubleshooting" class="troubleshooting"><summary>Troubleshooting</summary>
+          <label class="debug-label"><input id="debug-toggle" type="checkbox"> Enable detailed diagnostics</label>
+          <p class="hint">Logs contain operation metadata, never your key or answer text.</p>
+          <div class="log-actions"><button id="log-refresh" type="button" class="small-button">Refresh</button><button id="log-copy" type="button" class="small-button">Copy logs</button><button id="log-clear" type="button" class="small-button">Clear</button></div>
+          <pre id="log-output" tabindex="0" aria-label="Recent diagnostic logs">No logs yet.</pre>
+          <p id="log-status" class="inline-status" role="status" hidden></p>
+        </details>
+        </details>
+      </section>
+    </main>
+
+    <footer class="save-footer"><div><p id="save-status" role="status" aria-live="polite">Loading your settings…</p><p class="footer-hint">Changes save automatically.</p></div><button id="save-button" type="submit" class="save-button" disabled>Save<span aria-hidden="true">✓</span></button></footer>
+  </form>
+</body>
+</html>

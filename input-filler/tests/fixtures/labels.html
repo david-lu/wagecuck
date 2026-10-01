@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Northstar diverse form labels</title>
+<style>
+  body { margin:0; padding:28px; font:16px/1.5 system-ui,sans-serif; color:#203023; background:#f6f8f1; }
+  main { width:min(850px,100%); margin:auto; }
+  .case, fieldset, table, dl { background:#fff; border:1px solid #cbd5bd; border-radius:8px; padding:18px; margin:18px 0; }
+  label, .question, dt { display:block; font-weight:650; margin:8px 0; }
+  input, textarea { box-sizing:border-box; display:block; width:100%; font:inherit; padding:12px; border:1px solid #adbda3; border-radius:5px; }
+  textarea { min-height:90px; } th { text-align:left; width:38%; } td { width:62%; }
+</style></head><body><main>
+<h1>GLOBAL_HERO_SENTINEL: Northstar Robotics hiring portal</h1><p>This global page context must never become an unrelated input label.</p>
+<form onsubmit="window.fixtureSubmitted=true;return false">
+  <div class="case"><label for="explicit">Legal first name</label><input id="explicit" name="firstName"></div>
+  <div class="case"><label><span>Preferred name</span><span aria-hidden="true">*</span><input id="nested" value="NESTED_FILLED_VALUE_MUST_NOT_BECOME_LABEL"></label></div>
+  <div class="case"><label for="multi-associated">Your professional</label><label for="multi-associated">background</label><textarea id="multi-associated"></textarea></div>
+  <div class="case"><span id="aria-question">Why does our mission interest you?</span><span id="aria-qualifier">Describe your motivation</span><p id="aria-help">ARIA_HELP_SENTINEL: Keep the answer within two thoughtful paragraphs.</p><textarea id="aria-multi" aria-labelledby="aria-question missing-id aria-qualifier" aria-describedby="aria-help" aria-description="INLINE_DESCRIPTION_SENTINEL: Connect our mission to your experience."></textarea></div>
+  <div class="case"><span id="aria-via-label">Available start date</span><input id="aria-label" aria-label="Preferred starting date" aria-labelledby="aria-via-label"></div>
+  <div class="case"><p class="question">Which project are you proudest of?</p><div class="control-wrapper"><textarea id="sibling-p"></textarea></div></div>
+  <div class="case"><span class="question">How do you collaborate with designers?</span><textarea id="sibling-span"></textarea></div>
+  <div class="case"><div class="question">What motivates your engineering work?</div><div><div><textarea id="sibling-div"></textarea></div></div></div>
+  <fieldset><legend>Tell us about your work authorization</legend><textarea id="legend-only"></textarea></fieldset>
+  <div class="case" role="group" aria-labelledby="group-question"><h2 id="group-question">What would make this role meaningful?</h2><textarea id="group-heading"></textarea></div>
+  <table><tbody><tr><th scope="row">Describe your accessibility experience</th><td><textarea id="table-question"></textarea></td></tr></tbody></table>
+  <table><thead><tr><th scope="col">Portfolio website</th><th scope="col">How do you write reliable code?</th></tr></thead><tbody><tr><td><input id="table-portfolio" type="url"></td><td><textarea id="table-column"></textarea></td></tr></tbody></table>
+  <dl><dt>How do you test software?</dt><dd><textarea id="definition-question"></textarea></dd></dl>
+  <div class="case"><input id="title-only" title="Professional website" type="url"></div>
+  <div class="case"><input id="placeholder-only" placeholder="Your preferred location"></div>
+  <div class="case"><input name="candidateFirstName" id="name-fallback"></div>
+  <div class="case"><textarea id="motivation_statement"></textarea></div>
+  <div class="case"><h3>How do you handle difficult feedback?</h3><p class="hint">Keep this under 100 words.</p><textarea id="heading-with-hint" placeholder="Enter answer"></textarea></div>
+  <div class="case"><input id="floating-after"><span class="label">Preferred interview time</span></div>
+  <div class="case"><h3>How do you mentor junior teammates?</h3><label for="short-answer">Answer</label><textarea id="short-answer"></textarea></div>
+  <div class="case"><div aria-label="Describe your communication style"><div id="wrapper-editor" contenteditable="true" role="textbox" style="min-height:90px;border:1px solid #adbda3;padding:12px"></div></div></div>
+  <div class="case"><span id="Question">What do you admire about our mission?</span><span id="question">Include a concrete example</span><textarea id="case-sensitive-aria" aria-labelledby="Question question Question"></textarea></div>
+  <div class="case"><label for="local-1">Describe a dependable system you built</label><textarea id="local-1"></textarea><label for="local-2">Which salary range do you expect?</label><input id="local-2" value="NEIGHBOR_FILLED_VALUE_MUST_NOT_LEAK"></div>
+  <div class="case"><label for="search-story">Tell us about your job search journey</label><textarea id="search-story"></textarea></div>
+  <div class="case"><label for="search-strategy">Brief summary of your job search strategy</label><input id="search-strategy" name="jobSearch"></div>
+  <div class="case"><label for="search-term">Search openings</label><input id="search-term" type="search"></div>
+  <div class="case"><label for="legacy-search">Search openings</label><input id="legacy-search" type="text"></div>
+  <div class="case"><label for="credit-card">Financial contact</label><input id="credit-card" name="creditCardNumber"><label for="candidate-password">Account details</label><input id="candidate-password" name="candidate_password"><label for="one-time">Account confirmation</label><input id="one-time" name="oneTimeCode"><label for="otp">Confirmation input</label><input id="otp" autocomplete="one-time-code"><label for="api-key">Connection details</label><input id="api-key" name="apiKey"></div>
+  <div class="case"><label for="disabled-case">Disabled label combination</label><input id="disabled-case" disabled><label for="readonly-case">Read only label combination</label><input id="readonly-case" readonly></div>
+  <div id="shadow-cases" class="case"></div>
+  <div id="late-shadow-host" class="case"></div>
+  <div class="case"><label id="changing-label" for="changing-question">What do you value in teammates?</label><textarea id="changing-question"></textarea></div>
+</form>
+<p>ENTIRE_LABELS_PAGE_SENTINEL: Context includes every visible form question across this long page.</p>
+</main><script>
+window.fixtureSubmitted=false;
+const root=document.getElementById('shadow-cases').attachShadow({mode:'open'});
+root.innerHTML='<style>label,span{display:block;margin:10px 0;font-weight:bold}textarea{box-sizing:border-box;width:100%;height:95px;padding:12px;font:inherit}</style><label for="shadow-explicit">Describe your mentoring approach</label><textarea id="shadow-explicit"></textarea><span id="shadow-aria-question">Why do you enjoy small teams?</span><span id="shadow-aria-detail">Share an example</span><textarea id="shadow-aria" aria-labelledby="shadow-aria-question shadow-aria-detail"></textarea><p>SHADOW_LABELS_SENTINEL: Shadow questions have scoped labels.</p>';
+</script></body></html>

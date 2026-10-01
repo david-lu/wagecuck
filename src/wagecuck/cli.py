@@ -105,7 +105,7 @@ def main(argv=None):
     if args.command == "demo-profile":
         print(json.dumps({"profile": str(generate_profile(args.output))}))
         return 0
-    selected_mode = "fill" if args.dry_run else args.mode
+    selected_mode = "dry-run" if args.dry_run else args.mode
     if args.wait_for_user and (selected_mode != "fill" or args.headed is False):
         parser.error("--wait-for-user requires fill mode and cannot be combined with --headless")
     try:
@@ -144,7 +144,7 @@ def main(argv=None):
     if args.dry_run:
         payload.update(
             mode="dry-run",
-            execution_mode="fill",
+            execution_mode="dry-run",
             network_disabled_before_filling=False,
             final_submission_enabled=False,
         )

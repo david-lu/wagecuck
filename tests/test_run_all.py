@@ -155,7 +155,7 @@ async def test_dry_run_uses_live_fill_mode_and_never_enables_submission(
             pass
 
         async def run(self, url, run_profile, options, *, browser=None):
-            assert options.mode == "fill"
+            assert options.mode == "dry-run"
             return ApplicationResult(
                 run_id="run-1",
                 profile_id=run_profile.id,
@@ -175,9 +175,9 @@ async def test_dry_run_uses_live_fill_mode_and_never_enables_submission(
     report = await module.run_live([job], profile, args, output, duplicates=0)
 
     assert report["mode"] == "dry-run"
-    assert report["execution_mode"] == "fill"
+    assert report["execution_mode"] == "dry-run"
     assert report["network_disabled_before_filling"] is False
     assert report["final_submission_enabled"] is False
     assert report["results"][0]["mode"] == "dry-run"
-    assert report["results"][0]["execution_mode"] == "fill"
+    assert report["results"][0]["execution_mode"] == "dry-run"
     assert module.outcome_summary(report)["passed"] == 1

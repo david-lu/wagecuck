@@ -301,7 +301,7 @@ class ApplicationRunner:
                 code == Code.CAPTCHA_REQUIRED
                 and challenge
                 and not snap.fields
-                and options.mode == "submit"
+                and options.mode in ("dry-run", "submit")
             ):
                 if captcha_attempts >= 2:
                     raise ApplicationError(
@@ -481,6 +481,15 @@ class ApplicationRunner:
                 raise ApplicationError(
                     Code.VALIDATION_FAILED, "The page reported form validation errors.", invalid
                 )
+            if not report["native_form_validation_pass"]:
+                labels = [
+                    row["question"] for row in report["native_validation_failures"]
+                ] or ["Application form"]
+                raise ApplicationError(
+                    Code.VALIDATION_FAILED,
+                    "Browser constraint validation failed.",
+                    labels,
+                )
             if after.errors:
                 event("page_validation_warning", count=len(after.errors))
                 result.evidence.append(
@@ -559,9 +568,12 @@ class ApplicationRunner:
                 workflow_budget.reschedule(None)
                 await self._wait_for_user(page, result, event, confirmation(after))
                 return
-            if options.mode == "fill":
+            final_challenge = await detect_challenge(page)
+            if options.mode in ("fill", "dry-run"):
+                if final_challenge and options.mode == "dry-run":
+                    self.captcha.validate(final_challenge)
                 result.status, result.code = "ready", Code.READY
-                if challenge:
+                if final_challenge:
                     result.evidence.append(
                         "CAPTCHA detected; submit mode will solve it immediately before submission."
                     )
@@ -582,7 +594,7 @@ class ApplicationRunner:
                     "Synthetic profile was redirected to a live application.",
                 )
             baseline = confirmation(after)
-            challenge = await detect_challenge(page)
+            challenge = final_challenge
             if challenge:
                 self.captcha.validate(challenge)
                 token = await self.captcha.solve(challenge)

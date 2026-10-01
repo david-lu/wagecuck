@@ -1,0 +1,207 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { AgentError, buildRequest, combinePageSnapshots, errorToPublic, generateAnswer, MAX_PAGE_CHARS, parseResponseAnswer, readSseEvents, validateFieldAndPage } from '../lib/agent.js';
+import { DEFAULT_SETTINGS, loadSettings, MAX_RESUME_BYTES, normalizeSettings, saveSettings } from '../lib/config.js';
+import { MAX_LOGS, logEvent, redactMetadata } from '../lib/logging.js';
+
+const settings = { ...DEFAULT_SETTINGS, apiKey: 'test-only-key', profile: 'Frontend developer with five years of experience.', resumeText: 'Worked at Example Studio.', writingInstructions: 'Use a friendly tone. Mention accessibility.' };
+const field = { label: 'Why do you want to work here at Acme?', type: 'textarea', placeholder: '', required: true, maxLength: 2000, context: 'Application essay', currentValue: '' };
+const page = { title: 'Acme application', url: 'https://example.test/apply', text: 'Acme creates accessible education software.\nHiring a frontend developer.\nPage end marker.', fields: [field] };
+const answer = 'I want to help Acme make education more accessible.';
+const encodedAnswer = JSON.stringify({ answer, missingInformation: '' });
+
+function streamResponse(events, chunkSize = 17) {
+  const bytes = new TextEncoder().encode(events.map(event => `event: ${event.type}\r\ndata: ${JSON.stringify(event)}\r\n\r\n`).join(''));
+  return new Response(new ReadableStream({ start(controller) {
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) controller.enqueue(bytes.slice(offset, offset + chunkSize));
+    controller.close();
+  } }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+
+function successfulEvents(text = encodedAnswer) {
+  return [
+    { type: 'response.created', response: { status: 'in_progress' } },
+    { type: 'response.output_text.delta', delta: text.slice(0, 11) },
+    { type: 'response.output_text.delta', delta: text.slice(11) },
+    { type: 'response.completed', response: { status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text }] }] } },
+  ];
+}
+
+test('prompt preserves the entire page, profile, resume, question and writing preferences', () => {
+  const request = buildRequest({ settings, field, page });
+  const context = JSON.parse(request.input[0].content[0].text);
+  assert.equal(context.entirePage.text, page.text);
+  assert.equal(context.userProfile, settings.profile);
+  assert.equal(context.resumeText, settings.resumeText);
+  assert.deepEqual(context.targetField, field);
+  assert.ok(request.instructions.includes(settings.writingInstructions));
+  assert.match(request.instructions, /untrusted reference data/);
+  assert.match(request.instructions, /Do not invent any personal facts/);
+  assert.equal(request.stream, true);
+  assert.equal(request.store, false);
+  assert.equal(request.model, 'gpt-4.1-mini');
+  assert.equal(request.text.format.type, 'json_schema');
+  assert.ok(!JSON.stringify(request).includes(settings.apiKey));
+});
+
+test('PDF resume is passed as input_file with filename and full base64 data URL', () => {
+  const bytes = Buffer.from('%PDF-1.7\nresume fixture');
+  const file = { name: 'resume.pdf', type: 'application/pdf', size: bytes.length, dataUrl: `data:application/pdf;base64,${bytes.toString('base64')}` };
+  const request = buildRequest({ settings: { ...settings, resumeFile: file }, field, page });
+  assert.deepEqual(request.input[0].content[0], { type: 'input_file', filename: file.name, file_data: file.dataUrl });
+  assert.equal(JSON.parse(request.input[0].content[1].text).entirePage.text, page.text);
+});
+
+test('settings reject oversized or mismatched PDF and preserve safe defaults', () => {
+  assert.deepEqual(normalizeSettings(), DEFAULT_SETTINGS);
+  assert.throws(() => normalizeSettings({ resumeFile: { name: 'resume.pdf', type: 'application/pdf', size: MAX_RESUME_BYTES + 1, dataUrl: 'data:application/pdf;base64,QQ==' } }), /5 MB/);
+  assert.throws(() => normalizeSettings({ resumeFile: { name: 'resume.pdf', type: 'application/pdf', size: 10, dataUrl: 'data:application/pdf;base64,QQ==' } }), /does not match/);
+  assert.throws(() => normalizeSettings({ model: 'model\ninjection' }), /valid OpenAI model/);
+});
+
+test('settings storage loads and saves complete objects and reports storage failures', async () => {
+  let stored = {};
+  const storage = { get: async () => stored, set: async value => { stored = value; } };
+  const saved = await saveSettings({ apiKey: '  test-only-key  ' }, storage);
+  assert.equal(saved.apiKey, 'test-only-key');
+  assert.equal(saved.model, DEFAULT_SETTINGS.model);
+  assert.deepEqual(await loadSettings(storage), saved);
+  await assert.rejects(saveSettings({}, { set: async () => { throw new Error('storage unavailable'); } }), /storage unavailable/);
+  await assert.rejects(loadSettings({ get: async () => { throw new Error('storage unavailable'); } }), /storage unavailable/);
+});
+
+test('frame context deduplicates clicked snapshot and reports inaccessible frames', () => {
+  const nested = { title: 'Embedded form', url: 'https://forms.test/embed', text: 'Second frame exact marker', fields: [] };
+  const combined = combinePageSnapshots(page, [page, nested], 2);
+  assert.equal(combined.frameCount, 2);
+  assert.equal(combined.text.split('Page end marker.').length, 2);
+  assert.ok(combined.text.includes(nested.text));
+  assert.match(combined.contextNote, /2 frame\(s\) were inaccessible/);
+  assert.equal(combined.unavailableFrames, 2);
+});
+
+test('large full-page or combined contexts are rejected without silent truncation', () => {
+  assert.throws(() => validateFieldAndPage(field, { ...page, text: 'x'.repeat(MAX_PAGE_CHARS + 1) }), error => error.code === 'PAGE_TOO_LARGE');
+  assert.throws(() => combinePageSnapshots(page, [{ ...page, text: 'x'.repeat(MAX_PAGE_CHARS) }]), error => error.code === 'PAGE_TOO_LARGE');
+});
+
+test('unsupported, sensitive, and malformed field requests fail before fetch', () => {
+  assert.throws(() => buildRequest({ settings, field: { ...field, type: 'password' }, page }), error => error.code === 'UNSUPPORTED_FIELD');
+  assert.throws(() => buildRequest({ settings, field: { ...field, label: 'Credit card number', type: 'text' }, page }), error => error.code === 'SENSITIVE_FIELD');
+  for (const name of ['creditCardNumber', 'candidate_password', 'oneTimeCode', 'APIKey', 'access_token']) {
+    assert.throws(() => buildRequest({ settings, field: { ...field, label: 'Candidate information', type: 'text', name }, page }), error => error.code === 'SENSITIVE_FIELD');
+  }
+  assert.doesNotThrow(() => buildRequest({ settings, field: { ...field, label: 'Describe your approach to password and API key security', context: 'Never provide a password or API key.' }, page }));
+  assert.throws(() => buildRequest({ settings, field: { ...field, maxLength: 0 }, page }), error => error.code === 'UNSUPPORTED_FIELD');
+  assert.throws(() => buildRequest({ settings: { ...settings, apiKey: '' }, field, page }), error => error.code === 'NOT_CONFIGURED');
+  assert.throws(() => buildRequest({ settings: { ...settings, enabled: false }, field, page }), error => error.code === 'DISABLED');
+});
+
+test('SSE parser survives byte-at-a-time chunks, CRLF, and multibyte Unicode', async () => {
+  const events = [{ type: 'response.output_text.delta', delta: 'Café 🎉' }, { type: 'response.completed', response: { status: 'completed' } }];
+  const received = [];
+  for await (const event of readSseEvents(streamResponse(events, 1).body)) received.push(event);
+  assert.deepEqual(received, events);
+});
+
+test('SSE parser supports multiline data and last event without final separator', async () => {
+  const raw = 'data: {"type":\n' + 'data: "response.completed"}\n\n' + 'data: {"type":"response.done"}';
+  const received = [];
+  for await (const event of readSseEvents(new Response(raw).body)) received.push(event);
+  assert.deepEqual(received.map(event => event.type), ['response.completed', 'response.done']);
+});
+
+test('generation authenticates only the fetch header and reports waiting then writing', async () => {
+  const states = [];
+  let calls = 0;
+  const result = await generateAnswer({ settings, field, page, onState: state => states.push(state), fetchImpl: async (url, init) => {
+    calls++;
+    assert.equal(url, 'https://api.openai.com/v1/responses');
+    assert.equal(init.headers.Authorization, `Bearer ${settings.apiKey}`);
+    assert.ok(!init.body.includes(settings.apiKey));
+    return streamResponse(successfulEvents());
+  } });
+  assert.equal(result, answer);
+  assert.deepEqual(states, ['waiting', 'writing']);
+  assert.equal(calls, 1);
+});
+
+test('completed response can provide answer when there were no deltas', async () => {
+  const result = await generateAnswer({ settings, field, page, fetchImpl: async () => streamResponse(successfulEvents().slice(-1)) });
+  assert.equal(result, answer);
+});
+
+test('authentication, quota and provider errors are actionable and never expose provider text', async () => {
+  for (const [status, code, expected] of [[401, 'invalid_api_key', 'AUTHENTICATION'], [429, 'insufficient_quota', 'RATE_LIMIT'], [400, 'bad_request', 'API_REQUEST'], [503, 'server_error', 'API_ERROR']]) {
+    let calls = 0;
+    await assert.rejects(generateAnswer({ settings, field, page, fetchImpl: async () => {
+      calls++;
+      return new Response(JSON.stringify({ error: { code, message: 'secret provider key test-only-key' } }), { status });
+    } }), error => error.code === expected && !error.message.includes('test-only-key'));
+    assert.equal(calls, 1, 'failed requests must not be retried automatically');
+  }
+});
+
+test('stream refusals, failures, incomplete answers, and dropped connections never fill', async () => {
+  for (const [event, code] of [
+    [{ type: 'response.refusal.delta', delta: 'No' }, 'REFUSED'],
+    [{ type: 'response.failed', response: { error: { message: 'provider secret' } } }, 'API_ERROR'],
+    [{ type: 'response.incomplete', response: { incomplete_details: { reason: 'max_output_tokens' } } }, 'INCOMPLETE_RESPONSE'],
+    [{ type: 'response.output_text.delta', delta: encodedAnswer }, 'INCOMPLETE_RESPONSE'],
+    [{ type: 'response.completed', response: { status: 'completed', output: [{ content: [{ type: 'refusal', refusal: 'No' }] }] } }, 'REFUSED'],
+  ]) {
+    await assert.rejects(generateAnswer({ settings, field, page, fetchImpl: async () => streamResponse([event]) }), error => error.code === code);
+  }
+});
+
+test('missing personal facts produce a helpful error, not invented input', () => {
+  assert.throws(() => parseResponseAnswer(JSON.stringify({ answer: '', missingInformation: 'Add your phone number to your saved profile.' }), { ...field, type: 'tel' }), error => error.code === 'MISSING_INFORMATION' && /phone number/.test(error.message));
+});
+
+test('answers are validated against field type, length, range, step, and pattern', () => {
+  const value = answer => JSON.stringify({ answer, missingInformation: '' });
+  assert.throws(() => parseResponseAnswer(value('long answer'), { type: 'text', maxLength: 3 }), error => error.code === 'ANSWER_TOO_LONG');
+  assert.throws(() => parseResponseAnswer(value('first\nsecond'), { type: 'text' }), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => parseResponseAnswer(value('made-up email'), { type: 'email' }), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => parseResponseAnswer(value('javascript:alert(1)'), { type: 'url' }), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => parseResponseAnswer(value('3'), { type: 'number', min: '5' }), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => parseResponseAnswer(value('9'), { type: 'number', max: '8' }), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => parseResponseAnswer(value('2.3'), { type: 'number', step: '0.5' }), error => error.code === 'INVALID_ANSWER');
+  assert.throws(() => parseResponseAnswer(value('wrong'), { type: 'text', pattern: '[A-Z]{2}\\d{3}' }), error => error.code === 'INVALID_ANSWER');
+  assert.equal(parseResponseAnswer(value('2.5'), { type: 'number', min: '1', max: '3', step: '0.5' }), '2.5');
+  assert.equal(parseResponseAnswer(value('user@example.test'), { type: 'email' }), 'user@example.test');
+  assert.equal(parseResponseAnswer(value('https://example.test/me'), { type: 'url' }), 'https://example.test/me');
+});
+
+test('timeout and explicit cancellation abort pending fetch', async () => {
+  const waitingFetch = (_, { signal }) => new Promise((_, reject) => {
+    const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  });
+  await assert.rejects(generateAnswer({ settings, field, page, fetchImpl: waitingFetch, timeoutMs: 10 }), error => error.code === 'TIMEOUT');
+  const controller = new AbortController();
+  const pending = generateAnswer({ settings, field, page, signal: controller.signal, fetchImpl: waitingFetch });
+  controller.abort();
+  await assert.rejects(pending, error => error.code === 'CANCELLED');
+});
+
+test('public fallback errors redact unknown exceptions', () => {
+  assert.deepEqual(errorToPublic(new Error('secret key/profile')), { code: 'UNEXPECTED_ERROR', message: 'Something went wrong. Please try again or check the extension diagnostics.' });
+  assert.deepEqual(errorToPublic(new AgentError('CANCELLED', 'Generation cancelled.')), { code: 'CANCELLED', message: 'Generation cancelled.' });
+});
+
+test('diagnostics record only bounded metadata and never store page or user content', async () => {
+  assert.deepEqual(redactMetadata({ requestId: 'test-1', durationMs: 20, pageChars: 40, apiKey: 'secret', profile: 'private', label: 'private', url: 'https://private.test', answer: 'private', code: 'bad secret string' }), { requestId: 'test-1', durationMs: 20, pageChars: 40 });
+  let stored = { wcLogs: Array.from({ length: MAX_LOGS }, (_, index) => ({ event: `old-${index}` })) };
+  const storage = { get: async () => stored, set: async value => { stored = value; } };
+  const originalInfo = console.info;
+  console.info = () => {};
+  try { await logEvent('generation.completed', { requestId: 'test-1', answer: 'private', apiKey: 'secret', answerChars: 7 }, 'info', storage); }
+  finally { console.info = originalInfo; }
+  assert.equal(stored.wcLogs.length, MAX_LOGS);
+  assert.equal(stored.wcLogs.at(-1).requestId, 'test-1');
+  assert.equal(stored.wcLogs.at(-1).answerChars, 7);
+  assert.ok(!JSON.stringify(stored).includes('private'));
+  assert.ok(!JSON.stringify(stored).includes('secret'));
+});

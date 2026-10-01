@@ -75,6 +75,15 @@ def execution_report(execution: ExecutionResult, analysis: list[dict]) -> dict:
     # This metric answers one question only: are all required logical fields
     # filled? Page alerts and optional upload diagnostics are reported apart.
     pass_required = not failures and not required_upload_errors
+    native_failures = [
+        {
+            "field_id": field_id(field),
+            "question": field.group or field.label,
+            "reasons": field.validity_errors or (["ariaInvalid"] if field.invalid else []),
+        }
+        for field in fields
+        if field.invalid
+    ]
     return {
         "field_count": len(fields),
         "upload_error_codes": upload_errors,
@@ -94,7 +103,11 @@ def execution_report(execution: ExecutionResult, analysis: list[dict]) -> dict:
         "required_question_count": len(required),
         "required_question_satisfied_count": len(required) - len(failures),
         "required_fill_pass": pass_required,
-        "form_validation_pass": pass_required and not execution.snapshot.errors,
+        "native_form_validation_pass": execution.snapshot.forms_valid,
+        "native_validation_failures": native_failures,
+        "form_validation_pass": (
+            pass_required and execution.snapshot.forms_valid and not execution.snapshot.errors
+        ),
         "required_fill_failure_count": len(failures),
         "required_fill_failures": [question.question for question in failures],
         "made_up_answer_count": sum(

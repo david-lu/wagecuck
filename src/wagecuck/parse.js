@@ -161,6 +161,10 @@
     let scope = container(el) || groupEl || el.parentElement;
     if (scope?.matches('form, body') || (!groupEl && scope?.querySelectorAll('input:not([type=hidden]), select, textarea').length > 1)) scope = null;
     const context = ((scope ? labelText(scope) : lab) + ' ' + described).trim().slice(0, 1600);
+    const validityErrors = el.willValidate ? [
+      'valueMissing', 'typeMismatch', 'patternMismatch', 'tooLong', 'tooShort',
+      'rangeUnderflow', 'rangeOverflow', 'stepMismatch', 'badInput', 'customError'
+    ].filter(key => el.validity[key]) : [];
     return {
       id: identify(el), label: lab, name: el.name || el.id || '', kind, control_type: controlType,
       required, autocomplete: el.autocomplete || '', placeholder: el.placeholder || '',
@@ -174,7 +178,8 @@
       filled: kind === 'file' ? !!el.files?.length
         : ['checkbox', 'radio'].includes(kind) ? (role ? el.getAttribute('aria-checked') === 'true' : el.checked)
         : el.isContentEditable ? !!text(el) : !!(el.value || renderedSelection),
-      invalid: !!(el.getAttribute('aria-invalid') === 'true' || (el.willValidate && !el.validity.valid))
+      invalid: !!(el.getAttribute('aria-invalid') === 'true' || validityErrors.length),
+      validity_errors: validityErrors
     };
   });
 }

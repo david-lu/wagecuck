@@ -1,0 +1,5 @@
+Jordan Example
+Software Engineer, Vancouver, Canada
+Built accessible Python and JavaScript tools for a warehouse operations team.
+Improved automated testing and collaborated with designers and operators.
+Email: jordan@example.test

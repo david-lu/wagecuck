@@ -404,3 +404,36 @@ async def test_required_checkbox_group_validates_as_one_question(page):
     report = execution_report(result, analysis)
     assert report["required_fill_pass"]
     assert report["required_question_satisfied_count"] == 1
+
+
+async def test_form_check_validity_runs_without_submitting(page):
+    await page.set_content("""<form onsubmit="window.submits=(window.submits||0)+1">
+      <input required style="display:none">
+      <button type=submit>Submit</button>
+      </form>
+      <script>
+        window.invalids=0;
+        document.querySelector('form').addEventListener(
+          'invalid', () => window.invalids++, true
+        );
+      </script>""")
+    result = await execute_actions(page, [], assessed_fields=[])
+    report = execution_report(result, [])
+    assert not result.snapshot.forms_valid
+    assert not report["native_form_validation_pass"]
+    assert await page.evaluate("[window.invalids, window.submits||0]") == [1, 0]
+
+
+async def test_blur_validation_records_custom_error_reason(page):
+    await page.set_content("""<form><label>Level<select id=level
+      onblur="this.setCustomValidity('Rejected locally')">
+      <option value="">Choose</option><option value=senior>Senior</option>
+      </select></label></form>""")
+    field = (await snapshot(page)).fields[0]
+    action = Action(field=field, value="Senior", source="facts:level")
+    result = await execute_actions(page, [action], assessed_fields=[field])
+    outcome = result.fields[0]
+    assert not outcome.verified
+    assert outcome.code == "VALIDATION_FAILED"
+    assert outcome.action.field.validity_errors == ["customError"]
+    assert not result.snapshot.forms_valid

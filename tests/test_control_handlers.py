@@ -397,3 +397,36 @@ async def test_roleless_country_phone_code_reads_preselected_pill(page, profile)
     actions, unresolved = await WorkflowAgent().plan([field], profile)
     assert not unresolved and actions[0].source == "facts:country"
     assert (await verify_action_results(page, actions))[0].valid
+
+
+async def test_fill_emits_standard_events_and_settles_focus_for_native_select(page):
+    await page.set_content("""<label>Level<select id=level
+      onfocus="window.focusEvents=(window.focusEvents||0)+1"
+      onblur="window.blurEvents=(window.blurEvents||0)+1"
+      oninput="window.inputEvents=(window.inputEvents||0)+1"
+      onchange="window.changeEvents=(window.changeEvents||0)+1">
+      <option value="">Choose</option><option value="senior">Senior</option>
+      </select></label>""")
+    field = (await snapshot(page)).fields[0]
+    await fill(page, Action(field=field, value="Senior", source="facts:level"))
+    assert await page.evaluate(
+        "[window.focusEvents, window.blurEvents, window.inputEvents, window.changeEvents]"
+    ) == [1, 1, 1, 1]
+
+
+@pytest.mark.parametrize(
+    "markup,reason",
+    [
+        ('<input type=email value="not-an-email">', "typeMismatch"),
+        ('<input pattern="[A-Z]{3}" value="abc">', "patternMismatch"),
+        ('<input type=number min=10 value=9>', "rangeUnderflow"),
+        ('<input type=number max=10 value=11>', "rangeOverflow"),
+        ('<input type=number min=0 step=2 value=3>', "stepMismatch"),
+        ('<input required>', "valueMissing"),
+    ],
+)
+async def test_snapshot_records_safe_validity_state_reasons(page, markup, reason):
+    await page.set_content(f"<label>Value{markup}</label>")
+    field = (await snapshot(page)).fields[0]
+    assert field.invalid
+    assert reason in field.validity_errors

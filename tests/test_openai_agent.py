@@ -107,7 +107,7 @@ def test_batch_runner_forwards_model_configuration(tmp_path, profile, monkeypatc
             assert agent is not None
 
         async def run(self, url, run_profile, options, *, browser=None):
-            assert options.mode == "fill" and options.agent_fill
+            assert options.mode == "dry-run" and options.agent_fill
             return ApplicationResult(
                 run_id="one",
                 profile_id=run_profile.id,
@@ -144,7 +144,7 @@ def test_batch_runner_forwards_model_configuration(tmp_path, profile, monkeypatc
     ]
     report = json.loads(output.read_text())
     assert report["mode"] == "dry-run"
-    assert report["execution_mode"] == "fill"
+    assert report["execution_mode"] == "dry-run"
     assert report["results"][0]["status"] == "ready"
 
 
@@ -194,7 +194,7 @@ def test_validation_input_uses_same_live_fill_pipeline(tmp_path, profile, monkey
         ]
     )
     report = json.loads(output.read_text())
-    assert seen_modes == ["fill"]
+    assert seen_modes == ["dry-run"]
     assert report["dataset_split"] == "validation"
     assert report["mode"] == "dry-run"
     assert report["final_submission_enabled"] is False

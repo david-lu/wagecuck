@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Apply to Northstar Robotics | Synthetic UI fixture</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 36px; font: 16px/1.5 system-ui, sans-serif; color: #172033; background: #f5f7fb; }
+    main { max-width: 840px; margin: auto; }
+    section { padding: 24px; background: white; border: 1px solid #d7deeb; border-radius: 12px; margin-bottom: 20px; }
+    label { display: block; font-weight: 650; margin: 16px 0 6px; }
+    input, textarea, [contenteditable] { width: 100%; border: 1px solid #a5b4cb; border-radius: 6px; font: inherit; padding: 12px; }
+    textarea { min-height: 135px; }
+    input[type=checkbox], input[type=radio] { width: auto; }
+    .spacer { height: 850px; }
+    iframe { height: 210px; width: 100%; border: 1px solid #bbc6da; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Northstar Robotics — Software Engineer</h1>
+    <section>
+      <h2>Help make warehouses safer</h2>
+      <p>We build vision software for autonomous warehouse robots. We value accessibility, thoughtful collaboration, and dependable systems. This is a remote Canada role.</p>
+      <form id="application" onsubmit="window.fixtureSubmitted=true; return false;">
+        <label for="name">Full name</label><input id="name" name="full_name" autocomplete="name">
+        <label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email">
+        <label for="motivation">Why do you want to work here at Northstar Robotics?</label>
+        <p id="motivation-help">Explain your interest in our mission and how your experience would help.</p>
+        <textarea id="motivation" name="motivation" aria-describedby="motivation-help"></textarea>
+        <label for="bio">Brief professional biography</label><div id="bio" contenteditable="true" role="textbox" aria-label="Brief professional biography"></div>
+        <label for="experience">Years of experience</label><input id="experience" type="number" min="0" max="10" value="5">
+        <div id="shadow-question"></div>
+        <label for="password">Account password</label><input id="password" type="password" value="never-send-this-password">
+        <input id="hidden" type="hidden" value="never-send-this-hidden-token">
+        <label for="search">Search openings</label><input id="search" type="search">
+        <label for="disabled">Disabled field</label><input id="disabled" disabled>
+        <label for="readonly">Read-only field</label><input id="readonly" readonly value="Read only">
+        <label for="upload">Resume file</label><input id="upload" type="file">
+        <label for="otp">One-time verification code</label><input id="otp" value="never-send-otp">
+        <label for="card">Credit card number</label><input id="card" value="never-send-card">
+        <div style="display:none"><label for="hidden-parent">Hidden parent field</label><input id="hidden-parent" value="never-send-hidden-parent"><p>NEVER_SEND_HIDDEN_PAGE_TEXT</p></div>
+        <fieldset disabled><label for="fieldset-disabled">Disabled fieldset input</label><input id="fieldset-disabled"></fieldset>
+        <label for="empty-only">Zero-length input</label><input id="empty-only" maxlength="0">
+        <label><input id="consent" type="checkbox"> Consent checkbox</label>
+        <button id="add-field" type="button">Add optional question</button>
+        <button id="submit" type="submit">Submit application</button>
+      </form>
+    </section>
+    <section><h2>Embedded questions</h2><iframe title="Same origin questions" src="frame.html"></iframe><iframe id="cross-frame" title="Cross origin questions"></iframe></section>
+    <div class="spacer" aria-hidden="true"></div>
+    <section><h2>Additional company context</h2><p id="bottom-context">WHOLE_PAGE_SENTINEL: Our volunteer program supports accessible robotics workshops across British Columbia. This detail is deliberately below the first screen.</p></section>
+  </main>
+  <script>
+    window.fixtureEvents = [];
+    window.fixtureSubmitted = false;
+    const shadow = document.getElementById('shadow-question').attachShadow({mode:'open'});
+    shadow.innerHTML = '<style>label { display:block; font-weight:bold; margin:16px 0 6px; } textarea { width:100%; height:100px; font:inherit; }</style><label for="shadow-answer">How do you collaborate with operators?</label><textarea id="shadow-answer"></textarea><p>SHADOW_CONTEXT_SENTINEL: Operators help validate accessible interfaces.</p>';
+    shadow.append(document.createTextNode('DIRECT_SHADOW_TEXT_SENTINEL: Build software with operators.'));
+    ['input', 'change'].forEach(type => document.addEventListener(type, event => window.fixtureEvents.push({ type, id: event.target.id, value: event.target.value })));
+    document.getElementById('add-field').onclick = () => {
+      if (document.getElementById('dynamic')) return;
+      const label = document.createElement('label'); label.htmlFor = 'dynamic'; label.textContent = 'What project are you proud of?';
+      const field = document.createElement('textarea'); field.id = 'dynamic'; field.name = 'project';
+      document.getElementById('application').append(label, field);
+    };
+    const crossPort = new URL(location.href).searchParams.get('crossPort');
+    document.getElementById('cross-frame').src = (crossPort ? 'http://127.0.0.1:' + crossPort : location.origin) + '/frame.html';
+  </script>
+</body>
+</html>

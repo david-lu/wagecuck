@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Wagecuck · AI Input Filler",
+  "version": "1.0.0",
+  "description": "Write thoughtful form answers from your profile, résumé, and the full page context.",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "webNavigation"],
+  "host_permissions": ["https://api.openai.com/*"],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "action": {
+    "default_title": "AI Input Filler · Profile and preferences",
+    "default_popup": "popup.html",
+    "default_icon": {"16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png"}
+  },
+  "icons": {"16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png"},
+  "content_scripts": [{
+    "matches": ["http://*/*", "https://*/*"],
+    "js": ["field-context.js", "content.js"],
+    "run_at": "document_idle",
+    "all_frames": true,
+    "match_origin_as_fallback": true
+  }],
+  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'self'; connect-src https://api.openai.com"}
+}

@@ -277,7 +277,7 @@ def _failed_result(job: JobInput, profile: Profile, mode: str, message: str):
 
 
 async def run_live(jobs, profile, args, output, duplicates, dataset_split="run"):
-    execution_mode = "fill" if args.mode == "dry-run" else args.mode
+    execution_mode = args.mode
     options = RunOptions(
         mode=execution_mode,
         headless=not args.headed,
@@ -421,7 +421,7 @@ def main(argv=None):
         )
         create_agent(args)
         RunOptions(
-            mode="fill" if args.mode == "dry-run" else args.mode,
+            mode=args.mode,
             slow_mo_ms=args.slow_mo,
             timeout_seconds=args.timeout,
         )
