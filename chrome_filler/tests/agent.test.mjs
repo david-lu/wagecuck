@@ -37,10 +37,13 @@ test('prompt preserves the entire page, profile, resume, question and writing pr
   assert.deepEqual(context.targetField, field);
   assert.ok(request.instructions.includes(settings.writingInstructions));
   assert.match(request.instructions, /untrusted reference data/);
-  assert.match(request.instructions, /make up a short, believable answer based on the user's background/);
+  assert.match(request.instructions, /make up a short, believable answer that addresses the question/);
   assert.match(request.instructions, /Do not leave open-ended or preference fields empty/);
   assert.match(request.instructions, /Never invent identity, contact information/);
+  assert.match(request.instructions, /Only mention past experience, employers, projects, technologies, or accomplishments when the question asks/);
+  assert.match(request.instructions, /Do not add resume details to motivation or preference answers/);
   assert.match(request.instructions, /agree to all agreements on job applications/);
+  assert.match(request.instructions, /"Decline to self-identify"/);
   assert.match(request.instructions, /Factual certifications, claims that the user has read/);
   assert.equal(request.stream, true);
   assert.equal(request.store, false);
@@ -75,10 +78,11 @@ test('FILL ALL builds required, field-specific schema and uses one API call', as
     minimum: 0, maximum: 20, multipleOf: 1,
   });
   assert.ok(request.instructions.includes(settings.writingInstructions));
-  assert.match(request.instructions, /Give every open-ended or preference field a plausible profile-based answer/);
+  assert.match(request.instructions, /Only mention past experience, employers, projects, technologies, or accomplishments when the question asks/);
+  assert.match(request.instructions, /Give every open-ended or preference field a plausible answer that directly addresses its question/);
   assert.equal(request.store, false);
   assert.equal(request.stream, true);
-  const batch = JSON.stringify({ [targets[0].id]: { answer: 'I built similar tools.', missingInformation: '' }, [targets[1].id]: { answer: 'jordan@example.test', missingInformation: '' }, [targets[2].id]: { answer: 5, missingInformation: '' } });
+  const batch = JSON.stringify({ [targets[0].id]: { answer: 'The focus on safer tooling sounds like work I would enjoy.', missingInformation: '' }, [targets[1].id]: { answer: 'jordan@example.test', missingInformation: '' }, [targets[2].id]: { answer: 5, missingInformation: '' } });
   let calls = 0;
   const result = await generateBatchAnswers({ settings, targets, page, fetchImpl: async (_url, init) => {
     calls++;
@@ -86,7 +90,7 @@ test('FILL ALL builds required, field-specific schema and uses one API call', as
     return streamResponse(successfulEvents(batch));
   } });
   assert.equal(calls, 1);
-  assert.deepEqual(result.map(item => item.answer), ['I built similar tools.', 'jordan@example.test', '5']);
+  assert.deepEqual(result.map(item => item.answer), ['The focus on safer tooling sounds like work I would enjoy.', 'jordan@example.test', '5']);
   const invalid = parseBatchResponse(JSON.stringify({ [targets[0].id]: { answer: 'Fine', missingInformation: '' }, [targets[1].id]: { answer: 'not-an-email', missingInformation: '' } }), targets);
   assert.equal(invalid[1].error.code, 'INVALID_ANSWER');
 });
@@ -177,6 +181,7 @@ test('previous casual instructions upgrade without losing added preferences', ()
     'Write in a friendly, conversational tone and in the first person. Keep it clear and natural.',
     'Use a casual, straightforward first-person voice. Keep answers short and specific. Contractions are fine. Skip buzzwords, stock enthusiasm, and overly polished phrasing.',
     'Write in a casual, confident first-person voice. Be specific about what I built, led, and changed, and say the results plainly. Use natural contractions. Keep it concise and skip corporate jargon or fake modesty.',
+    'Keep open answers short, casual, and confident, usually 1–3 sentences. Mention one relevant detail from the job posting when it fits. Say what I built and the results plainly, without corporate fluff.',
   ];
   const extra = '\n\nMention my work on creative tools.';
   for (const preset of previous) {

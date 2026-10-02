@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Lever country dropdown fixture</title></head>
+<body>
+  <form id="application">
+    <ul>
+      <li class="application-question custom-question">
+        <div>
+          <div class="application-label full-width dropdown"><div class="text">Which country do you intend to primarily work from?<span class="required">*</span></div></div>
+          <div class="application-field full-width required-field">
+            <div class="application-dropdown">
+              <select id="country" name="cards[dfd5ff92-e0a4-4c24-a509-0f1c54d4e4c0][field0]" required>
+                <option value="">Select...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </form>
+  <script>
+    const country = document.querySelector('#country');
+    for (let index = 1; index <= 198; index++) country.add(new Option(`Country ${index}`, `Country ${index}`));
+    country.add(new Option('Canada', 'Canada'));
+  </script>
+</body>
+</html>

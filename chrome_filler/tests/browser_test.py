@@ -109,7 +109,7 @@ MOCK_FETCH = r"""({answer, mode, delay, email}) => {
       const choice = (field, batch = false) => field.type === 'checkbox_group' ? (field.options || []).filter(option => /accessible interfaces|design systems|I utilize Terraform daily|I prefer not to answer/i.test(option.label)).map(option => option.value)
         : field.type === 'checkbox' ? /accessible interfaces|open to remote work|open to hybrid work|open to relocation|I agree to the application terms/i.test(field.label || '')
         : field.type === 'select' ? (field.options || []).find(option => option.value === self.__qaAnswer)?.value || (field.options || []).find(option => option.value === 'frontend')?.value || field.options?.[0]?.value || ''
-        : field.type === 'radio' ? (field.options || []).find(option => option.value === self.__qaAnswer)?.value || (field.options || []).find(option => option.value === 'Prefer not to answer')?.value || field.options?.[0]?.value || ''
+        : field.type === 'radio' ? (field.options || []).find(option => option.value === self.__qaAnswer)?.value || (field.options || []).find(option => /prefer not|decline to self-identify/i.test(option.label))?.value || field.options?.[0]?.value || ''
         : field.type === 'number' && batch ? 5 : field.type === 'email' ? self.__qaEmail : self.__qaAnswer;
       if (target.type) output = choice(target);
       if (self.__qaMode === 'invalid') output = 'Not an email address';
@@ -345,6 +345,30 @@ class BrowserSuite:
         finally:
             popup.close()
 
+    def panel_minimizes_at_bottom_left(self):
+        self.seed()
+        self.page.goto(self.url)
+        panel = self.page.locator("#wc-ai-root .wc-control-panel")
+        toggle = panel.locator(".wc-panel-toggle")
+        scan = panel.locator(".wc-scan-button")
+        rect = panel.bounding_box()
+        assert abs(rect["x"] - 16) < 2
+        assert abs(rect["y"] + rect["height"] - 884) < 2
+        toggle.click()
+        expect(panel).to_have_attribute("data-collapsed", "true")
+        expect(toggle).to_have_attribute("aria-label", "Restore Wagecuck controls")
+        expect(scan).to_be_hidden()
+        assert panel.bounding_box()["width"] < 80
+        toggle.click()
+        expect(scan).to_be_visible()
+        scan.click()
+        expect(panel.locator(".wc-panel-count")).to_be_visible()
+        toggle.click()
+        expect(panel.locator(".wc-panel-count")).to_be_visible()
+        expect(scan).to_be_hidden()
+        toggle.click()
+        expect(scan).to_have_text("Scan again")
+
     def panel_stays_above_page_overlays(self):
         self.seed()
         self.page.goto(self.url)
@@ -457,6 +481,26 @@ class BrowserSuite:
         fill_all.click()
         expect(self.page.frame_locator('iframe[title="Application questions"]').locator("#frame-answer")).to_have_value(ANSWER)
         expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
+
+    def frame_navigation_requires_new_scan(self):
+        self.seed()
+        self.page.goto(self.url.replace("application.html", "frame_only.html"))
+        self.page.frame_locator('iframe[title="Application questions"]').locator("#frame-answer").wait_for()
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.page.locator("#wc-ai-root .wc-panel-count")).to_have_text("1")
+        expect(self.page.locator("#wc-ai-root .wc-do-all-button")).to_be_visible()
+
+        self.page.locator('iframe[title="Application questions"]').evaluate("node => { node.src = '/application.html'; }")
+        new_frame = self.page.frame_locator('iframe[title="Application questions"]')
+        new_frame.locator("#motivation").wait_for()
+        expect(self.page.locator("#wc-ai-root .wc-scan-button")).to_have_text("Scan page")
+        expect(self.page.locator("#wc-ai-root .wc-panel-count")).to_be_hidden()
+        expect(self.page.locator("#wc-ai-root .wc-do-all-button")).to_be_hidden()
+        expect(new_frame.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
+
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(new_frame.get_by_role("button", name=re.compile("Fill with AI: .*Why do you want to work here", re.I), include_hidden=True)).to_have_count(1)
+        assert int(self.page.locator("#wc-ai-root .wc-panel-count").inner_text()) > 1
 
     def popup_scan_updates_page_count(self):
         self.seed()
@@ -940,6 +984,29 @@ class BrowserSuite:
         assert self.page.locator("#consent").is_checked() is False
         assert self.page.evaluate("window.fixtureSubmitted") is False
 
+    def same_name_required_checkbox_group(self):
+        self.seed()
+        mock = MOCK_FETCH.replace('accessible interfaces|design systems|I utilize Terraform daily|I prefer not to answer', 'Canada')
+        self.worker.evaluate(mock, {"answer": "Canada", "mode": "success", "delay": 25, "email": "jordan@example.test"})
+        self.page.goto(self.url.replace("application.html", "stripe_checklist.html"))
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        question = "Please select the country or countries you anticipate working in for the role in which you are applying."
+        expect(self.button(question)).to_have_count(1)
+        self.button(question).click()
+        options = self.page.locator('input[name="question_69269610[]"]')
+        expect(options.nth(1)).to_be_checked()
+        expect(options.nth(0)).not_to_be_checked()
+        assert options.nth(0).evaluate("node => node.validity.valid") is False
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
+
+        self.page.reload()
+        self.worker.evaluate(mock, {"answer": "Canada", "mode": "success", "delay": 25, "email": "jordan@example.test"})
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(options.nth(1)).to_be_checked()
+        expect(options.nth(0)).not_to_be_checked()
+        expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
+
     def choice_groups_from_saved_runs(self):
         self.seed()
         self.mock(delay=25)
@@ -1113,6 +1180,54 @@ class BrowserSuite:
         assert yes_no["label"] == "Are you authorized to work in this location?"
         assert [option["value"] for option in yes_no["options"]] == ["Yes", "No"]
 
+    def arize_paragraph_radio_questions(self):
+        self.seed()
+        self.page.goto(self.url.replace("application.html", "arize_controls.html"))
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.page.locator("#wc-ai-root .wc-panel-status")).to_have_text("3 inputs found")
+        expect(self.button("Will you now or in the future require sponsorship for employment?")).to_have_count(1)
+        expect(self.button("Veteran Status")).to_have_count(1)
+        expect(self.button("Switch to dark mode")).to_have_count(0)
+        expect(self.button("Please identify your race")).to_have_count(0)
+        self.page.locator("#race_dropdown_container").evaluate("node => { node.style.display = 'block'; }")
+        expect(self.button("Please identify your race")).to_have_count(1)
+        expect(self.page.locator("#wc-ai-root .wc-panel-status")).to_have_text("4 inputs found")
+
+    def ashby_demographic_radios_update_page_state(self):
+        self.seed()
+        self.mock(delay=25)
+        self.page.goto(self.url.replace("application.html", "ashby_eeoc.html"))
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.button("Gender")).to_have_count(1)
+        expect(self.button("Veteran Status")).to_have_count(1)
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(self.page.locator("#gender-decline")).to_be_checked()
+        expect(self.page.locator("#veteran-decline")).to_be_checked()
+        assert self.page.locator("#gender-decline").evaluate("node => node.parentElement.hasAttribute('data-checked')")
+        assert self.page.locator("#veteran-decline").evaluate("node => node.parentElement.hasAttribute('data-checked')")
+        requests = self.worker.evaluate("self.__qaRequests")
+        assert len(requests) == 1
+        context = json.loads(next(part["text"] for part in requests[0]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
+        assert [(field["label"], field["type"]) for field in context["targetFields"]] == [("Gender", "radio"), ("Veteran Status", "radio")]
+        assert [option["value"] for option in context["targetFields"][0]["options"]] == ["Male", "Female", "Decline to self-identify"]
+        assert [option["value"] for option in context["targetFields"][1]["options"]][-1] == "I decline to self-identify for protected veteran status"
+
+        self.page.reload()
+        self.mock(delay=25, answer="Female")
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#gender-female").scroll_into_view_if_needed()
+        self.button("Gender").click()
+        expect(self.page.locator("#gender-female")).to_be_checked()
+        assert self.page.locator("#gender-female").evaluate("node => node.parentElement.hasAttribute('data-checked')")
+        self.undo_button("Gender").click()
+        expect(self.page.locator('input[name="_systemfield_eeoc_gender"]:checked')).to_have_count(0)
+        assert self.page.locator('fieldset').first.locator('[data-checked]').count() == 0
+        self.mock(delay=25, answer="I am not a protected veteran")
+        self.page.locator("#veteran-no").scroll_into_view_if_needed()
+        self.button("Veteran Status").click()
+        expect(self.page.locator("#veteran-no")).to_be_checked()
+        assert self.page.locator("#veteran-no").evaluate("node => node.parentElement.hasAttribute('data-checked')")
+
     def lever_radio_group(self):
         self.fresh()
         self.page.locator('input[name="survey-age"]').first.scroll_into_view_if_needed()
@@ -1132,6 +1247,27 @@ class BrowserSuite:
         self.undo_button("What is your age range?").click()
         assert self.page.locator('input[name="survey-age"]:checked').count() == 0
         expect(self.page.locator('input[name="interview-time"][value="morning"]')).to_be_checked()
+
+    def lever_large_country_dropdown(self):
+        self.seed()
+        self.mock(delay=25, answer="Canada")
+        self.page.goto(self.url.replace("application.html", "lever_country.html"))
+        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        expect(self.button("Which country do you intend to primarily work from?")).to_have_count(1)
+        self.button("Which country do you intend to primarily work from?").click()
+        expect(self.page.locator("#country")).to_have_value("Canada")
+        request = self.worker.evaluate("self.__qaRequests")[-1]["payload"]
+        field = json.loads(request["input"][0]["content"][0]["text"])["targetField"]
+        assert field["type"] == "select" and field["label"] == "Which country do you intend to primarily work from?"
+        assert field["required"] and len(field["options"]) == 199
+        assert field["options"][-1] == {"value": "Canada", "label": "Canada"}
+        assert request["text"]["format"]["schema"]["properties"]["answer"]["anyOf"][1]["enum"] == [option["value"] for option in field["options"]]
+        self.undo_button("Which country do you intend to primarily work from?").click()
+        expect(self.page.locator("#country")).to_have_value("")
+
+        self.mock(delay=25, answer="Canada")
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(self.page.locator("#country")).to_have_value("Canada")
 
     def cancellation(self):
         self.fresh()
@@ -1245,6 +1381,7 @@ class BrowserSuite:
         self.seed(enabled=True, apiKey="")
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
         self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.page.locator("#motivation").scroll_into_view_if_needed()
         expect(self.button("Why do you want to work here")).to_be_visible()
         self.button("Why do you want to work here").click()
         expect(self.toast()).to_contain_text(re.compile("key|settings|extension", re.I))
@@ -1556,9 +1693,9 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "panel_stays_above_page_overlays", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "popup_scan_updates_page_count", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "agreement_dropdowns_fill_and_certifications_stay_manual", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "ashby_live_markup_and_control_panel", "lever_radio_group",
-                "cancellation", "edit_conflicts", "error_and_retry", "framed_fields",
-                "shadow_and_numeric_validation", "disable_during_generation", "workable_nested_yes_no_radios",
+                "manual_scan_gate", "panel_minimizes_at_bottom_left", "panel_stays_above_page_overlays", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "popup_scan_updates_page_count", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "agreement_dropdowns_fill_and_certifications_stay_manual", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "same_name_required_checkbox_group", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "ashby_live_markup_and_control_panel", "arize_paragraph_radio_questions", "lever_radio_group",
+                "cancellation", "edit_conflicts", "error_and_retry", "framed_fields", "frame_navigation_requires_new_scan",
+                "shadow_and_numeric_validation", "disable_during_generation", "workable_nested_yes_no_radios", "lever_large_country_dropdown", "ashby_demographic_radios_update_page_state",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",
                 "popup_import_pdf_and_keyboard",
                 "label_combinations", "bounded_field_context",

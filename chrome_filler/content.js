@@ -25,6 +25,7 @@
   let panelState;
   let panelCount;
   let controlPanel;
+  let panelCollapsed = false;
   let scannedInputCount = null;
   let localScannedCount = 0;
   let batch = null;
@@ -41,7 +42,7 @@
     :host([popover]:not(:popover-open)) { display:none!important; }
     *, *::before, *::after { box-sizing:border-box; }
     button { font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; cursor:pointer; }
-    .wc-control-panel { position:fixed; right:16px; bottom:16px; z-index:1; width:252px; padding:11px; border:2px solid #e31800; border-radius:15px; background:linear-gradient(145deg,#fffdf4,#fff3cf); box-shadow:0 10px 30px #54150038,0 2px 5px #54150018; color:#4b1708; font:12px/1.3 system-ui,sans-serif; pointer-events:auto; }
+    .wc-control-panel { position:fixed; left:16px; bottom:16px; z-index:1; width:252px; padding:11px; border:2px solid #e31800; border-radius:15px; background:linear-gradient(145deg,#fffdf4,#fff3cf); box-shadow:0 10px 30px #54150038,0 2px 5px #54150018; color:#4b1708; font:12px/1.3 system-ui,sans-serif; pointer-events:auto; }
     .wc-panel-head { display:flex; align-items:center; gap:9px; margin-bottom:11px; }
     .wc-panel-logo { display:block; width:36px; height:36px; flex:none; border-radius:9px; box-shadow:0 1px 4px #54150022; }
     .wc-panel-copy { min-width:0; }
@@ -53,6 +54,17 @@
     .wc-panel-status { display:block; color:#754633; font-size:10px; }
     .wc-panel-count { display:grid; place-items:center; min-width:34px; height:34px; margin-left:auto; padding:0 7px; flex:none; border:1px solid #d7a500; border-radius:10px; background:#ffcc00; color:#571808; font:800 15px/1 system-ui,sans-serif; }
     .wc-panel-count[hidden] { display:none; }
+    .wc-panel-toggle { all:unset; box-sizing:border-box; display:grid; place-items:center; position:relative; width:26px; height:26px; flex:none; margin-left:auto; border:1px solid #e2c886; border-radius:7px; background:#fff9e7; color:#9b2a15; font:700 20px/1 system-ui,sans-serif; cursor:pointer; }
+    .wc-panel-toggle:hover { background:#ffe6a3; }
+    .wc-panel-toggle:focus-visible { outline:3px solid #e31800; outline-offset:2px; }
+    .wc-panel-toggle-logo { display:none; width:38px; height:38px; border-radius:9px; }
+    .wc-control-panel[data-collapsed=true] { width:max-content; padding:5px; border-radius:12px; }
+    .wc-control-panel[data-collapsed=true] .wc-panel-head { margin-bottom:0; gap:6px; }
+    .wc-control-panel[data-collapsed=true] .wc-panel-logo,.wc-control-panel[data-collapsed=true] .wc-panel-copy,.wc-control-panel[data-collapsed=true] .wc-panel-actions,.wc-control-panel[data-collapsed=true] .wc-panel-progress,.wc-control-panel[data-collapsed=true] .wc-panel-toggle-symbol { display:none; }
+    .wc-control-panel[data-collapsed=true] .wc-panel-toggle { order:-1; width:38px; height:38px; margin-left:0; padding:0; border:0; border-radius:9px; }
+    .wc-control-panel[data-collapsed=true] .wc-panel-toggle-logo { display:block; }
+    .wc-control-panel[data-collapsed=true] .wc-panel-count:not([hidden]) { margin-left:0; }
+    .wc-control-panel[data-collapsed=true][data-busy=true] .wc-panel-toggle::after { content:''; position:absolute; top:-3px; right:-3px; width:10px; height:10px; border:2px solid #fff9e7; border-radius:50%; background:#e31800; }
     .wc-panel-actions { display:flex; gap:7px; }
     .wc-scan-button,.wc-do-all-button { all:initial; box-sizing:border-box; display:flex; flex:1; align-items:center; justify-content:center; gap:7px; min-width:0; min-height:38px; padding:0 8px; border-radius:9px; font:750 12px/1 system-ui,sans-serif; text-align:center; cursor:pointer; transition:background .15s,box-shadow .15s; }
     .wc-scan-button { border:1px solid #bd210f; background:#e31800; color:#fff; box-shadow:0 2px 5px #e3180033; }
@@ -78,7 +90,7 @@
     .wc-fill-button[data-compact=true] .wc-button-status { display:none; }
     .wc-spinner { width:11px; height:11px; border:2px solid #ebba8a; border-top-color:#e31800; border-radius:50%; animation:wc-spin .8s linear infinite; }
     @keyframes wc-spin { to { transform:rotate(360deg); } }
-    .wc-toasts { position:fixed; left:16px; bottom:16px; display:flex; flex-direction:column; gap:10px; width:min(360px,calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; padding:3px; pointer-events:none; }
+    .wc-toasts { position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:10px; width:min(360px,calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; padding:3px; pointer-events:none; }
     .wc-toast { padding:14px 15px; border:1px solid #d8d7cd; border-radius:13px; background:#fcfbf7; color:#292d22; box-shadow:0 8px 35px #18241422; font:13px/1.5 system-ui,sans-serif; pointer-events:auto; animation:wc-in .18s ease-out; }
     .wc-toast[data-kind=error] { border-color:#dfbbb1; background:#fff8f5; }
     .wc-toast-title { display:flex; align-items:center; gap:8px; font-weight:650; }
@@ -102,6 +114,7 @@
     buttonLayer = document.createElement('div');
     controlPanel = document.createElement('div');
     controlPanel.className = 'wc-control-panel';
+    controlPanel.dataset.collapsed = String(panelCollapsed);
     controlPanel.setAttribute('role', 'group');
     controlPanel.setAttribute('aria-label', 'Wagecuck controls');
     const panelHead = document.createElement('div');
@@ -127,7 +140,32 @@
     panelCount = document.createElement('span');
     panelCount.className = 'wc-panel-count';
     panelCount.hidden = true;
-    panelHead.append(logo, panelCopy, panelCount);
+    const panelToggle = document.createElement('button');
+    panelToggle.type = 'button';
+    panelToggle.className = 'wc-panel-toggle';
+    const toggleSymbol = document.createElement('span');
+    toggleSymbol.className = 'wc-panel-toggle-symbol';
+    toggleSymbol.textContent = '−';
+    toggleSymbol.setAttribute('aria-hidden', 'true');
+    const toggleLogo = document.createElement('img');
+    toggleLogo.className = 'wc-panel-toggle-logo';
+    toggleLogo.src = logo.src;
+    toggleLogo.alt = '';
+    panelToggle.append(toggleSymbol, toggleLogo);
+    function updatePanelToggle() {
+      controlPanel.dataset.collapsed = String(panelCollapsed);
+      panelToggle.setAttribute('aria-expanded', String(!panelCollapsed));
+      panelToggle.setAttribute('aria-label', panelCollapsed ? 'Restore Wagecuck controls' : 'Minimize Wagecuck controls');
+      panelToggle.title = panelCollapsed ? 'Restore Wagecuck controls' : 'Minimize Wagecuck controls';
+    }
+    panelToggle.addEventListener('click', () => {
+      panelCollapsed = !panelCollapsed;
+      updatePanelToggle();
+      schedulePosition();
+      schedulePanelCheck();
+    });
+    updatePanelToggle();
+    panelHead.append(logo, panelCopy, panelCount, panelToggle);
     const panelActions = document.createElement('div');
     panelActions.className = 'wc-panel-actions';
     scanButton = document.createElement('button');
@@ -296,6 +334,22 @@
     const value = answer.trim();
     if (!value || (field.maxLength > 0 && value.length > field.maxLength) || (field.type === 'number' && !Number.isFinite(Number(value)))) return null;
     return value;
+  }
+
+  function answerMeetsFieldConstraints(field) {
+    const group = globalThis.WCFieldContext.checkboxDetails(field);
+    if (!group) return !field.validity || field.validity.valid;
+    const options = group.options.map(option => option.element);
+    const requiredGroup = group.container.getAttribute('aria-required') === 'true';
+    const sameNamedCheckboxes = options.every(option => option instanceof HTMLInputElement && option.type === 'checkbox' && option.name && option.name === options[0].name);
+    if (sameNamedCheckboxes) {
+      // Greenhouse marks every option `required` even though the question
+      // requires one or more selections. Validating only the first checkbox
+      // rejects any answer that does not include its first option.
+      return !(requiredGroup || options.some(option => option.required)) || options.some(option => option.checked);
+    }
+    if (requiredGroup && !options.some(option => globalThis.WCFieldContext.choiceChecked(option))) return false;
+    return options.every(option => !option.validity || option.validity.valid);
   }
 
   function labelFor(field) {
@@ -530,9 +584,10 @@
     if (field.getRootNode() === shadow || field.disabled || field.matches(':disabled') || (field.readOnly && !isSupportedCombobox(field)) || field.getAttribute('aria-disabled') === 'true' || (field.getAttribute('aria-readonly') === 'true' && !isSupportedCombobox(field))) return false;
     if (field.tagName === 'INPUT' && !TYPES.has(field.type) && !choiceKind && !isSupportedCombobox(field)) return false;
     if (choiceKind && !globalThis.WCFieldContext.isChoiceOption(field, choiceKind)) return false;
+    if (choiceKind && !field.closest('form,[role="form"]') && field.closest('header,nav,footer,[role="banner"],[role="navigation"],[role="contentinfo"]')) return false;
     if (field.type === 'file' && !isResumeField(field)) return false;
     if (field.matches('[role="combobox"],[aria-haspopup="listbox"]') && !isSupportedCombobox(field) && !isAshbyAutocomplete(field)) return false;
-    if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 100 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
+    if (field.tagName === 'SELECT' && (field.multiple || field.size > 1 || field.options.length > 300 || ![...field.options].some(option => selectableOption(field, option.value)))) return false;
     if (choiceKind === 'radio') {
       const options = globalThis.WCFieldContext.radioChoices(field);
       if (options.length < 2 || options.length > 100 || new Set(options.map(option => option.value)).size !== options.length || options[0].element !== field || !globalThis.WCFieldContext.radioDetails(field).label) return false;
@@ -833,6 +888,12 @@
     if (globalThis.WCFieldContext.choiceChecked(field) === checked) return;
     if (field instanceof HTMLInputElement && ['checkbox', 'radio'].includes(field.type)) {
       field.focus({ preventScroll: true });
+      if (field.type === 'radio' && (checked || field.closest('.ashby-application-form-input-radio-group'))) {
+        // Controlled radio groups update their application state on click. Ashby
+        // also clears a selected option when it is clicked again (Undo).
+        field.click();
+        return;
+      }
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set.call(field, checked);
       field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
       field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
@@ -905,12 +966,18 @@
         if (choices.some(option => option.element !== selected && globalThis.WCFieldContext.choiceChecked(option.element))) throw new Error('The page kept more than one radio option selected.');
         return;
       }
-      for (const option of choices) {
-        const target = option.element;
-        if (target === selected || !globalThis.WCFieldContext.choiceChecked(target)) continue;
-        setChoiceChecked(target, false);
+      if (selected) {
+        for (const option of choices) {
+          const target = option.element;
+          if (target === selected || !globalThis.WCFieldContext.choiceChecked(target)) continue;
+          // A click clears peers only when the browser sees them as one named group.
+          if (target instanceof HTMLInputElement && target.type === 'radio' && target.name && target.name === selected.name && target.form === selected.form) continue;
+          setChoiceChecked(target, false);
+        }
+        setChoiceChecked(selected, true);
+      } else for (const option of choices) {
+        if (globalThis.WCFieldContext.choiceChecked(option.element)) setChoiceChecked(option.element, false);
       }
-      if (selected) setChoiceChecked(selected, true);
       if (choices.some(option => option.element !== selected && globalThis.WCFieldContext.choiceChecked(option.element))) throw new Error('The page kept more than one radio option selected.');
       return;
     }
@@ -1151,7 +1218,7 @@
         const written = await writeValue(field, answer);
         const expected = written === undefined ? answer : written;
         if (readValue(field) !== expected) throw new Error('The website did not keep the answer.');
-        if (field.validity && !field.validity.valid) {
+        if (!answerMeetsFieldConstraints(field)) {
           if (!isSupportedCombobox(field) && !isAshbyAutocomplete(field) && !ashbyYesNo(field)) await writeValue(field, original);
           throw new Error('The answer did not meet the field’s format. Your previous text was restored.');
         }
@@ -1269,7 +1336,7 @@
       const original = readValue(field);
       try {
         const written = await writeValue(field, answer);
-        if (readValue(field) !== (written === undefined ? answer : written) || (field.validity && !field.validity.valid)) throw new Error('The page rejected an answer.');
+        if (readValue(field) !== (written === undefined ? answer : written) || !answerMeetsFieldConstraints(field)) throw new Error('The page rejected an answer.');
         result.filled++;
         logUI('ui.filled', batch.id);
       } catch {
@@ -1324,6 +1391,15 @@
   document.addEventListener('focusin', () => { schedulePosition(); scheduleScan(); }, { passive: true });
   document.addEventListener('input', schedulePosition, { passive: true });
   window.addEventListener('load', scheduleScan, { once: true });
+  document.addEventListener('load', event => {
+    if (window.top !== window || !scanned || !(event.target instanceof HTMLIFrameElement)) return;
+    const frame = event.target;
+    const identity = `${frame.id} ${frame.name} ${frame.title}`;
+    if (!/application|apply|candidate|question|form|icims[_-]?content[_-]?iframe/i.test(identity)) return;
+    // A new iframe document has a fresh content script and must be scanned by
+    // the user before FILL can include its fields.
+    resetScan('The application step changed. Scan the page again.');
+  }, true);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleScan(); });
   // Attaching a shadow root to an existing host does not mutate the document.
   // Discover these late-loaded components without repeatedly rescanning every field.

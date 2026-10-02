@@ -141,7 +141,13 @@
       .filter(node => !node.querySelector(CONTROL_SELECTOR) && !node.contains(field) && !(node.tagName === 'LABEL' && node.htmlFor && auxiliaryChoiceText(idElement(field, node.htmlFor))))
       .map(node => safeText(node, { field, limit: 500 })).filter(Boolean);
     const distinct = unique(headings);
-    return distinct.length === 1 ? distinct[0].slice(0, 500) : '';
+    if (distinct.length === 1) return distinct[0].slice(0, 500);
+    // Some application forms put a plain paragraph immediately before the
+    // radio options instead of using a legend or an ARIA group label.
+    const paragraphs = unique([...container.children]
+      .filter(node => node.matches('p') && !node.querySelector(CONTROL_SELECTOR))
+      .map(node => safeText(node, { field, limit: 500 })).filter(text => text && text.length <= 300));
+    return paragraphs.length === 1 ? paragraphs[0] : '';
   }
 
   function auxiliaryChoiceText(field) {

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Ashby demographic controls</title>
+<style>
+  body { font: 16px system-ui, sans-serif; max-width: 700px; margin: 40px auto; }
+  fieldset { margin: 24px 0; padding: 18px; }
+  .ashby-application-form-question-title { display: block; font-weight: bold; margin-bottom: 10px; }
+  .ashby-application-form-input-radio-group-option { display: flex; gap: 8px; padding: 6px; }
+  .ashby-application-form-input-radio-group-option [data-checked] { outline: 2px solid green; }
+</style></head>
+<body>
+<form>
+  <fieldset class="ashby-application-form-input-radio-group">
+    <label class="ashby-application-form-question-title" for="_systemfield_eeoc_gender">Gender</label>
+    <div class="ashby-application-form-question-description"><p>Input gender</p></div>
+    <div class="ashby-application-form-input-radio-group-option"><span data-disabled="false"><span></span><input type="radio" id="gender-male" name="_systemfield_eeoc_gender" class="ashby-application-form-input-radio-group-option-radio"></span><label for="gender-male">Male</label></div>
+    <div class="ashby-application-form-input-radio-group-option"><span data-disabled="false"><span></span><input type="radio" id="gender-female" name="_systemfield_eeoc_gender" class="ashby-application-form-input-radio-group-option-radio"></span><label for="gender-female">Female</label></div>
+    <div class="ashby-application-form-input-radio-group-option"><span data-disabled="false"><span></span><input type="radio" id="gender-decline" name="_systemfield_eeoc_gender" class="ashby-application-form-input-radio-group-option-radio"></span><label for="gender-decline">Decline to self-identify</label></div>
+  </fieldset>
+  <fieldset class="ashby-application-form-input-radio-group">
+    <label class="ashby-application-form-question-title" for="_systemfield_eeoc_veteran_status">Veteran Status</label>
+    <div class="ashby-application-form-input-radio-group-option"><span data-disabled="false"><span></span><input type="radio" id="veteran-protected" name="_systemfield_eeoc_veteran_status" class="ashby-application-form-input-radio-group-option-radio"></span><label for="veteran-protected">I identify as one or more of the classifications of protected veteran listed above</label></div>
+    <div class="ashby-application-form-input-radio-group-option"><span data-disabled="false"><span></span><input type="radio" id="veteran-no" name="_systemfield_eeoc_veteran_status" class="ashby-application-form-input-radio-group-option-radio"></span><label for="veteran-no">I am not a protected veteran</label></div>
+    <div class="ashby-application-form-input-radio-group-option"><span data-disabled="false"><span></span><input type="radio" id="veteran-decline" name="_systemfield_eeoc_veteran_status" class="ashby-application-form-input-radio-group-option-radio"></span><label for="veteran-decline">I decline to self-identify for protected veteran status</label></div>
+  </fieldset>
+</form>
+<script>
+  document.querySelectorAll('fieldset').forEach(group => {
+    let selected = null;
+    group.addEventListener('click', event => {
+      if (!event.target.matches('input[type="radio"]')) return;
+      selected = selected === event.target ? null : event.target;
+      group.querySelectorAll('input[type="radio"]').forEach(input => {
+        const visual = input.parentElement;
+        input.checked = input === selected;
+        if (input === selected) visual.setAttribute('data-checked', '');
+        else visual.removeAttribute('data-checked');
+      });
+    });
+  });
+</script>
+</body>
+</html>
