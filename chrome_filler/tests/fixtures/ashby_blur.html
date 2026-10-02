@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Ashby blur validation fixture</title>
+    <style>
+      body { max-width: 700px; margin: 30px auto; font: 16px system-ui, sans-serif; }
+      .ashby-application-form-field-entry { margin: 24px 0; }
+      label { display: block; margin-bottom: 8px; }
+      input, textarea { width: 500px; min-height: 38px; }
+    </style>
+  </head>
+  <body>
+    <form id="application">
+      <div class="ashby-application-form-field-entry">
+        <label for="country" class="ashby-application-form-question-title">What country are you based in?</label>
+        <input id="country" class="ashby-application-form-input-text" type="text" required>
+      </div>
+      <div class="ashby-application-form-field-entry">
+        <label for="motivation" class="ashby-application-form-question-title">Why this team?</label>
+        <textarea id="motivation" class="ashby-application-form-input-textarea" required></textarea>
+      </div>
+    </form>
+    <script>
+      for (const field of document.querySelectorAll('input,textarea')) {
+        field.addEventListener('input', () => { field.dataset.draft = field.value; });
+        field.addEventListener('blur', () => { field.dataset.committed = field.dataset.draft || ''; });
+      }
+    </script>
+  </body>
+</html>

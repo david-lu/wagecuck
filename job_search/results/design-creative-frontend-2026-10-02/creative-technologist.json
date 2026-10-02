@@ -1,0 +1,2726 @@
+{
+  "criteria": {
+    "job_title": "creative technologist",
+    "locations": [],
+    "seniority": [],
+    "min_salary": null,
+    "salary_currency": "USD",
+    "salary_period": "year",
+    "internship": null,
+    "sponsors_visa": null,
+    "workplace": null,
+    "employment_type": null,
+    "keywords": [],
+    "exclude_keywords": [],
+    "exclude_companies": [],
+    "posted_within_days": null,
+    "include_unknown": false,
+    "sites": [
+      "wellfound",
+      "indeed",
+      "linkedin",
+      "simplify",
+      "hiringcafe",
+      "jobright",
+      "levels",
+      "trueup",
+      "yc",
+      "builtin",
+      "theirstack",
+      "jobshifu",
+      "mygreenhouse",
+      "rolesweep",
+      "google",
+      "ventureloop",
+      "remote_rocketship",
+      "backchannel",
+      "hn",
+      "a16z"
+    ],
+    "max_pages": 12,
+    "max_per_site": 3000,
+    "timeout_seconds": 30,
+    "site_timeout_seconds": 120.0,
+    "show_browser": false,
+    "browser_channel": null,
+    "validation_timeout_seconds": 60,
+    "validation_workers": 8,
+    "detail_workers": 4,
+    "array_fields": {},
+    "array_filters": {},
+    "field_filters": {},
+    "salary_basis": "maximum"
+  },
+  "broad_query": "creative technologist",
+  "jobs": [
+    {
+      "url": "https://simplify.jobs/p/6a3fbb68-b8e3-4d20-afb9-42ac9bde893b",
+      "title": "Creative Technologist",
+      "company": "TrueShort",
+      "location": "Remote; Remote in USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 120000.0,
+        "maximum": 180000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-04T04:42:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-07T09:09:44+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/6a3fbb68-b8e3-4d20-afb9-42ac9bde893b"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; Remote in USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/30b61797-a987-4ebe-ab1f-a9164210dfec",
+      "title": "Creative Technologist",
+      "company": "Kyndryl",
+      "location": "Remote; Dallas, TX, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 88680.0,
+        "maximum": 168480.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-24T22:33:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-10T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [
+        "junior",
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/30b61797-a987-4ebe-ab1f-a9164210dfec"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; Dallas, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/4aed1d33-fe4d-456f-938a-330f6a40de99",
+      "title": "Creative Technologist",
+      "company": "Fal",
+      "location": "San Francisco, CA, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 150000.0,
+        "maximum": 210000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-24T10:15:03+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-17T22:22:44+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/4aed1d33-fe4d-456f-938a-330f6a40de99"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Francisco, CA, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/e2c94198-716d-410a-8bef-9ac124e51473",
+      "title": "Creative Technologist",
+      "company": "Microsoft",
+      "location": "Remote; Redmond, WA, USA; New York, NY, USA; Mountain View, CA, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 119800.0,
+        "maximum": 261000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-10-02T10:42:23+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-01T01:00:37+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/e2c94198-716d-410a-8bef-9ac124e51473"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; Redmond, WA, USA; New York, NY, USA; Mountain View, CA, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/910395d1-c0bd-4159-bc44-6fa2707a722f",
+      "title": "Creative Technologist",
+      "company": "Publicis Groupe",
+      "location": "Frankfurt, Germany",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-09-03T14:45:15+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-18T07:57:29+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/910395d1-c0bd-4159-bc44-6fa2707a722f"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Frankfurt, Germany"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/99186e75-7bce-41bf-9576-cdf416bb8100",
+      "title": "Creative Technologist",
+      "company": "Nymbus",
+      "location": "Remote; Remote in USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 65000.0,
+        "maximum": 80000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-10-01T10:42:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-22T01:36:36+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/99186e75-7bce-41bf-9576-cdf416bb8100"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; Remote in USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/ffe03614-efd4-4545-ae0d-a2f80fcb8278",
+      "title": "Vice President Creative Technologist & VFX",
+      "company": "Sony Pictures Entertainment",
+      "location": "Culver City, CA, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 238400.0,
+        "maximum": 298000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-22T01:14:27+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-21T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/ffe03614-efd4-4545-ae0d-a2f80fcb8278"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Culver City, CA, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/f187219f-a584-4d50-a508-d702d72cba54",
+      "title": "Creative Technologist Compositor",
+      "company": "JioStar",
+      "location": "Bengaluru, Karnataka, India",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-10-01T15:18:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-10-01T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/f187219f-a584-4d50-a508-d702d72cba54"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Bengaluru, Karnataka, India"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/e918cd93-ea93-4096-bd3f-4259cf2668af",
+      "title": "Lead Creative Technologist",
+      "company": "Entropico",
+      "location": "Alexandria, Australia",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-10-02T11:24:43+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-03T06:29:05+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "mid",
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/e918cd93-ea93-4096-bd3f-4259cf2668af"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Alexandria, Australia"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/10f1b551-f575-40b8-89d7-52b6500d9796",
+      "title": "Creative Technologist - Wharton Generative AI Labs",
+      "company": "University of Pennsylvania",
+      "location": "Philadelphia, PA, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 84961.0,
+        "maximum": 105000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-04T04:42:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-11T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/10f1b551-f575-40b8-89d7-52b6500d9796"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Philadelphia, PA, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/10587abd-4cad-4a10-8391-78c9f6473295",
+      "title": "UX Creative Technologist - Vice President",
+      "company": "JP Morgan Chase",
+      "location": "Brooklyn, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 142500.0,
+        "maximum": 205000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-27T09:09:04+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-14T22:06:10+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/10587abd-4cad-4a10-8391-78c9f6473295"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Brooklyn, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/b9d413bd-601f-4e1e-a5d0-2799d59b9450",
+      "title": "Creative Technologist - Marketing",
+      "company": "Provectus",
+      "location": "Remote; New York, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 80000.0,
+        "maximum": 180000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-23T10:18:09+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-16T14:16:18+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [
+        "junior",
+        "mid",
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/b9d413bd-601f-4e1e-a5d0-2799d59b9450"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; New York, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/718c40ec-5ab8-463e-844d-81b81bdda6f0",
+      "title": "Senior Lead Creative Technologist",
+      "company": "Kyndryl",
+      "location": "Remote; Dallas, TX, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 115080.0,
+        "maximum": 218520.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-03T19:12:22+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-02T01:45:12+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/718c40ec-5ab8-463e-844d-81b81bdda6f0"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; Dallas, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/ce70a056-4933-468e-81ca-5e02d5a3e3cb",
+      "title": "AI Creative Technologist",
+      "company": "Apple",
+      "location": "London, UK",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-09-04T04:42:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-05-06T14:11:25+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/ce70a056-4933-468e-81ca-5e02d5a3e3cb"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "London, UK"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/7b7570bf-652d-4657-b8d5-9255f6211911",
+      "title": "Associate Creative Technologist - Early Career Consult Program",
+      "company": "Kyndryl",
+      "location": "Dallas, TX, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 77000.0,
+        "maximum": 77000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-24T22:39:16+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-13T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/7b7570bf-652d-4657-b8d5-9255f6211911"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Dallas, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/ca93ec42-635d-4b18-8e40-91f09b61e443",
+      "title": "AI Creative Technologist",
+      "company": "Publicis Groupe",
+      "location": "New York, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 81225.0,
+        "maximum": 129987.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-10-01T10:39:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-26T06:15:09+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/ca93ec42-635d-4b18-8e40-91f09b61e443"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "New York, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/202ed0ca-f535-4dce-b6a5-29247295c2a6",
+      "title": "Creative Technologist - AI Studio",
+      "company": "Adobe",
+      "location": "Noida, Uttar Pradesh, India; Bengaluru, Karnataka, India",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-09-18T09:15:48+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-02T01:38:09+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/202ed0ca-f535-4dce-b6a5-29247295c2a6"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Noida, Uttar Pradesh, India; Bengaluru, Karnataka, India"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/5bcf3240-f36f-4721-9d34-3a4a1abc29eb",
+      "title": "Senior Lead Creative Technologist - Kyndryl Vital",
+      "company": "Kyndryl",
+      "location": "Palm Beach Gardens, FL, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 115080.0,
+        "maximum": 218520.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-03T04:12:07+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-01T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/5bcf3240-f36f-4721-9d34-3a4a1abc29eb"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Palm Beach Gardens, FL, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/69d46a4c-3150-4667-8df6-7eeeb218cfbe",
+      "title": "Creative Technologist - Creative Technology - US GTM",
+      "company": "Kyndryl",
+      "location": "Frisco, TX, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 115080.0,
+        "maximum": 262320.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-24T22:45:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-23T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/69d46a4c-3150-4667-8df6-7eeeb218cfbe"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Frisco, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/da3ba969-e181-470f-b17c-7b26176f07be",
+      "title": "Associate Creative Technologist",
+      "company": "Kyndryl",
+      "location": "Dallas, TX, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 77000.0,
+        "maximum": 77000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-24T22:25:13+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-13T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/da3ba969-e181-470f-b17c-7b26176f07be"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Dallas, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/0961dd91-b56c-4196-a04d-407cd9249c74",
+      "title": "Creative Technologist - Brands & Agency",
+      "company": "Adobe",
+      "location": "San Francisco, CA, USA; Los Angeles, CA, USA; San Jose, CA, USA; New York, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 120700.0,
+        "maximum": 226350.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-10-02T09:37:08+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-06-13T10:07:13+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0961dd91-b56c-4196-a04d-407cd9249c74"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Francisco, CA, USA; Los Angeles, CA, USA; San Jose, CA, USA; New York, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/0aa4c104-8485-45f6-af43-16f3600320e6",
+      "title": "Enterprise Creative Technologist - Marketing",
+      "company": "Truelogic",
+      "location": "Remote; North America",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-09-04T04:42:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-18T06:15:57+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0aa4c104-8485-45f6-af43-16f3600320e6"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; North America"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/925e3fd3-5677-4b64-9dce-3fbb5a1d6f98",
+      "title": "Creative Technologist / Senior Software Engineer - Generative AI",
+      "company": "Intangible",
+      "location": "Canada; United States",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-10-01T10:57:22+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-04T14:08:18+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/925e3fd3-5677-4b64-9dce-3fbb5a1d6f98"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Canada; United States"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/1624f260-2556-4ef6-9946-dd942fbcb376",
+      "title": "Creative Technologist Graduate",
+      "company": "PMG",
+      "location": "Dallas, TX, USA",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-09-03T20:27:22+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-20T22:24:27+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/1624f260-2556-4ef6-9946-dd942fbcb376"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Dallas, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/3cc13fc1-5b07-40a4-a1e0-86e17d4e2523",
+      "title": "Creative Technologist - Creative Technology - US GTM",
+      "company": "Kyndryl",
+      "location": "Frisco, TX, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 143640.0,
+        "maximum": 273000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-24T22:45:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-23T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/3cc13fc1-5b07-40a4-a1e0-86e17d4e2523"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Frisco, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/a87c5933-d383-4808-b86f-27266a8a6365",
+      "title": "UX Creative Technologist Senior Associate - Design & AI Strategy",
+      "company": "JP Morgan Chase",
+      "location": "Chicago, IL, USA; Brooklyn, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 104500.0,
+        "maximum": 170000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-27T10:06:50+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-31T22:09:38+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/a87c5933-d383-4808-b86f-27266a8a6365"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Chicago, IL, USA; Brooklyn, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/5f495bae-3ec7-411c-9cfa-f2e9c3cc5a17",
+      "title": "Creative Technologist - Media & Entertainment",
+      "company": "Adobe",
+      "location": "Los Angeles, CA, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 156300.0,
+        "maximum": 226350.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-10-02T13:36:31+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-25T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/5f495bae-3ec7-411c-9cfa-f2e9c3cc5a17"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Los Angeles, CA, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/2025c866-d457-4071-8979-e144393ef1ff",
+      "title": "Creative Technologist - Wharton Generative AI Labs",
+      "company": "The Wharton School",
+      "location": "Philadelphia, PA, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 84961.0,
+        "maximum": 105000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-04T04:42:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-11T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/2025c866-d457-4071-8979-e144393ef1ff"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Philadelphia, PA, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/5040ad5e-2a68-4f5c-bbc0-ff933c5add7f",
+      "title": "Creative Technologist - Media & Entertainment",
+      "company": "Adobe",
+      "location": "San Francisco, CA, USA; Los Angeles, CA, USA; San Jose, CA, USA; New York, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 120700.0,
+        "maximum": 226350.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-10-02T13:12:08+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-05-16T14:23:22+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "mid",
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/5040ad5e-2a68-4f5c-bbc0-ff933c5add7f"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Francisco, CA, USA; Los Angeles, CA, USA; San Jose, CA, USA; New York, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/f6255304-670f-40eb-920b-e660ea10a00e",
+      "title": "Creative Production Technologist",
+      "company": "S&P Global",
+      "location": "New York, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 59212.0,
+        "maximum": 92566.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-17T22:12:02+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-17T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/f6255304-670f-40eb-920b-e660ea10a00e"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "New York, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/cc045564-6069-47d4-b61d-cde84b385df7",
+      "title": "Creative Product Technologist - Data & AI",
+      "company": "The.Team",
+      "location": "Washington, USA; Kansas, USA; Pennsylvania, USA; Oregon, USA; Delaware, USA; Iowa, USA; California, USA; Vermont, USA; Wyoming, USA; Connecticut, USA; Los Angeles, CA, USA; Texas, USA; Montana, USA; Florida, USA; Raleigh, NC, USA; Nevada, USA; Georgia, USA; Arizona, USA; Mississippi, USA; Tennessee, USA; Virginia, USA; Arkansas, USA; Minnesota, USA; Colorado, USA; Nebraska, USA; Utah, USA; Kentucky, USA; New York, NY, USA; Maryland, USA; Wisconsin, USA; Maine, USA; Massachusetts, USA; Oklahoma, USA; Missouri, USA; Ohio, USA; Indiana, USA; Louisiana, USA; Michigan, USA; Illinois, USA; Alabama, USA; Idaho, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 80000.0,
+        "maximum": 120000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-03T20:03:20+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-24T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/cc045564-6069-47d4-b61d-cde84b385df7"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Washington, USA; Kansas, USA; Pennsylvania, USA; Oregon, USA; Delaware, USA; Iowa, USA; California, USA; Vermont, USA; Wyoming, USA; Connecticut, USA; Los Angeles, CA, USA; Texas, USA; Montana, USA; Florida, USA; Raleigh, NC, USA; Nevada, USA; Georgia, USA; Arizona, USA; Mississippi, USA; Tennessee, USA; Virginia, USA; Arkansas, USA; Minnesota, USA; Colorado, USA; Nebraska, USA; Utah, USA; Kentucky, USA; New York, NY, USA; Maryland, USA; Wisconsin, USA; Maine, USA; Massachusetts, USA; Oklahoma, USA; Missouri, USA; Ohio, USA; Indiana, USA; Louisiana, USA; Michigan, USA; Illinois, USA; Alabama, USA; Idaho, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/6ea3f0d4-54eb-4f8a-a1fa-d6c87982e2b3",
+      "title": "Design Technologist 2 - Creative X",
+      "company": "Amazon",
+      "location": "Seattle, WA, USA; Santa Monica, CA, USA; New York, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 131800.0,
+        "maximum": 196100.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-04T00:39:22+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-06T22:13:21+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/6ea3f0d4-54eb-4f8a-a1fa-d6c87982e2b3"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Seattle, WA, USA; Santa Monica, CA, USA; New York, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/08ad3895-6e00-4c1e-9da6-5e20d8e97b36",
+      "title": "Senior Creative - AI Technologist",
+      "company": "Boston Consulting Group",
+      "location": "Bengaluru, Karnataka, India",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-10-02T09:24:58+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-07-22T14:14:06+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/08ad3895-6e00-4c1e-9da6-5e20d8e97b36"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Bengaluru, Karnataka, India"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/84254109-57d6-4b22-aeaa-7d857b4c15c9",
+      "title": "Creative Technologist-Agentic",
+      "company": "JP Morgan Chase",
+      "location": "Plano, TX, USA; Columbus, OH, USA; Brooklyn, NY, USA",
+      "source": "simplify",
+      "salary": {
+        "minimum": 142500.0,
+        "maximum": 205000.0,
+        "currency": "USD",
+        "period": null,
+        "text": null
+      },
+      "last_updated": "2026-09-27T10:12:06+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-11T22:10:47+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/84254109-57d6-4b22-aeaa-7d857b4c15c9"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Plano, TX, USA; Columbus, OH, USA; Brooklyn, NY, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/c8948a18-f498-42c3-930c-903a58545fc7",
+      "title": "Creative Technologist/AI Specialist",
+      "company": "Inspired Thinking Group",
+      "location": "Remote; Remote in UK; Birmingham, UK",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-09-04T04:42:01+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-08T01:17:02+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [
+        "mid",
+        "senior"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/c8948a18-f498-42c3-930c-903a58545fc7"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; Remote in UK; Birmingham, UK"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://simplify.jobs/p/0e27dd5c-b7f6-4a85-806a-a20d3c7c3931",
+      "title": "Testing Technologist 1",
+      "company": "Creative Testing Solutions",
+      "location": "San Marcos, TX, USA",
+      "source": "simplify",
+      "salary": null,
+      "last_updated": "2026-10-02T09:54:02+00:00",
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-09-22T00:00:00+00:00",
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [
+        "mid"
+      ],
+      "sources": [
+        {
+          "site": "simplify",
+          "url": "https://simplify.jobs/p/0e27dd5c-b7f6-4a85-806a-a20d3c7c3931"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Marcos, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://builtin.com/job/sr-software-engineer-generative-models/9553266",
+      "title": "Creative Technologist / Sr Software Engineer - Generative AI",
+      "company": "Intangible",
+      "location": "Remote; CAN; USA",
+      "source": "builtin",
+      "salary": null,
+      "last_updated": null,
+      "internship": false,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-08-14",
+      "valid_through": "2026-09-13T00:16:06+00:00",
+      "employment_type": "full_time",
+      "workplace": "remote",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "builtin",
+          "url": "https://builtin.com/job/sr-software-engineer-generative-models/9553266"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote; CAN",
+          "Remote; USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {
+        "location": "array_field"
+      },
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/625793c1a3649ee23b7af05c97050841-creative-technologist",
+      "title": "Creative Technologist",
+      "company": "Creative Technologist Seen 8d ago Kyndryl",
+      "location": "Dallas (USDALFRI) Frisco AI HUB",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 88680.0,
+        "maximum": 168480.0,
+        "currency": null,
+        "period": null,
+        "text": "$88,680 - $168,480"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/625793c1a3649ee23b7af05c97050841-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Dallas (USDALFRI) Frisco AI HUB"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/992d171995b5c60d1a72440d4f4fcc82-early-career-consult-program-associate-creative-technologist",
+      "title": "Early Career Consult Program - Associate Creative Technologist",
+      "company": "Early Career Consult Program - Associate Creative Technologist Seen 8d ago Kyndryl",
+      "location": "Dallas (USDALFRI) Frisco AI HUB",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 63360.0,
+        "maximum": 114120.0,
+        "currency": null,
+        "period": null,
+        "text": "$63,360 - $114,120"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/992d171995b5c60d1a72440d4f4fcc82-early-career-consult-program-associate-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Dallas (USDALFRI) Frisco AI HUB"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/ce248bcd9752e05876685229a7605e45-creative-technologist-ai-studio",
+      "title": "Creative Technologist-AI Studio",
+      "company": "Creative Technologist-AI Studio Seen 20d ago Adobe",
+      "location": "2 Locations",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/ce248bcd9752e05876685229a7605e45-creative-technologist-ai-studio"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "2 Locations"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/cd64ab27a11e2f8451911da54348fbb7-creative-technologist",
+      "title": "Creative Technologist",
+      "company": "Creative Technologist Seen 22d ago Kyndryl",
+      "location": "USDALFRI - Dallas Frisco AI HUB (FRI)",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 88680.0,
+        "maximum": 168480.0,
+        "currency": null,
+        "period": null,
+        "text": "$88,680 - $168,480"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/cd64ab27a11e2f8451911da54348fbb7-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "USDALFRI - Dallas Frisco AI HUB (FRI)"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/6e35d360b980f52390338913431582e1-senior-lead-creative-technologist",
+      "title": "Senior Lead Creative Technologist",
+      "company": "Senior Lead Creative Technologist Seen 31d ago Kyndryl",
+      "location": "FL, USA",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 115080.0,
+        "maximum": 218520.0,
+        "currency": null,
+        "period": null,
+        "text": "$115,080to$218,520"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/6e35d360b980f52390338913431582e1-senior-lead-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "FL, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/89b75c112532947d6e32c38cf6727343-creative-technologist",
+      "title": "Creative Technologist",
+      "company": "Creative Technologist Seen 32d ago Microsoft",
+      "location": "United States, Washington, Redmond",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 119800.0,
+        "maximum": 234700.0,
+        "currency": null,
+        "period": "year",
+        "text": "$119,800 - $234,700 per year"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/89b75c112532947d6e32c38cf6727343-creative-technologist"
+        },
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/afe40ad33b32af66a75fcd00fa4f1704-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "United States, Washington, Redmond"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/782065a6a2a60c8b2bda0e5ae49d2e6c-creative-technologist-media-entertainment",
+      "title": "Creative Technologist, Media & Entertainment",
+      "company": "Creative Technologist, Media & Entertainment Seen 38d ago Adobe",
+      "location": "Los Angeles",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 120700.0,
+        "maximum": 226350.0,
+        "currency": null,
+        "period": "year",
+        "text": "$120,700 - $226,350 annually"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/782065a6a2a60c8b2bda0e5ae49d2e6c-creative-technologist-media-entertainment"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Los Angeles"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/6ad75bb3f3541a4d6b9cb7271a19a504-lead-forward-deployed-creative-technologist",
+      "title": "Lead Forward Deployed Creative Technologist",
+      "company": "Lead Forward Deployed Creative Technologist Seen 46d ago Adobe",
+      "location": "New York",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 159200.0,
+        "maximum": 301600.0,
+        "currency": null,
+        "period": "year",
+        "text": "$159,200 - $301,600 annually"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/6ad75bb3f3541a4d6b9cb7271a19a504-lead-forward-deployed-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "New York"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/23aa83420928bc721dc3948e77ecf498-early-career-consult-program-associate-creative-technologist",
+      "title": "Early Career Consult Program - Associate Creative Technologist",
+      "company": "Early Career Consult Program - Associate Creative Technologist Seen 50d ago Kyndryl",
+      "location": "USDALFRI - Dallas Frisco AI HUB (FRI)",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 63360.0,
+        "maximum": 114120.0,
+        "currency": null,
+        "period": null,
+        "text": "$63,360 - $114,120"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/23aa83420928bc721dc3948e77ecf498-early-career-consult-program-associate-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "USDALFRI - Dallas Frisco AI HUB (FRI)"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/201206d6dd87f052f68592bf923a93ec-creative-technologist-agentic",
+      "title": "Creative Technologist- Agentic",
+      "company": "Creative Technologist- Agentic Seen 52d ago JPMorgan Chase",
+      "location": "Plano, TX, United States",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 142500.0,
+        "maximum": 205000.0,
+        "currency": null,
+        "period": null,
+        "text": "$142,500.00-$205,000.00"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/201206d6dd87f052f68592bf923a93ec-creative-technologist-agentic"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Plano, TX, United States"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/ff22de1cdb36efa5c3308e9bfb4ff1e3-firefly-foundry-creative-technologist-media-entertainment",
+      "title": "Firefly Foundry Creative Technologist, Media & Entertainment",
+      "company": "Firefly Foundry Creative Technologist, Media & Entertainment Seen 58d ago Adobe",
+      "location": "San Jose, California, United States of America",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 120700.0,
+        "maximum": 226350.0,
+        "currency": null,
+        "period": "year",
+        "text": "$120,700 - $226,350 annually"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/ff22de1cdb36efa5c3308e9bfb4ff1e3-firefly-foundry-creative-technologist-media-entertainment"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Jose, California, United States of America"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/8181c5ee07818caed8a2bd207f1024d9-firefly-foundry-creative-technologist-brands-agency",
+      "title": "Firefly Foundry Creative Technologist, Brands & Agency",
+      "company": "Firefly Foundry Creative Technologist, Brands & Agency Seen 58d ago Adobe",
+      "location": "New York, New York, United States of America",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 120700.0,
+        "maximum": 226350.0,
+        "currency": null,
+        "period": "year",
+        "text": "$120,700 - $226,350 annually"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/8181c5ee07818caed8a2bd207f1024d9-firefly-foundry-creative-technologist-brands-agency"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "New York, New York, United States of America"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/a296e6f2f4dd285243b3cca242fe9a66-senior-lead-creative-technologist",
+      "title": "Senior Lead Creative Technologist",
+      "company": "Senior Lead Creative Technologist Seen 76d ago Kyndryl",
+      "location": "Dallas, TX, USA",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 115080.0,
+        "maximum": 218520.0,
+        "currency": null,
+        "period": null,
+        "text": "$115,080 - $218,520"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/a296e6f2f4dd285243b3cca242fe9a66-senior-lead-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Dallas, TX, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/d8ae6af42bd722119404bb1fee9e059f-ux-creative-technologist-vice-president",
+      "title": "UX Creative Technologist, Vice President",
+      "company": "UX Creative Technologist, Vice President Seen 80d ago JPMorgan Chase",
+      "location": "Brooklyn, NY, United States",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/d8ae6af42bd722119404bb1fee9e059f-ux-creative-technologist-vice-president"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Brooklyn, NY, United States"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/5ef158c8591335689960d955c5ae2fb3-creative-technologist-brand-ai",
+      "title": "Creative Technologist, Brand AI",
+      "company": "Creative Technologist, Brand AI Seen 81d ago Snowflake",
+      "location": "Menlo Park, California, United States",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 148000.0,
+        "maximum": 194200.0,
+        "currency": null,
+        "period": null,
+        "text": "$148K - $194.2K"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/5ef158c8591335689960d955c5ae2fb3-creative-technologist-brand-ai"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Menlo Park, California, United States"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/2df501456b9a9145ff94101c3b1ed11e-creative-technologist-ai-studio",
+      "title": "Creative Technologist-AI Studio",
+      "company": "Creative Technologist-AI Studio Seen 99d ago Adobe",
+      "location": "Bangalore",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/2df501456b9a9145ff94101c3b1ed11e-creative-technologist-ai-studio"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Bangalore"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/95f502c9b3db1761f9faf7f2044db71b-manager-forward-deployed-creative-technologist",
+      "title": "Manager, Forward Deployed Creative Technologist",
+      "company": "Manager, Forward Deployed Creative Technologist Seen 114d ago Adobe",
+      "location": "San Jose, California, United States of America",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 147900.0,
+        "maximum": 293250.0,
+        "currency": null,
+        "period": "year",
+        "text": "$147,900 - $293,250 annually"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/95f502c9b3db1761f9faf7f2044db71b-manager-forward-deployed-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Jose, California, United States of America"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/e58ee6585a5459548ef4d878f9e0de7b-creative-technologist-ai-studio",
+      "title": "Creative Technologist-AI Studio",
+      "company": "Creative Technologist-AI Studio Seen 120d ago Adobe",
+      "location": "Bangalore, Karnātaka, India",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/e58ee6585a5459548ef4d878f9e0de7b-creative-technologist-ai-studio"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Bangalore, Karnātaka, India"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/bdc1483ab9d9faf515e03144101fcd60-creative-technologist-brand-designer-labs",
+      "title": "Creative Technologist Brand Designer, Labs",
+      "company": "Creative Technologist Brand Designer, Labs Seen 122d ago Stripe",
+      "location": "New York, US",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 175200.0,
+        "maximum": 262800.0,
+        "currency": null,
+        "period": null,
+        "text": "$175,200 - $262,800"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/bdc1483ab9d9faf515e03144101fcd60-creative-technologist-brand-designer-labs"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "New York, US"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/ae4236474a25a6013ecb057c23806bb3-principal-forward-deployed-creative-technologist",
+      "title": "Principal Forward Deployed Creative Technologist",
+      "company": "Principal Forward Deployed Creative Technologist Seen 123d ago Adobe",
+      "location": "San Jose, California, United States of America",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 190200.0,
+        "maximum": 360500.0,
+        "currency": null,
+        "period": "year",
+        "text": "$190,200 - $360,500 annually"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/ae4236474a25a6013ecb057c23806bb3-principal-forward-deployed-creative-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Jose, California, United States of America"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://www.linkedin.com/posts/evangelina-pinciroli_recruiting-hiring-creativetechnologist-activity-7509621367051505664-2OiC",
+      "title": "Lead Creative Technologist (Contract)",
+      "company": "Ghost Sherpa",
+      "location": "Remote",
+      "source": "backchannel",
+      "salary": null,
+      "last_updated": "2026-09-26T15:01:11.123+00:00",
+      "internship": null,
+      "note": "Apply via recruiter (DM/link)",
+      "sponsors_visa": null,
+      "posted_at": "2026-09-26T14:34:15.923+00:00",
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": "remote",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "backchannel",
+          "url": "https://www.linkedin.com/posts/evangelina-pinciroli_recruiting-hiring-creativetechnologist-activity-7509621367051505664-2OiC"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://news.ycombinator.com/item?id=49927917",
+      "title": "Creative Technologist",
+      "company": "Workday",
+      "location": "AI Creative Technologist",
+      "source": "hn",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-10-01T22:42:18Z",
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": null,
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "hn",
+          "url": "https://news.ycombinator.com/item?id=49927917"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "AI Creative Technologist"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://news.ycombinator.com/item?id=49929563",
+      "title": "Creative Technologist",
+      "company": "Stoke Space",
+      "location": "ONSITE in Seattle, WA / Moses Lake, WA / Cape Canaveral, FL",
+      "source": "hn",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-10-02T03:31:38Z",
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": null,
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "hn",
+          "url": "https://news.ycombinator.com/item?id=49929563"
+        }
+      ],
+      "application_urls": [
+        "https://www.stokespace.com",
+        "https://www.stokespace.com/open-roles?department=Software"
+      ],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "ONSITE in Seattle, WA / Moses Lake, WA / Cape Canaveral, FL"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://news.ycombinator.com/item?id=49924087",
+      "title": "Creative Technologist",
+      "company": "Baton",
+      "location": "San Francisco, CA (Hybrid)",
+      "source": "hn",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-10-01T16:50:08Z",
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": null,
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "hn",
+          "url": "https://news.ycombinator.com/item?id=49924087"
+        }
+      ],
+      "application_urls": [
+        "https://grnh.se/55wbfa9g7us",
+        "https://grnh.se/8pm4cytg7us",
+        "https://grnh.se/wb558ncz7us",
+        "https://grnh.se/537yusl37us",
+        "https://grnh.se/770pgzv17us",
+        "https://grnh.se/zjf8nfrb7us"
+      ],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Francisco, CA (Hybrid)"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    }
+  ],
+  "summary": {
+    "started_at": "2026-10-02T22:05:37.326224+00:00",
+    "finished_at": "2026-10-02T22:07:43.652553+00:00",
+    "sites": {
+      "wellfound": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 404"
+        ]
+      },
+      "indeed": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 403"
+        ]
+      },
+      "linkedin": {
+        "status": "error",
+        "discovered": 60,
+        "advertised_total": null,
+        "detail_visits": 12,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": true,
+        "errors": [
+          "Site timed out after 120s"
+        ]
+      },
+      "simplify": {
+        "status": "ok",
+        "discovered": 36,
+        "advertised_total": 36,
+        "detail_visits": 0,
+        "fetched": 36,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 36,
+        "matched_with_duplicates": 36,
+        "pages": 1,
+        "limited": false,
+        "errors": []
+      },
+      "hiringcafe": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 403"
+        ]
+      },
+      "jobright": {
+        "status": "error",
+        "discovered": 20,
+        "advertised_total": null,
+        "detail_visits": 5,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": true,
+        "errors": [
+          "Site timed out after 120s"
+        ]
+      },
+      "levels": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": false,
+        "errors": [
+          "No recognizable listings or explicit empty result; the page may require sign-in or its layout changed"
+        ]
+      },
+      "trueup": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 403"
+        ]
+      },
+      "yc": {
+        "status": "error",
+        "discovered": 20,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": true,
+        "errors": [
+          "Site timed out after 120s"
+        ]
+      },
+      "builtin": {
+        "status": "ok",
+        "discovered": 1,
+        "advertised_total": null,
+        "detail_visits": 1,
+        "fetched": 1,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 1,
+        "matched_with_duplicates": 1,
+        "pages": 2,
+        "limited": false,
+        "errors": []
+      },
+      "theirstack": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "THEIRSTACK_API_KEY is required; no API credits were consumed"
+        ]
+      },
+      "jobshifu": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "JobShifu search requires an authenticated account"
+        ]
+      },
+      "mygreenhouse": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "MyGreenhouse discovery requires an authenticated account"
+        ]
+      },
+      "rolesweep": {
+        "status": "partial",
+        "discovered": 21,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 21,
+        "unavailable": 0,
+        "deduplicated": 1,
+        "returned": 20,
+        "matched_with_duplicates": 20,
+        "pages": 1,
+        "limited": false,
+        "errors": [
+          "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://rolesweep.com/jobs?keyword=creative+technologist&page=2\", waiting until \"domcontentloaded\"\n"
+        ]
+      },
+      "google": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "Google Jobs returned an automated-traffic verification challenge"
+        ]
+      },
+      "ventureloop": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": 0,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": false,
+        "errors": [
+          "Anonymous search exposes counts and previews; company and application URLs require an account"
+        ]
+      },
+      "remote_rocketship": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 404"
+        ]
+      },
+      "backchannel": {
+        "status": "ok",
+        "discovered": 1,
+        "advertised_total": 1,
+        "detail_visits": 0,
+        "fetched": 1,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 1,
+        "matched_with_duplicates": 1,
+        "pages": 1,
+        "limited": false,
+        "errors": []
+      },
+      "hn": {
+        "status": "ok",
+        "discovered": 3,
+        "advertised_total": 3,
+        "detail_visits": 0,
+        "fetched": 3,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 3,
+        "matched_with_duplicates": 3,
+        "pages": 1,
+        "limited": false,
+        "errors": []
+      },
+      "a16z": {
+        "status": "error",
+        "discovered": 25,
+        "advertised_total": 90,
+        "detail_visits": 16,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": true,
+        "errors": [
+          "Site timed out after 120s"
+        ]
+      }
+    },
+    "fetched": 62,
+    "discovered": 187,
+    "deduplicated": 1,
+    "unique_before_filtering": 61,
+    "filtered_out": 0,
+    "returned": 61,
+    "filter_reasons": {},
+    "partial": true,
+    "stage": "search"
+  }
+}

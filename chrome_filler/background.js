@@ -43,24 +43,28 @@ async function pageScanStatus(tabId, scan = false) {
     withDeadline(chrome.tabs.sendMessage(tabId, { type: scan ? 'WC_RESCAN' : 'WC_GET_PAGE_STATUS' }, { frameId }))));
   const statuses = replies.filter(result => result.status === 'fulfilled' && result.value && typeof result.value === 'object').map(result => result.value);
   if (!statuses.length) throw new Error('Reload the page before scanning it.');
+  const topReply = replies[frameIds.indexOf(0)];
+  const topStatus = topReply?.status === 'fulfilled' ? topReply.value : null;
   const result = {
     count: statuses.reduce((total, status) => total + (Number.isFinite(status.count) ? Math.max(0, status.count) : 0), 0),
     scanned: statuses.some(status => status.scanned === true),
     enabled: statuses.some(status => status.enabled !== false),
+    refill: topStatus?.refill === true,
+    filling: topStatus?.filling === true,
   };
   if (scan) await withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_TAB_SCAN_COUNT', count: result.count }, { frameId: 0 })).catch(() => {});
   return result;
 }
 
-async function startFillAllTab(tabId) {
+async function startFillAllTab(tabId, refill = false) {
   if (batchRuns.has(tabId)) return { error: 'FILL is already running.' };
   const frames = await chrome.webNavigation.getAllFrames({ tabId });
   if (!/^https?:\/\//i.test(frames?.find(frame => frame.frameId === 0)?.url || '')) throw new Error('Open an application page first.');
-  const run = { id: crypto.randomUUID(), controller: new AbortController(), frames: [] };
+  const run = { id: crypto.randomUUID(), controller: new AbortController(), frames: [], refill };
   batchRuns.set(tabId, run);
   try {
     const replies = await Promise.allSettled(frames.map(frame =>
-      withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_BATCH_SNAPSHOT' }, { frameId: frame.frameId }), 15000)));
+      withDeadline(chrome.tabs.sendMessage(tabId, { type: 'WC_BATCH_SNAPSHOT', refill }, { frameId: frame.frameId }), 15000)));
     if (run.controller.signal.aborted) return { error: 'FILL stopped.' };
     const snapshots = frames.flatMap((frame, index) => {
       const reply = replies[index];
@@ -71,10 +75,10 @@ async function startFillAllTab(tabId) {
     const targets = snapshots.flatMap(snapshot => (snapshot.targets || []).map(target => ({ id: `${snapshot.frameId}:${target.id}`, field: target.field })));
     const uploadTargets = snapshots.flatMap(snapshot => (snapshot.uploadTargets || []).map(target => ({ id: `${snapshot.frameId}:${target.id}`, field: target.field })));
     const unavailableChoices = snapshots.reduce((total, snapshot) => total + (snapshot.unavailableChoices || 0), 0);
-    if (!targets.length && !uploadTargets.length) return { error: unavailableChoices ? 'Some dropdowns need a manual choice because their options are unavailable until you search or interact with them.' : 'There are no empty scanned fields to fill.' };
+    if (!targets.length && !uploadTargets.length) return { error: unavailableChoices ? 'Some dropdowns need a manual choice because their options are unavailable until you search or interact with them.' : refill ? 'There are no previously filled or empty scanned fields to refill.' : 'There are no empty scanned fields to fill.' };
     const page = combinePageSnapshots(top.page, snapshots.filter(snapshot => snapshot !== top).map(snapshot => snapshot.page), frames.length - snapshots.length);
     const begun = await Promise.allSettled(snapshots.map(snapshot => withDeadline(chrome.tabs.sendMessage(tabId, {
-      type: 'WC_BATCH_BEGIN', runId: run.id, count: targets.length + uploadTargets.length, targets: snapshot.targets || [], uploadTargets: snapshot.uploadTargets || [],
+      type: 'WC_BATCH_BEGIN', runId: run.id, refill, count: targets.length + uploadTargets.length, targets: snapshot.targets || [], uploadTargets: snapshot.uploadTargets || [],
     }, { frameId: snapshot.frameId }))));
     run.frames = snapshots.filter((_, index) => begun[index].status === 'fulfilled' && begun[index].value?.started).map(snapshot => snapshot.frameId);
     if (run.controller.signal.aborted) return { error: 'FILL stopped.' };
@@ -140,7 +144,7 @@ async function runBatch(tabId, run, targets, uploadTargets, page) {
     if (invalidTargets) fieldError += `${fieldError ? ' ' : ''}${invalidTargets} scanned field${invalidTargets === 1 ? '' : 's'} had invalid choices or unsupported details and ${invalidTargets === 1 ? 'was' : 'were'} skipped.`;
     if (!validTargets.length) return;
     await logEvent('generation.started', { requestId: run.id, model: settings.model, fieldType: 'batch', pageChars: page.text.length, frameCount: page.frameCount, unavailableFrames: page.unavailableFrames });
-    const answers = await generateBatchAnswers({ settings, targets: validTargets, page, signal: run.controller.signal });
+    const answers = await generateBatchAnswers({ settings, targets: validTargets, page, refill: run.refill, signal: run.controller.signal });
     if (run.controller.signal.aborted) throw new AgentError('CANCELLED', 'FILL stopped.');
     for (const frameId of run.frames) {
       if (run.controller.signal.aborted) break;
@@ -239,7 +243,7 @@ chrome.runtime.onConnect.addListener(port => {
         if (operation.controller.signal.aborted) throw new AgentError('CANCELLED', 'Generation cancelled.');
         await logEvent('generation.started', { requestId: operation.requestId, model: settings.model, fieldType: message.field.type, pageChars: page.text.length, frameCount: page.frameCount, unavailableFrames: page.unavailableFrames });
         if (operation.controller.signal.aborted) throw new AgentError('CANCELLED', 'Generation cancelled.');
-        const answer = await generateAnswer({ settings, field: message.field, page, signal: operation.controller.signal, onState: state => {
+        const answer = await generateAnswer({ settings, field: message.field, page, rewritePrompt: message.rewritePrompt, signal: operation.controller.signal, onState: state => {
           operation.state = state;
           if (!post(port, { type: 'state', state, requestId: operation.requestId })) operation.controller.abort();
         } });
@@ -269,7 +273,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'WC_FILL_ALL_TAB' && (trustedContent(sender) || trustedExtensionPage(sender))) {
     const tabId = trustedContent(sender) ? sender.tab.id : message.tabId;
     if (!Number.isInteger(tabId) || tabId < 0) { sendResponse({ error: 'No website tab is available.' }); return false; }
-    void startFillAllTab(tabId).then(sendResponse).catch(error => sendResponse({ error: error.message }));
+    void startFillAllTab(tabId, message.refill === true).then(sendResponse).catch(error => sendResponse({ error: error.message }));
     return true;
   }
   if (message.type === 'WC_STOP_ALL_TAB' && trustedContent(sender)) {

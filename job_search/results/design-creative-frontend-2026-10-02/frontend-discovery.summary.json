@@ -1,0 +1,329 @@
+{
+  "started_at": "2026-10-02T22:10:54.228507+00:00",
+  "finished_at": "2026-10-02T22:13:03.756978+00:00",
+  "sites": {
+    "wellfound": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "HTTP 404"
+      ]
+    },
+    "indeed": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "HTTP 403"
+      ]
+    },
+    "linkedin": {
+      "status": "error",
+      "discovered": 60,
+      "advertised_total": null,
+      "detail_visits": 19,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "simplify": {
+      "status": "ok",
+      "discovered": 3000,
+      "advertised_total": 3532,
+      "detail_visits": 0,
+      "fetched": 3000,
+      "unavailable": 0,
+      "deduplicated": 198,
+      "returned": 2802,
+      "matched_with_duplicates": 2802,
+      "pages": 12,
+      "limited": true,
+      "errors": []
+    },
+    "hiringcafe": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "HTTP 403"
+      ]
+    },
+    "jobright": {
+      "status": "error",
+      "discovered": 20,
+      "advertised_total": null,
+      "detail_visits": 16,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "levels": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": false,
+      "errors": [
+        "No recognizable listings or explicit empty result; the page may require sign-in or its layout changed"
+      ]
+    },
+    "trueup": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "HTTP 403"
+      ]
+    },
+    "yc": {
+      "status": "error",
+      "discovered": 20,
+      "advertised_total": null,
+      "detail_visits": 12,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "builtin": {
+      "status": "error",
+      "discovered": 25,
+      "advertised_total": null,
+      "detail_visits": 16,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "theirstack": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "THEIRSTACK_API_KEY is required; no API credits were consumed"
+      ]
+    },
+    "jobshifu": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "JobShifu search requires an authenticated account"
+      ]
+    },
+    "mygreenhouse": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "MyGreenhouse discovery requires an authenticated account"
+      ]
+    },
+    "rolesweep": {
+      "status": "partial",
+      "discovered": 84,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 84,
+      "unavailable": 0,
+      "deduplicated": 1,
+      "returned": 83,
+      "matched_with_duplicates": 83,
+      "pages": 4,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "google": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "Google Jobs returned an automated-traffic verification challenge"
+      ]
+    },
+    "ventureloop": {
+      "status": "blocked",
+      "discovered": 5,
+      "advertised_total": 391,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Anonymous search exposes counts and previews; company and application URLs require an account"
+      ]
+    },
+    "remote_rocketship": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "HTTP 404"
+      ]
+    },
+    "backchannel": {
+      "status": "ok",
+      "discovered": 22,
+      "advertised_total": 22,
+      "detail_visits": 0,
+      "fetched": 22,
+      "unavailable": 0,
+      "deduplicated": 3,
+      "returned": 19,
+      "matched_with_duplicates": 19,
+      "pages": 1,
+      "limited": false,
+      "errors": []
+    },
+    "hn": {
+      "status": "ok",
+      "discovered": 10,
+      "advertised_total": 10,
+      "detail_visits": 0,
+      "fetched": 10,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 10,
+      "matched_with_duplicates": 10,
+      "pages": 1,
+      "limited": false,
+      "errors": []
+    },
+    "a16z": {
+      "status": "error",
+      "discovered": 25,
+      "advertised_total": 73,
+      "detail_visits": 20,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    }
+  },
+  "fetched": 3116,
+  "discovered": 3271,
+  "deduplicated": 202,
+  "unique_before_filtering": 2914,
+  "filtered_out": 0,
+  "returned": 2914,
+  "filter_reasons": {},
+  "partial": true,
+  "stage": "search"
+}

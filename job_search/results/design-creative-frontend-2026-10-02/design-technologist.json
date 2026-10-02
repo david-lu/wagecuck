@@ -1,0 +1,923 @@
+{
+  "criteria": {
+    "job_title": "design technologist",
+    "locations": [],
+    "seniority": [],
+    "min_salary": null,
+    "salary_currency": "USD",
+    "salary_period": "year",
+    "internship": null,
+    "sponsors_visa": null,
+    "workplace": null,
+    "employment_type": null,
+    "keywords": [],
+    "exclude_keywords": [],
+    "exclude_companies": [],
+    "posted_within_days": null,
+    "include_unknown": false,
+    "sites": [
+      "wellfound",
+      "indeed",
+      "linkedin",
+      "simplify",
+      "hiringcafe",
+      "jobright",
+      "levels",
+      "trueup",
+      "yc",
+      "builtin",
+      "theirstack",
+      "jobshifu",
+      "mygreenhouse",
+      "rolesweep",
+      "google",
+      "ventureloop",
+      "remote_rocketship",
+      "backchannel",
+      "hn",
+      "a16z"
+    ],
+    "max_pages": 12,
+    "max_per_site": 3000,
+    "timeout_seconds": 30,
+    "site_timeout_seconds": 120.0,
+    "show_browser": false,
+    "browser_channel": null,
+    "validation_timeout_seconds": 60,
+    "validation_workers": 8,
+    "detail_workers": 4,
+    "array_fields": {},
+    "array_filters": {},
+    "field_filters": {},
+    "salary_basis": "maximum"
+  },
+  "broad_query": "design technologist",
+  "jobs": [
+    {
+      "url": "https://rolesweep.com/jobs/390ea0cc6ef40eed1823356a5e28774f-design-technologist",
+      "title": "Design Technologist",
+      "company": "Design Technologist Seen 8d ago Imbue",
+      "location": "San Francisco, CA",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 150000.0,
+        "maximum": 275000.0,
+        "currency": null,
+        "period": null,
+        "text": "$150,000 - $275,000"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/390ea0cc6ef40eed1823356a5e28774f-design-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Francisco, CA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/d170f2a94d73ec0ef1eb9badf198c68b-senior-design-technologist-design-systems-cnn",
+      "title": "Senior Design Technologist, Design Systems, CNN",
+      "company": "Senior Design Technologist, Design Systems, CNN Seen 10d ago Warner Bros. Discovery",
+      "location": "3 Locations",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 98280.0,
+        "maximum": 182520.0,
+        "currency": null,
+        "period": null,
+        "text": "$98,280.00 - $182,520.00"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/d170f2a94d73ec0ef1eb9badf198c68b-senior-design-technologist-design-systems-cnn"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "3 Locations"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/3829ab7b02c82df57316715431608d18-senior-design-technologist",
+      "title": "Senior Design Technologist",
+      "company": "Senior Design Technologist Seen 23d ago WSP",
+      "location": "Kamloops, BC, Canada",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 89800.0,
+        "maximum": 118900.0,
+        "currency": null,
+        "period": null,
+        "text": "$89,800 - $118,900"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/3829ab7b02c82df57316715431608d18-senior-design-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Kamloops, BC, Canada"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/cffed450a8f665b7af9078b31a5bb827-design-technologist-ii-amz9802831",
+      "title": "Design Technologist II - AMZ9802831",
+      "company": "Design Technologist II - AMZ9802831 Seen 38d ago Amazon",
+      "location": "New York, New York, USA",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 145000.0,
+        "maximum": null,
+        "currency": null,
+        "period": "year",
+        "text": "$145,000/year"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/cffed450a8f665b7af9078b31a5bb827-design-technologist-ii-amz9802831"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "New York, New York, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/47ef538c8acbffe1a857a024eff6fbf2-design-technologist-ii-prime-video",
+      "title": "Design Technologist II, Prime Video",
+      "company": "Design Technologist II, Prime Video Seen 44d ago Amazon",
+      "location": "Culver City, California, USA",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/47ef538c8acbffe1a857a024eff6fbf2-design-technologist-ii-prime-video"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Culver City, California, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/fbb17187ac0f191b92487a6e4380c288-senior-design-technologist-creative-x",
+      "title": "Senior Design Technologist, Creative X",
+      "company": "Senior Design Technologist, Creative X Seen 44d ago Amazon",
+      "location": "New York, New York, USA",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/fbb17187ac0f191b92487a6e4380c288-senior-design-technologist-creative-x"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "New York, New York, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/444b13bd38c7ba7d271df5893f3d64ca-sr-design-technologist-websites-amazon-ads-marketing",
+      "title": "Sr. Design Technologist, Websites, Amazon Ads Marketing",
+      "company": "Sr. Design Technologist, Websites, Amazon Ads Marketing Seen 49d ago Amazon",
+      "location": "Seattle, Washington, USA",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/444b13bd38c7ba7d271df5893f3d64ca-sr-design-technologist-websites-amazon-ads-marketing"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Seattle, Washington, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/d06a1402eaae3a0b5984c3ecd57a5a49-lead-design-technologist",
+      "title": "Lead Design Technologist",
+      "company": "Lead Design Technologist Seen 53d ago Atlassian",
+      "location": "San Francisco, United States, San Francisco, California 94104 United States | Mountain View, United States or Remote, Mountain View, California 94041 United States | Americas | Seattle, United States, Seattle, Washington  United States",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 192600.0,
+        "maximum": 251450.0,
+        "currency": null,
+        "period": null,
+        "text": "$192,600 - $251,450"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/d06a1402eaae3a0b5984c3ecd57a5a49-lead-design-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Francisco, United States, San Francisco, California 94104 United States | Mountain View, United States or Remote, Mountain View, California 94041 United States | Americas | Seattle, United States, Seattle, Washington  United States"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/682db2ff91bc9747caae1a49493d416d-design-technologist-ii-creative-x",
+      "title": "Design Technologist II, Creative X",
+      "company": "Design Technologist II, Creative X Seen 57d ago Amazon",
+      "location": "Seattle, Washington, USA",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/682db2ff91bc9747caae1a49493d416d-design-technologist-ii-creative-x"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Seattle, Washington, USA"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/aaf4323574464ce2a6c4375f715a5d27-emc-design-technologist",
+      "title": "EMC Design Technologist",
+      "company": "EMC Design Technologist Seen 57d ago Apple",
+      "location": "Austin, United States of America",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/aaf4323574464ce2a6c4375f715a5d27-emc-design-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Austin, United States of America"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/3321132cf0833667d73c4d28cd51cdd9-sr-principal-engineer-design-technologist",
+      "title": "Sr. Principal Engineer, Design Technologist",
+      "company": "Sr. Principal Engineer, Design Technologist Seen 76d ago GlobalFoundries",
+      "location": "USA - Texas - Richardson",
+      "source": "rolesweep",
+      "salary": {
+        "minimum": 171000.0,
+        "maximum": 296000.0,
+        "currency": null,
+        "period": null,
+        "text": "$171,000.00 - $296,000.00"
+      },
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "onsite",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/3321132cf0833667d73c4d28cd51cdd9-sr-principal-engineer-design-technologist"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "USA - Texas - Richardson"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://rolesweep.com/jobs/d716d7b23f3bccd0478aef589fc63601-senior-design-technologist-ai-tooling",
+      "title": "Senior Design Technologist, AI Tooling",
+      "company": "Senior Design Technologist, AI Tooling Seen 99d ago Grammarly",
+      "location": "Hub - San Francisco",
+      "source": "rolesweep",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": null,
+      "valid_through": null,
+      "employment_type": "full_time",
+      "workplace": "hybrid",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "rolesweep",
+          "url": "https://rolesweep.com/jobs/d716d7b23f3bccd0478aef589fc63601-senior-design-technologist-ai-tooling"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Hub - San Francisco"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://www.linkedin.com/posts/remote-work-wfh_design-technologist-at-elation-health-activity-7509622936283090946-1WXD",
+      "title": "Design Technologist",
+      "company": "Elation Health",
+      "location": "Remote",
+      "source": "backchannel",
+      "salary": null,
+      "last_updated": "2026-09-26T15:02:11.397+00:00",
+      "internship": null,
+      "note": "Apply via recruiter (link)",
+      "sponsors_visa": null,
+      "posted_at": "2026-09-26T14:40:30.057+00:00",
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": "remote",
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "backchannel",
+          "url": "https://www.linkedin.com/posts/remote-work-wfh_design-technologist-at-elation-health-activity-7509622936283090946-1WXD"
+        }
+      ],
+      "application_urls": [],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Remote"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://news.ycombinator.com/item?id=49929352",
+      "title": "Design Technologist",
+      "company": "Stellar Science",
+      "location": "Unknown",
+      "source": "hn",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-10-02T02:41:47Z",
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": null,
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "hn",
+          "url": "https://news.ycombinator.com/item?id=49929352"
+        }
+      ],
+      "application_urls": [
+        "https://www.stellarscience.com",
+        "https://www.stellarscience.com/careers/"
+      ],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "Unknown"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    },
+    {
+      "url": "https://news.ycombinator.com/item?id=49924087",
+      "title": "Design Technologist",
+      "company": "Baton",
+      "location": "San Francisco, CA (Hybrid)",
+      "source": "hn",
+      "salary": null,
+      "last_updated": null,
+      "internship": null,
+      "note": null,
+      "sponsors_visa": null,
+      "posted_at": "2026-10-01T16:50:08Z",
+      "valid_through": null,
+      "employment_type": null,
+      "workplace": null,
+      "experience_levels": [],
+      "sources": [
+        {
+          "site": "hn",
+          "url": "https://news.ycombinator.com/item?id=49924087"
+        }
+      ],
+      "application_urls": [
+        "https://grnh.se/55wbfa9g7us",
+        "https://grnh.se/8pm4cytg7us",
+        "https://grnh.se/wb558ncz7us",
+        "https://grnh.se/537yusl37us",
+        "https://grnh.se/770pgzv17us",
+        "https://grnh.se/zjf8nfrb7us"
+      ],
+      "employer_urls": [],
+      "array_fields": {
+        "location": [
+          "San Francisco, CA (Hybrid)"
+        ]
+      },
+      "fields": {},
+      "field_types": {},
+      "enrichment": {}
+    }
+  ],
+  "summary": {
+    "started_at": "2026-10-02T22:07:58.180473+00:00",
+    "finished_at": "2026-10-02T22:10:09.865063+00:00",
+    "sites": {
+      "wellfound": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 404"
+        ]
+      },
+      "indeed": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 403"
+        ]
+      },
+      "linkedin": {
+        "status": "error",
+        "discovered": 60,
+        "advertised_total": null,
+        "detail_visits": 14,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": true,
+        "errors": [
+          "Site timed out after 120s"
+        ]
+      },
+      "simplify": {
+        "status": "error",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "Search failed (TimeoutError)"
+        ]
+      },
+      "hiringcafe": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 403"
+        ]
+      },
+      "jobright": {
+        "status": "error",
+        "discovered": 20,
+        "advertised_total": null,
+        "detail_visits": 8,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": true,
+        "errors": [
+          "Site timed out after 120s"
+        ]
+      },
+      "levels": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": false,
+        "errors": [
+          "No recognizable listings or explicit empty result; the page may require sign-in or its layout changed"
+        ]
+      },
+      "trueup": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 403"
+        ]
+      },
+      "yc": {
+        "status": "error",
+        "discovered": 20,
+        "advertised_total": null,
+        "detail_visits": 5,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": true,
+        "errors": [
+          "Site timed out after 120s"
+        ]
+      },
+      "builtin": {
+        "status": "ok",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": false,
+        "errors": []
+      },
+      "theirstack": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "THEIRSTACK_API_KEY is required; no API credits were consumed"
+        ]
+      },
+      "jobshifu": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "JobShifu search requires an authenticated account"
+        ]
+      },
+      "mygreenhouse": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "MyGreenhouse discovery requires an authenticated account"
+        ]
+      },
+      "rolesweep": {
+        "status": "ok",
+        "discovered": 12,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 12,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 12,
+        "matched_with_duplicates": 12,
+        "pages": 2,
+        "limited": false,
+        "errors": []
+      },
+      "google": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "Google Jobs returned an automated-traffic verification challenge"
+        ]
+      },
+      "ventureloop": {
+        "status": "ok",
+        "discovered": 3,
+        "advertised_total": 3,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": false,
+        "errors": []
+      },
+      "remote_rocketship": {
+        "status": "blocked",
+        "discovered": 0,
+        "advertised_total": null,
+        "detail_visits": 0,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 0,
+        "limited": false,
+        "errors": [
+          "HTTP 404"
+        ]
+      },
+      "backchannel": {
+        "status": "ok",
+        "discovered": 1,
+        "advertised_total": 1,
+        "detail_visits": 0,
+        "fetched": 1,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 1,
+        "matched_with_duplicates": 1,
+        "pages": 1,
+        "limited": false,
+        "errors": []
+      },
+      "hn": {
+        "status": "ok",
+        "discovered": 2,
+        "advertised_total": 2,
+        "detail_visits": 0,
+        "fetched": 2,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 2,
+        "matched_with_duplicates": 2,
+        "pages": 1,
+        "limited": false,
+        "errors": []
+      },
+      "a16z": {
+        "status": "error",
+        "discovered": 25,
+        "advertised_total": 635,
+        "detail_visits": 12,
+        "fetched": 0,
+        "unavailable": 0,
+        "deduplicated": 0,
+        "returned": 0,
+        "matched_with_duplicates": 0,
+        "pages": 1,
+        "limited": true,
+        "errors": [
+          "Site timed out after 120s"
+        ]
+      }
+    },
+    "fetched": 15,
+    "discovered": 143,
+    "deduplicated": 0,
+    "unique_before_filtering": 15,
+    "filtered_out": 0,
+    "returned": 15,
+    "filter_reasons": {},
+    "partial": true,
+    "stage": "search"
+  }
+}

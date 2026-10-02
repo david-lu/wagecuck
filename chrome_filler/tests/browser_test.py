@@ -215,7 +215,7 @@ class BrowserSuite:
         scope = frame or self.page
         button = scope.get_by_role("button", name=re.compile(r"Fill with AI: .*" + re.escape(label), re.I), include_hidden=True)
         if button.count() == 1:
-            button.evaluate("node => node.dispatchEvent(new PointerEvent('pointerenter'))")
+            button.evaluate("node => node.parentElement.dispatchEvent(new PointerEvent('pointerenter'))")
         return button
 
     def open_panel(self):
@@ -232,13 +232,13 @@ class BrowserSuite:
     def resume_button(self, label):
         button = self.page.get_by_role("button", name=f"Attach resume: {label}", exact=True, include_hidden=True)
         if button.count() == 1:
-            button.evaluate("node => node.dispatchEvent(new PointerEvent('pointerenter'))")
+            button.evaluate("node => node.parentElement.dispatchEvent(new PointerEvent('pointerenter'))")
         return button
 
     def undo_button(self, label):
         button = self.page.get_by_role("button", name=f"Undo generated answer: {label}", exact=True, include_hidden=True)
         if button.count() == 1:
-            button.evaluate("node => node.dispatchEvent(new PointerEvent('pointerenter'))")
+            button.evaluate("node => node.parentElement.dispatchEvent(new PointerEvent('pointerenter'))")
         return button
 
     @staticmethod
@@ -467,6 +467,44 @@ class BrowserSuite:
         expect(self.page.locator("#name")).to_have_value("Jordan Example")
         expect(self.page.locator("#wc-ai-root .wc-toast")).to_have_count(0)
 
+    def rewrite_with_prompt(self):
+        self.seed()
+        self.mock(delay=25, answer="A shorter answer focused on system design.")
+        self.page.goto(self.url)
+        self.scan_page()
+        self.page.locator("#motivation").fill("The current answer talks about accessibility and operations tools.")
+        prompt = self.page.get_by_role("button", name=re.compile("Rewrite with prompt: .*Why do you want to work here", re.I), include_hidden=True)
+        rewrite = self.page.get_by_role("button", name=re.compile("Fill with AI: .*Why do you want to work here", re.I), include_hidden=True)
+        assert prompt.evaluate("node => node.parentElement?.classList.contains('wc-field-actions') && !!node.parentElement.querySelector('.wc-fill-button')")
+        self.page.locator("#motivation").hover()
+        expect(prompt).to_be_visible()
+        expect(rewrite).to_be_visible()
+        prompt.click()
+        editor = self.page.locator("#wc-ai-root .wc-prompt-editor")
+        expect(editor).to_be_visible()
+        assert editor.evaluate("node => node.parentElement?.classList.contains('wc-field-actions') && !!node.parentElement.querySelector('.wc-fill-button')")
+        expect(rewrite).to_be_hidden()
+        expect(prompt).to_be_hidden()
+        editor.locator("textarea").fill("Make it shorter and focus on the engineering tradeoff.")
+        editor.get_by_role("button", name="Back").click()
+        expect(editor).to_be_hidden()
+        expect(prompt).to_be_visible()
+        expect(rewrite).to_be_visible()
+        assert self.worker.evaluate("self.__qaRequests") == []
+        prompt.click()
+        expect(editor.locator("textarea")).to_have_value("Make it shorter and focus on the engineering tradeoff.")
+        editor.get_by_role("button", name="Submit").click()
+        expect(self.page.locator("#motivation")).to_have_value("A shorter answer focused on system design.")
+        requests = self.worker.evaluate("self.__qaRequests")
+        assert len(requests) == 1
+        payload = requests[0]["payload"]
+        context = json.loads(next(part["text"] for part in payload["input"][0]["content"] if part["type"] == "input_text"))
+        assert context["targetField"]["currentValue"] == "The current answer talks about accessibility and operations tools."
+        assert context["userWritingPrompt"] == "Make it shorter and focus on the engineering tradeoff."
+        assert context["userProfile"] == SETTINGS["profile"]
+        assert context["resumeText"] == SETTINGS["resumeText"]
+        assert self.page.evaluate("window.fixtureSubmitted") is False
+
     def scan_state_and_frame_only_fill_all(self):
         self.seed()
         self.mock(delay=25)
@@ -586,12 +624,26 @@ class BrowserSuite:
             assert any(field["label"] == "I agree to the application terms" and field["type"] == "checkbox" for field in context["targetFields"])
             assert all("answer" in entry["properties"] for entry in schema["properties"].values())
             expect(do_all).to_be_enabled()
-            self.page.locator("#motivation").fill("")
-            do_all.click()
-            expect(self.page.locator("#motivation")).to_have_value(ANSWER)
+            expect(do_all).to_have_text("REFILL")
+            expect(popup.locator("#do-all-button")).to_contain_text("REFILL")
+            self.worker.evaluate("self.__qaAnswer = 'A fresh example for this application.'")
+            popup.locator("#do-all-button").click()
+            expect(popup.locator("#page-status")).to_contain_text("REFILL started")
+            expect(self.page.locator("#motivation")).to_have_value("A fresh example for this application.")
+            expect(self.page.locator("#name")).to_have_value("My own name")
             assert len(self.worker.evaluate("self.__qaRequests")) == 2
-            second_context = json.loads(next(part["text"] for part in self.worker.evaluate("self.__qaRequests")[1]["payload"]["input"][0]["content"] if part["type"] == "input_text"))
-            assert all(field["type"] != "checkbox_group" for field in second_context["targetFields"]), "An answered checkbox group should be preserved by FILL ALL"
+            second_request = self.worker.evaluate("self.__qaRequests")[1]["payload"]
+            second_context = json.loads(next(part["text"] for part in second_request["input"][0]["content"] if part["type"] == "input_text"))
+            assert any(field["type"] == "checkbox_group" for field in second_context["targetFields"]), "REFILL should revisit choices filled by FILL"
+            assert any(field["label"] == "Why do you want to work here at Northstar Robotics?" and field["currentValue"] == ANSWER for field in second_context["targetFields"])
+            assert all(field["label"] != "Full name" for field in second_context["targetFields"]), "REFILL must preserve values present before FILL"
+            assert "This is a REFILL run" in second_request["instructions"]
+            self.worker.evaluate("self.__qaDelay = 500; self.__qaAnswer = 'Another regenerated answer.'")
+            do_all.click()
+            expect(do_all).to_have_text("Stop")
+            self.page.locator("#motivation").fill("My edit while refilling")
+            expect(do_all).to_have_text("REFILL")
+            expect(self.page.locator("#motivation")).to_have_value("My edit while refilling")
             assert self.page.evaluate("window.fixtureSubmitted") is False
         finally:
             popup.close()
@@ -672,6 +724,29 @@ class BrowserSuite:
         assert [event["type"] for event in self.page.evaluate("window.fixtureEvents.filter(event => event.id === 'greenhouse-resume')")] == ["input", "change"]
         assert self.page.locator("#greenhouse-cover").evaluate("node => node.files.length") == 0
         assert self.page.evaluate("window.fixtureSubmitted") is False
+
+    def rippling_accented_resume_upload(self):
+        self.seed(apiKey="", resumeFile=self.saved_resume())
+        url = self.url.replace("application.html", "rippling_upload.html")
+        self.page.goto(url)
+        self.scan_page()
+        upload = self.page.locator('#wc-ai-root .wc-fill-button[aria-label^="Attach resume:"]')
+        expect(upload).to_have_count(1)
+        assert upload.get_attribute("aria-label") == "Attach resume: Résumé"
+        self.page.locator('[data-testid="resume"]').hover()
+        expect(upload).to_be_visible()
+        upload.click()
+        self.page.wait_for_function("() => document.querySelector('#rippling-resume').files.length === 1")
+        assert self.page.locator("#rippling-resume").evaluate("node => node.files[0]?.name") == "resume.pdf"
+        assert self.page.locator("#rippling-cover").evaluate("node => node.files.length") == 0
+        assert [event["type"] for event in self.page.evaluate("window.fixtureEvents.filter(event => event.id === 'rippling-resume')")] == ["input", "change"]
+        self.page.goto(url)
+        self.scan_page()
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        self.page.wait_for_function("() => document.querySelector('#rippling-resume').files.length === 1")
+        assert self.page.locator("#rippling-cover").evaluate("node => node.files.length") == 0
+        assert self.page.evaluate("window.fixtureSubmitted") is False
+        assert not self.worker.evaluate("self.__qaRequests")
 
     def agreement_dropdowns_fill_and_certifications_stay_manual(self):
         self.seed()
@@ -1196,6 +1271,22 @@ class BrowserSuite:
         assert yes_no["label"] == "Are you authorized to work in this location?"
         assert [option["value"] for option in yes_no["options"]] == ["Yes", "No"]
 
+    def ashby_text_fields_commit_on_blur(self):
+        self.seed()
+        self.mock(delay=25, answer="Canada")
+        url = self.url.replace("application.html", "ashby_blur.html")
+        self.page.goto(url)
+        self.scan_page()
+        self.button("What country are you based in?").click()
+        expect(self.page.locator("#country")).to_have_value("Canada")
+        expect(self.page.locator("#country")).to_have_attribute("data-committed", "Canada")
+        self.page.goto(url)
+        self.mock(delay=25, answer="Canada")
+        self.scan_page()
+        self.page.locator("#wc-ai-root .wc-do-all-button").click()
+        expect(self.page.locator("#country")).to_have_attribute("data-committed", "Canada")
+        expect(self.page.locator("#motivation")).to_have_attribute("data-committed", "Canada")
+
     def arize_paragraph_radio_questions(self):
         self.seed()
         self.page.goto(self.url.replace("application.html", "arize_controls.html"))
@@ -1709,7 +1800,7 @@ def main():
             worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker", timeout=15000)
             suite = BrowserSuite(context, worker, url)
             names = (
-                "manual_scan_gate", "panel_minimizes_at_bottom_left", "panel_stays_above_page_overlays", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "scan_state_and_frame_only_fill_all", "popup_scan_updates_page_count", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "agreement_dropdowns_fill_and_certifications_stay_manual", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "same_name_required_checkbox_group", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "ashby_live_markup_and_control_panel", "arize_paragraph_radio_questions", "lever_radio_group",
+                "manual_scan_gate", "panel_minimizes_at_bottom_left", "panel_stays_above_page_overlays", "direct_highlight_restores_page_styles", "hover_only_field_buttons", "rewrite_with_prompt", "scan_state_and_frame_only_fill_all", "popup_scan_updates_page_count", "do_all_fills_scanned_empty_fields", "fill_all_skips_invalid_choice_and_continues", "react_select_dropdown", "resume_upload_single_and_all", "greenhouse_resume_upload", "rippling_accented_resume_upload", "agreement_dropdowns_fill_and_certifications_stay_manual", "resume_upload_without_pdf", "resume_upload_without_api_key", "do_all_stop_cancels_every_frame", "do_all_preserves_edits_during_generation", "discovery", "root_scroll_container_buttons", "synthetic_click_does_not_generate", "placement_and_scroll", "paragraph_and_context", "email_and_contenteditable", "checkbox_and_dropdown_choices", "same_name_required_checkbox_group", "choice_groups_from_saved_runs", "mixed_choice_and_controlled_combobox", "ashby_live_markup_and_control_panel", "ashby_text_fields_commit_on_blur", "arize_paragraph_radio_questions", "lever_radio_group",
                 "cancellation", "edit_conflicts", "error_and_retry", "framed_fields", "frame_navigation_requires_new_scan",
                 "shadow_and_numeric_validation", "disable_during_generation", "workable_nested_yes_no_radios", "lever_large_country_dropdown", "ashby_demographic_radios_update_page_state",
                 "disabled_and_missing_key", "popup_settings", "popup_validation_and_resume",

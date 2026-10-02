@@ -52,6 +52,18 @@ test('prompt preserves the entire page, profile, resume, question and writing pr
   assert.ok(!JSON.stringify(request).includes(settings.apiKey));
 });
 
+test('field-specific rewrite instructions include the current draft and profile context', () => {
+  const request = buildRequest({ settings, field: { ...field, currentValue: 'Existing answer.' }, page, rewritePrompt: 'Make it shorter and focus on system design.' });
+  const context = JSON.parse(request.input[0].content[0].text);
+  assert.equal(context.targetField.currentValue, 'Existing answer.');
+  assert.equal(context.userWritingPrompt, 'Make it shorter and focus on system design.');
+  assert.equal(context.userProfile, settings.profile);
+  assert.equal(context.resumeText, settings.resumeText);
+  assert.match(request.instructions, /Rewrite targetField.currentValue/);
+  assert.throws(() => buildRequest({ settings, field, page, rewritePrompt: ' '.repeat(3) }), error => error.code === 'INVALID_REQUEST');
+  assert.throws(() => buildRequest({ settings, field, page, rewritePrompt: 'x'.repeat(1001) }), error => error.code === 'INVALID_REQUEST');
+});
+
 test('FILL ALL builds required, field-specific schema and uses one API call', async () => {
   const targets = [
     { id: '0:wc-field-1', field: { ...field, label: 'Why this role?', maxLength: 120 } },

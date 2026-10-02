@@ -1,0 +1,331 @@
+{
+  "started_at": "2026-10-02T22:08:02.088247+00:00",
+  "finished_at": "2026-10-02T22:10:09.879630+00:00",
+  "sites": {
+    "wellfound": {
+      "status": "error",
+      "discovered": 42,
+      "advertised_total": null,
+      "detail_visits": 12,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "indeed": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "HTTP 403"
+      ]
+    },
+    "linkedin": {
+      "status": "error",
+      "discovered": 60,
+      "advertised_total": null,
+      "detail_visits": 12,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "simplify": {
+      "status": "error",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "Search failed (TimeoutError)"
+      ]
+    },
+    "hiringcafe": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "HTTP 403"
+      ]
+    },
+    "jobright": {
+      "status": "error",
+      "discovered": 16,
+      "advertised_total": null,
+      "detail_visits": 3,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "levels": {
+      "status": "partial",
+      "discovered": 18,
+      "advertised_total": 97384,
+      "detail_visits": 0,
+      "fetched": 18,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 18,
+      "matched_with_duplicates": 18,
+      "pages": 2,
+      "limited": true,
+      "errors": [
+        "Pagination stopped before the source's advertised total"
+      ]
+    },
+    "trueup": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "HTTP 403"
+      ]
+    },
+    "yc": {
+      "status": "error",
+      "discovered": 20,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "builtin": {
+      "status": "error",
+      "discovered": 25,
+      "advertised_total": null,
+      "detail_visits": 4,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "theirstack": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "THEIRSTACK_API_KEY is required; no API credits were consumed"
+      ]
+    },
+    "jobshifu": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "JobShifu search requires an authenticated account"
+      ]
+    },
+    "mygreenhouse": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "MyGreenhouse discovery requires an authenticated account"
+      ]
+    },
+    "rolesweep": {
+      "status": "partial",
+      "discovered": 96,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 96,
+      "unavailable": 0,
+      "deduplicated": 1,
+      "returned": 95,
+      "matched_with_duplicates": 95,
+      "pages": 4,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    },
+    "google": {
+      "status": "blocked",
+      "discovered": 0,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 0,
+      "limited": false,
+      "errors": [
+        "Google Jobs returned an automated-traffic verification challenge"
+      ]
+    },
+    "ventureloop": {
+      "status": "blocked",
+      "discovered": 5,
+      "advertised_total": 6950,
+      "detail_visits": 0,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Anonymous search exposes counts and previews; company and application URLs require an account"
+      ]
+    },
+    "remote_rocketship": {
+      "status": "partial",
+      "discovered": 20,
+      "advertised_total": null,
+      "detail_visits": 0,
+      "fetched": 20,
+      "unavailable": 0,
+      "deduplicated": 1,
+      "returned": 19,
+      "matched_with_duplicates": 19,
+      "pages": 1,
+      "limited": false,
+      "errors": [
+        "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.remoterocketship.com/jobs/software-engineer/?page=2&sort=DateAdded&jobTitle=software+engineer\", waiting until \"domcontentloaded\"\n"
+      ]
+    },
+    "backchannel": {
+      "status": "ok",
+      "discovered": 84,
+      "advertised_total": 84,
+      "detail_visits": 0,
+      "fetched": 84,
+      "unavailable": 0,
+      "deduplicated": 13,
+      "returned": 71,
+      "matched_with_duplicates": 71,
+      "pages": 1,
+      "limited": false,
+      "errors": []
+    },
+    "hn": {
+      "status": "ok",
+      "discovered": 82,
+      "advertised_total": 82,
+      "detail_visits": 0,
+      "fetched": 82,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 82,
+      "matched_with_duplicates": 82,
+      "pages": 1,
+      "limited": false,
+      "errors": []
+    },
+    "a16z": {
+      "status": "error",
+      "discovered": 25,
+      "advertised_total": 6763,
+      "detail_visits": 8,
+      "fetched": 0,
+      "unavailable": 0,
+      "deduplicated": 0,
+      "returned": 0,
+      "matched_with_duplicates": 0,
+      "pages": 1,
+      "limited": true,
+      "errors": [
+        "Site timed out after 120s"
+      ]
+    }
+  },
+  "fetched": 300,
+  "discovered": 493,
+  "deduplicated": 15,
+  "unique_before_filtering": 285,
+  "filtered_out": 0,
+  "returned": 285,
+  "filter_reasons": {},
+  "partial": true,
+  "stage": "search"
+}

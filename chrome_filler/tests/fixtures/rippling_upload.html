@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>Rippling upload fixture</title></head>
+  <body>
+    <form id="application">
+      <div id="field-4-label">Résumé*</div>
+      <div id="file-input-6">Total 0 file selected</div>
+      <label data-testid="resume" aria-labelledby="file-input-6 field-4-label" style="display:block;width:440px;height:90px;border:1px solid #ccc">
+        <input id="rippling-resume" title="" accept=".doc,.docx,.pdf" data-testid="input-resume" type="file" style="display:none">
+        <button type="button">Drop or select (.doc / .docx / .pdf)</button>
+      </label>
+      <div id="field-51-label">Cover letter</div>
+      <div id="file-input-53">Total 0 file selected</div>
+      <label data-testid="cover_letter" aria-labelledby="file-input-53 field-51-label" style="display:block;width:440px;height:90px;border:1px solid #ccc">
+        <input id="rippling-cover" title="" accept=".doc,.docx,.pdf" data-testid="input-cover_letter" type="file" style="display:none">
+        <button type="button">Drop or select (.doc / .docx / .pdf)</button>
+      </label>
+      <button type="submit">Submit application</button>
+    </form>
+    <script>
+      window.fixtureEvents = [];
+      window.fixtureSubmitted = false;
+      ['input', 'change'].forEach(type => document.addEventListener(type, event => window.fixtureEvents.push({ type, id: event.target.id })));
+      document.getElementById('application').addEventListener('submit', event => { event.preventDefault(); window.fixtureSubmitted = true; });
+    </script>
+  </body>
+</html>

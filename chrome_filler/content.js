@@ -5,6 +5,7 @@
 
   const SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"], [role="combobox"], [role="radio"], [role="checkbox"], [role="switch"]';
   const TYPES = new Set(['text', 'email', 'tel', 'url', 'number', 'checkbox', 'radio', 'file']);
+  const RESUME_TERM = /(?:^|[^\p{L}\p{N}])(?:resume|r[eé]sum[eé]|curriculum vitae|cv)(?=$|[^\p{L}\p{N}])/iu;
   const records = new Map();
   const highlighted = new Map();
   const HIGHLIGHT_STYLES = [['outline', '2px solid #8b5cf6'], ['outline-offset', '2px']];
@@ -30,10 +31,14 @@
   let localScannedCount = 0;
   let batch = null;
   let batchPending = false;
+  let hasCompletedFill = false;
   let batchFeedback = '';
   let batchFeedbackTimer;
   let scanPending = false;
   let buttonLayer;
+  let promptEditor;
+  let promptInput;
+  let promptRecord = null;
   let toastLayer;
   let panelCheckFrame;
 
@@ -82,12 +87,25 @@
     .wc-panel-progress::before { content:''; display:block; width:38%; height:100%; border-radius:inherit; background:#e31800; }
     .wc-control-panel[data-busy=true] .wc-panel-progress::before { animation:wc-progress 1.3s ease-in-out infinite alternate; }
     @keyframes wc-progress { from { transform:translateX(-100%); } to { transform:translateX(265%); } }
-    .wc-fill-button { all:initial; box-sizing:border-box; position:fixed; display:flex; align-items:center; justify-content:center; gap:5px; width:80px; height:28px; padding:0 8px; border:1px solid #d7a500; border-radius:8px; background:#ffdc4d; color:#571808; box-shadow:0 1px 4px #4b170824; font:700 12px/1 system-ui,sans-serif; cursor:pointer; opacity:0; visibility:hidden; pointer-events:none; transition:background .15s,box-shadow .15s,opacity .12s; }
-    .wc-fill-button[data-show=true] { opacity:1; visibility:visible; pointer-events:auto; }
+    .wc-field-actions { position:fixed; display:flex; align-items:center; gap:3px; padding:3px; border:1px solid #bd210f; border-radius:10px; background:#fff9e7; box-shadow:0 4px 12px #4b170824; opacity:0; visibility:hidden; pointer-events:none; transition:opacity .12s; }
+    .wc-field-actions[data-show=true] { opacity:1; visibility:visible; pointer-events:auto; }
+    .wc-field-actions[data-editor-open=true] { width:min(320px,calc(100vw - 16px)); }
+    .wc-field-actions[data-editor-open=true] > .wc-fill-button,.wc-field-actions[data-editor-open=true] > .wc-prompt-button { display:none!important; }
+    .wc-fill-button { all:initial; box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:5px; width:80px; height:28px; padding:0 8px; border:1px solid #d7a500; border-radius:6px; background:#ffdc4d; color:#571808; font:700 12px/1 system-ui,sans-serif; cursor:pointer; visibility:inherit; pointer-events:inherit; transition:background .15s,box-shadow .15s; }
     .wc-fill-button:hover { background:#ffcc00; box-shadow:0 2px 7px #4b170838; }
     .wc-fill-button:focus-visible, .wc-toast button:focus-visible { outline:3px solid #e31800; outline-offset:2px; }
     .wc-fill-button[aria-busy=true] { background:#fff2b3; border-color:#d7a500; }
     .wc-fill-button[data-compact=true] .wc-button-status { display:none; }
+    .wc-prompt-button { all:initial; box-sizing:border-box; display:flex; align-items:center; justify-content:center; width:132px; height:28px; padding:0 7px; border:1px solid #bd210f; border-radius:6px; background:#fff9e7; color:#9b2a15; font:700 11px/1 system-ui,sans-serif; cursor:pointer; visibility:inherit; pointer-events:inherit; }
+    .wc-prompt-button:hover { background:#ffe6a3; }
+    .wc-prompt-editor { display:grid; gap:8px; width:100%; padding:8px; color:#4b1708; font:12px/1.4 system-ui,sans-serif; pointer-events:auto; }
+    .wc-prompt-editor[hidden] { display:none; }
+    .wc-prompt-editor label { font-weight:700; }
+    .wc-prompt-editor textarea { box-sizing:border-box; width:100%; min-height:72px; max-height:180px; padding:8px; border:1px solid #d7a500; border-radius:7px; background:#fff; color:#2c211a; font:12px/1.4 system-ui,sans-serif; resize:vertical; }
+    .wc-prompt-actions { display:flex; justify-content:flex-end; gap:7px; }
+    .wc-prompt-actions button { padding:7px 10px; border:1px solid #bd210f; border-radius:7px; background:#fff; color:#9b2a15; font-size:12px; font-weight:700; }
+    .wc-prompt-actions button[type=submit] { background:#e31800; color:#fff; }
+    .wc-prompt-editor button:focus-visible,.wc-prompt-editor textarea:focus-visible,.wc-prompt-button:focus-visible { outline:3px solid #ffcc00; outline-offset:2px; }
     .wc-spinner { width:11px; height:11px; border:2px solid #ebba8a; border-top-color:#e31800; border-radius:50%; animation:wc-spin .8s linear infinite; }
     @keyframes wc-spin { to { transform:rotate(360deg); } }
     .wc-toasts { position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:10px; width:min(360px,calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; padding:3px; pointer-events:none; }
@@ -103,6 +121,7 @@
 
   function ensureUI() {
     if (host?.isConnected) return;
+    if (promptRecord) closePromptEditor();
     host = document.createElement('div');
     host.id = 'wc-ai-root';
     // Keep control styles inside a shadow root to avoid ordinary page CSS collisions.
@@ -112,6 +131,39 @@
     const style = document.createElement('style');
     style.textContent = css;
     buttonLayer = document.createElement('div');
+    promptEditor = document.createElement('form');
+    promptEditor.className = 'wc-prompt-editor';
+    promptEditor.hidden = true;
+    const promptLabel = document.createElement('label');
+    promptLabel.htmlFor = 'wc-rewrite-prompt';
+    promptLabel.textContent = 'How should this answer be written?';
+    promptInput = document.createElement('textarea');
+    promptInput.id = 'wc-rewrite-prompt';
+    promptInput.maxLength = 1000;
+    promptInput.required = true;
+    promptInput.placeholder = 'Make it shorter and focus on the system design decision.';
+    const promptActions = document.createElement('div');
+    promptActions.className = 'wc-prompt-actions';
+    const backButton = document.createElement('button');
+    backButton.type = 'button';
+    backButton.textContent = 'Back';
+    backButton.addEventListener('click', () => closePromptEditor(true));
+    const submitButton = document.createElement('button');
+    submitButton.type = 'submit';
+    submitButton.textContent = 'Submit';
+    promptActions.append(backButton, submitButton);
+    promptEditor.append(promptLabel, promptInput, promptActions);
+    promptEditor.addEventListener('submit', event => {
+      event.preventDefault();
+      if (!event.isTrusted || !promptRecord) return;
+      const record = promptRecord;
+      const rewritePrompt = promptInput.value.trim();
+      if (!rewritePrompt) return;
+      record.promptDraft = rewritePrompt;
+      closePromptEditor();
+      void startFill(record, rewritePrompt);
+    });
+    promptEditor.addEventListener('keydown', event => { if (event.key === 'Escape') closePromptEditor(true); });
     controlPanel = document.createElement('div');
     controlPanel.className = 'wc-control-panel';
     controlPanel.dataset.collapsed = String(panelCollapsed);
@@ -203,7 +255,7 @@
       }
       batchPending = true;
       updateBatchButton();
-      chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB' }).then(result => {
+      chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB', refill: hasCompletedFill }).then(result => {
         if (result?.error) toast('Couldn’t start FILL', result.error, 'error', [], 12000);
       }).catch(() => toast('Couldn’t start FILL', 'Reload the page and try again.', 'error', [], 12000)).finally(() => {
         batchPending = false;
@@ -219,12 +271,13 @@
     panelProgress.className = 'wc-panel-progress';
     panelProgress.setAttribute('aria-hidden', 'true');
     controlPanel.append(panelHead, panelActions, panelProgress);
+    buttonLayer.append(promptEditor);
     shadow.append(style, buttonLayer);
     if (window.top === window) shadow.append(controlPanel);
     shadow.append(toastLayer);
     document.documentElement.append(host);
     showPanelOnTop();
-    for (const record of records.values()) buttonLayer.append(record.button);
+    for (const record of records.values()) buttonLayer.append(record.actions);
   }
 
   function showPanelOnTop() {
@@ -274,10 +327,12 @@
 
   function updateBatchButton() {
     if (!doAllButton) return;
+    const action = hasCompletedFill ? 'REFILL' : 'FILL';
     doAllButton.disabled = scanPending || batchPending || Boolean(batch?.stopping);
     doAllButton.setAttribute('aria-busy', String(batchPending || Boolean(batch)));
-    doAllButton.textContent = batch ? batch.stopping ? 'Stopping…' : 'Stop' : batchPending ? 'Starting…' : batchFeedback || 'FILL';
-    doAllButton.setAttribute('aria-label', batch ? batch.stopping ? 'Stopping FILL' : 'Stop filling' : batchPending ? 'Starting FILL' : 'FILL: fill empty scanned fields');
+    doAllButton.textContent = batch ? batch.stopping ? 'Stopping…' : 'Stop' : batchPending ? 'Starting…' : batchFeedback || action;
+    doAllButton.setAttribute('aria-label', batch ? batch.stopping ? 'Stopping fill' : 'Stop filling' : batchPending ? `Starting ${action}` : hasCompletedFill ? 'REFILL: regenerate previously filled answers and fill empty fields' : 'FILL: fill empty scanned fields');
+    doAllButton.title = hasCompletedFill ? 'Regenerate answers written by FILL and fill remaining empty fields; never submit' : 'Fill empty scanned fields and attach your saved PDF resume; never submit';
     updatePanelStatus();
   }
 
@@ -498,7 +553,39 @@
   }
 
   function updateHoverButton(record) {
-    record.button.dataset.show = String(Boolean(record.hoverTarget || record.hoverButton || record.active || record.starting || record.visual.matches(':hover, :focus-within') || record.button.matches(':focus')));
+    const show = Boolean(record.hoverTarget || record.hoverActions || record.active || record.starting || record.visual.matches(':hover, :focus-within') || record.actions.matches(':hover, :focus-within'));
+    record.actions.dataset.show = String(show || promptRecord === record);
+  }
+
+  function promptable(field) {
+    return ['text', 'textarea', 'contenteditable'].includes(fieldInfo(field).type);
+  }
+
+  function closePromptEditor(restoreFocus = false) {
+    if (!promptRecord) return;
+    const record = promptRecord;
+    record.promptDraft = promptInput.value;
+    promptRecord = null;
+    promptEditor.hidden = true;
+    record.actions.dataset.editorOpen = 'false';
+    buttonLayer.append(promptEditor);
+    if (restoreFocus && record.promptButton.isConnected) record.hoverActions = true;
+    updateHoverButton(record);
+    if (restoreFocus && record.promptButton.isConnected) record.promptButton.focus();
+  }
+
+  function openPromptEditor(record) {
+    if (!scanned || !isEligible(record.field) || !promptable(record.field) || record.active || record.starting) return;
+    closePromptEditor();
+    promptRecord = record;
+    promptInput.value = record.promptDraft || '';
+    promptEditor.setAttribute('aria-label', `Rewrite with prompt: ${labelFor(record.field)}`);
+    record.actions.append(promptEditor);
+    record.actions.dataset.editorOpen = 'true';
+    promptEditor.hidden = false;
+    updateHoverButton(record);
+    schedulePosition();
+    promptInput.focus();
   }
 
   function clearUndo(record) {
@@ -509,36 +596,43 @@
 
   function bindHoverButton(record) {
     const visual = record.visual;
-    const button = record.button;
+    const actions = record.actions;
     const showTarget = () => { clearTimeout(record.hideTimer); record.hoverTarget = true; updateHoverButton(record); };
     const leaveTarget = () => { record.hoverTarget = false; record.hideTimer = setTimeout(() => updateHoverButton(record), 180); };
-    const showButton = () => { clearTimeout(record.hideTimer); record.hoverButton = true; updateHoverButton(record); };
-    const leaveButton = () => { record.hoverButton = false; record.hideTimer = setTimeout(() => updateHoverButton(record), 180); };
+    const showActions = () => { clearTimeout(record.hideTimer); record.hoverActions = true; updateHoverButton(record); };
+    const leaveActions = () => { record.hoverActions = false; record.hideTimer = setTimeout(() => updateHoverButton(record), 180); };
     visual.addEventListener('pointerenter', showTarget);
     visual.addEventListener('pointerleave', leaveTarget);
     visual.addEventListener('focusin', showTarget);
     visual.addEventListener('focusout', leaveTarget);
-    button.addEventListener('pointerenter', showButton);
-    button.addEventListener('pointerleave', leaveButton);
-    button.addEventListener('focus', showButton);
-    button.addEventListener('blur', leaveButton);
+    actions.addEventListener('pointerenter', showActions);
+    actions.addEventListener('pointerleave', leaveActions);
+    actions.addEventListener('focusin', showActions);
+    actions.addEventListener('focusout', leaveActions);
     record.unbindHover = () => {
       clearTimeout(record.hideTimer);
       visual.removeEventListener('pointerenter', showTarget);
       visual.removeEventListener('pointerleave', leaveTarget);
       visual.removeEventListener('focusin', showTarget);
       visual.removeEventListener('focusout', leaveTarget);
-      button.removeEventListener('pointerenter', showButton);
-      button.removeEventListener('pointerleave', leaveButton);
-      button.removeEventListener('focus', showButton);
-      button.removeEventListener('blur', leaveButton);
+      actions.removeEventListener('pointerenter', showActions);
+      actions.removeEventListener('pointerleave', leaveActions);
+      actions.removeEventListener('focusin', showActions);
+      actions.removeEventListener('focusout', leaveActions);
       record.hoverTarget = false;
-      record.hoverButton = false;
+      record.hoverActions = false;
     };
     updateHoverButton(record);
   }
 
   function resumeQuestionLabel(field) {
+    const label = [...(field.labels || [])].find(item => isVisible(item) && item.hasAttribute('aria-labelledby'));
+    if (label) {
+      const question = label.getAttribute('aria-labelledby').split(/\s+/)
+        .map(id => field.getRootNode().getElementById?.(id))
+        .find(node => node && RESUME_TERM.test(node.textContent || ''));
+      if (question) return question.textContent.trim().replace(/\s*\*$/, '').slice(0, 500);
+    }
     const group = field.closest('[role="group"][aria-labelledby]');
     if (!group || group.querySelectorAll('input[type="file"]').length !== 1) return '';
     return group.getAttribute('aria-labelledby').split(/\s+/)
@@ -557,7 +651,7 @@
     if (/\b(cover letter|portfolio|transcript|certificate|photo|identity document)\b/i.test(ownDescription)) return false;
     const trigger = resumeTrigger(field);
     const description = `${ownDescription} ${trigger?.textContent || ''} ${trigger?.getAttribute('aria-label') || ''}`;
-    if (!/\b(resume|r[eé]sum[eé]|curriculum vitae|cv)\b/i.test(description)) return false;
+    if (!RESUME_TERM.test(description)) return false;
     const accepted = field.accept.toLowerCase().split(',').map(value => value.trim()).filter(Boolean);
     return !accepted.length || accepted.some(value => value === '.pdf' || value === 'application/pdf' || value === 'application/*' || value === '*/*');
   }
@@ -568,7 +662,7 @@
     const localButtons = [...(parentElement(field)?.querySelectorAll('button,[role="button"]') || [])].filter(item => isVisible(item));
     if (localButtons.length === 1) return localButtons[0];
     for (let parent = parentElement(field), depth = 0; parent && depth < 3 && !parent.matches('form,main,body,html'); parent = parentElement(parent), depth++) {
-      const buttons = [...parent.querySelectorAll('button,[role="button"]')].filter(item => isVisible(item) && /\b(resume|r[eé]sum[eé]|curriculum vitae|cv)\b/i.test(`${item.textContent} ${item.getAttribute('aria-label') || ''}`));
+      const buttons = [...parent.querySelectorAll('button,[role="button"]')].filter(item => isVisible(item) && RESUME_TERM.test(`${item.textContent} ${item.getAttribute('aria-label') || ''}`));
       if (buttons.length === 1) return buttons[0];
     }
     return null;
@@ -711,25 +805,36 @@
         button.textContent = field.type === 'file' ? 'Attach PDF' : '✦ Write';
         button.title = field.type === 'file' ? `Attach saved resume to ${resumeLabelFor(field)}` : `Write an answer for ${labelFor(field)}`;
         button.setAttribute('aria-label', field.type === 'file' ? `Attach resume: ${resumeLabelFor(field)}` : `Fill with AI: ${labelFor(field)}`);
-        const record = { field, visual: visualTarget(field), button, id, active: null, starting: false };
+        const promptButton = document.createElement('button');
+        promptButton.type = 'button';
+        promptButton.className = 'wc-prompt-button';
+        promptButton.textContent = 'Rewrite with prompt';
+        promptButton.setAttribute('aria-label', `Rewrite with prompt: ${labelFor(field)}`);
+        const actions = document.createElement('div');
+        actions.className = 'wc-field-actions';
+        actions.dataset.editorOpen = 'false';
+        actions.append(promptButton, button);
+        const record = { field, visual: visualTarget(field), actions, button, promptButton, id, active: null, starting: false, batchFilled: false };
         button.addEventListener('click', event => {
           if (!event.isTrusted) return;
           if (record.active) record.active.cancel();
           else if (record.undo) void undoFill(record);
           else void startFill(record);
         });
+        promptButton.addEventListener('click', event => { if (event.isTrusted) openPromptEditor(record); });
         records.set(field, record);
         highlightVisual(record.visual);
         bindHoverButton(record);
-        buttonLayer.append(button);
+        buttonLayer.append(actions);
         resizeObserver.observe(record.visual);
       }
     }
     for (const [field, record] of records) {
       if (!fields.has(field)) {
+        if (promptRecord === record) closePromptEditor();
         record.active?.cancel('Field is no longer available.');
         clearUndo(record);
-        record.button.remove();
+        record.actions.remove();
         record.unbindHover();
         unhighlightVisual(record.visual);
         resizeObserver.unobserve(record.visual);
@@ -755,6 +860,7 @@
   }
 
   function resetScan(reason = '') {
+    closePromptEditor();
     scanned = false;
     scannedUrl = '';
     if (batch) {
@@ -768,6 +874,7 @@
     batchPending = false;
     scannedInputCount = null;
     localScannedCount = 0;
+    hasCompletedFill = false;
     clearTimeout(batchFeedbackTimer);
     batchFeedback = '';
     if (doAllButton) doAllButton.hidden = true;
@@ -776,7 +883,7 @@
       record.active?.cancel(reason || 'The page scan ended.');
       clearUndo(record);
       resizeObserver.unobserve(record.visual);
-      record.button.remove();
+      record.actions.remove();
       record.unbindHover();
       unhighlightVisual(record.visual);
     }
@@ -791,7 +898,7 @@
     scannedInputCount = null;
     scan();
     updateScanButton();
-    return { count: records.size, scanned, enabled };
+    return { count: records.size, scanned, enabled, refill: hasCompletedFill, filling: Boolean(batch) || batchPending };
   }
 
   function schedulePosition() {
@@ -802,20 +909,24 @@
   function positionButtons() {
     positionFrame = null;
     for (const record of records.values()) {
-      const { field, visual, button } = record;
+      const { field, visual, actions, button, promptButton } = record;
       const rect = visual.getBoundingClientRect();
       const choice = field.tagName === 'SELECT' || isSupportedCombobox(field) || ['checkbox', 'radio'].includes(globalThis.WCFieldContext.choiceKind(field)) || field.type === 'file';
       const compact = !choice && (rect.width < 240 || rect.height < 36);
       const width = field.type === 'file' ? 100 : compact ? 45 : 80;
       const height = compact ? 26 : 28;
+      const hasPrompt = promptable(field);
+      const actionWidth = width + (hasPrompt ? 135 : 0) + 8;
+      const actionHeight = height + 8;
       let x = choice ? rect.right + 8 : rect.right - width - 4;
       // Straddle the top border on roomy fields so the button does not cover text.
       let y = globalThis.WCFieldContext.choiceKind(field) === 'radio' || globalThis.WCFieldContext.checkboxDetails(field) ? Math.max(2, rect.top + 8) : choice ? Math.max(2, rect.top + (rect.height - height) / 2) : compact ? rect.top + Math.min(5, (rect.height - height) / 2) : rect.top >= 0 ? Math.max(2, rect.top - 12) : rect.top - 12;
       const panelRect = window.top === window ? shadow?.querySelector('.wc-control-panel')?.getBoundingClientRect() : null;
-      if (panelRect && x < panelRect.right && x + width > panelRect.left && y < panelRect.bottom && y + height > panelRect.top) {
-        const leftOfPanel = panelRect.left - width - 8;
-        if (leftOfPanel >= 2) x = leftOfPanel;
-        else y = panelRect.top - height - 8;
+      const actionOffset = hasPrompt ? 139 : 4;
+      if (panelRect && x - actionOffset < panelRect.right && x - actionOffset + actionWidth > panelRect.left && y < panelRect.bottom && y + actionHeight > panelRect.top) {
+        const leftOfPanel = panelRect.left - actionWidth - 8;
+        if (leftOfPanel >= 2) x = leftOfPanel + actionOffset;
+        else y = panelRect.top - actionHeight - 8;
       }
       button.dataset.compact = String(compact);
       if (!button.hasAttribute('aria-busy')) {
@@ -827,7 +938,7 @@
       }
       button.style.width = `${width}px`;
       button.style.height = `${height}px`;
-      let visible = rect.right > 0 && rect.left < innerWidth && y >= 0 && y + height <= innerHeight && isVisible(visual);
+      let visible = rect.right > 0 && rect.left < innerWidth && y >= 0 && y + actionHeight <= innerHeight && isVisible(visual);
       for (let node = parentElement(visual); visible && node; node = parentElement(node)) {
         // The document's scrollport is the viewport, even when BODY has overflow:auto
         // and its layout rect has scrolled above the visible page.
@@ -839,9 +950,24 @@
           if (x < clip.left || x + width > clip.right || y < clip.top || y + height > clip.bottom) visible = false;
         }
       }
-      button.style.display = visible ? 'flex' : 'none';
-      button.style.left = `${Math.max(2, Math.min(innerWidth - width - 2, x))}px`;
-      button.style.top = `${y}px`;
+      actions.style.display = visible ? 'flex' : 'none';
+      promptButton.style.display = hasPrompt ? 'flex' : 'none';
+      promptButton.textContent = hasAnswer(field) ? 'Rewrite with prompt' : 'Write with prompt';
+      promptButton.setAttribute('aria-label', `${hasAnswer(field) ? 'Rewrite' : 'Write'} with prompt: ${labelFor(field)}`);
+      if (promptRecord === record && !promptEditor.hidden) {
+        const editorWidth = Math.min(320, innerWidth - 16);
+        actions.style.width = `${editorWidth}px`;
+        const editorHeight = actions.getBoundingClientRect().height;
+        const editorX = Math.max(8, Math.min(innerWidth - editorWidth - 8, rect.right - editorWidth));
+        const below = rect.bottom + 8;
+        const editorY = below + editorHeight <= innerHeight - 8 ? below : Math.max(8, rect.top - editorHeight - 8);
+        actions.style.left = `${editorX}px`;
+        actions.style.top = `${editorY}px`;
+      } else {
+        actions.style.width = `${actionWidth}px`;
+        actions.style.left = `${Math.max(2, Math.min(innerWidth - actionWidth - 2, x - actionOffset))}px`;
+        actions.style.top = `${y}px`;
+      }
       updateHoverButton(record);
     }
   }
@@ -1006,6 +1132,11 @@
       ? new Event('input', { bubbles: true, composed: true })
       : new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText', data: answer }));
     target.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) && field.closest('.ashby-application-form-field-entry') && document.activeElement === field) {
+      // Ashby commits and validates ordinary text answers when focus leaves the field.
+      field.blur();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
   }
 
   async function undoFill(record) {
@@ -1028,9 +1159,9 @@
     chrome.runtime.sendMessage({ type: 'WC_LOG_EVENT', event, metadata: { requestId, ...(code ? { code } : {}) } }).catch(() => {});
   }
 
-  function attachResume(record, resumeFile, signature, sourceUrl) {
+  function attachResume(record, resumeFile, signature, sourceUrl, replaceFile = null) {
     const field = record.field;
-    if (!records.has(field) || records.get(field) !== record || !enabled || !scanned || location.href !== sourceUrl || !isEligible(field) || hasAnswer(field) || targetSignature(fieldInfo(field)) !== signature) return 'skipped';
+    if (!records.has(field) || records.get(field) !== record || !enabled || !scanned || location.href !== sourceUrl || !isEligible(field) || (hasAnswer(field) && (!replaceFile || field.files?.[0] !== replaceFile)) || targetSignature(fieldInfo(field)) !== signature) return 'skipped';
     if (!resumeFile) throw new Error('Add a PDF resume in Edit profile first.');
     if (resumeFile.type !== 'application/pdf' || !/\.pdf$/i.test(resumeFile.name) || !Number.isInteger(resumeFile.size) || resumeFile.size < 1 || resumeFile.size > 5 * 1024 * 1024 || !/^data:application\/pdf;base64,[A-Za-z0-9+/]+={0,2}$/.test(resumeFile.dataUrl || '')) throw new Error('The saved resume is invalid. Upload the PDF again in Edit profile.');
     const bytes = Uint8Array.from(atob(resumeFile.dataUrl.slice(resumeFile.dataUrl.indexOf(',') + 1)), character => character.charCodeAt(0));
@@ -1065,7 +1196,7 @@
     }
   }
 
-  async function startFill(record) {
+  async function startFill(record, rewritePrompt = '') {
     if (!scanned || scannedUrl !== location.href || record.active || record.starting || !enabled || !isEligible(record.field)) return;
     record.starting = true;
     try {
@@ -1182,7 +1313,7 @@
       if (message.type === 'error') {
         cleanup();
         settle({ status: 'failed', code: message.code });
-        const actions = [{ label: 'Try again', run: element => { element.remove(); startFill(record); } }];
+        const actions = [{ label: 'Try again', run: element => { element.remove(); startFill(record, rewritePrompt); } }];
         if (['MISSING_INFORMATION', 'AUTHENTICATION', 'NOT_CONFIGURED', 'ACCESS_DENIED', 'API_REQUEST'].includes(message.code)) actions.push({ label: message.code === 'MISSING_INFORMATION' ? 'Edit profile' : 'Open settings', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) });
         toast('Couldn’t write this answer', message.message || 'Click Write to try again.', 'error', actions, 20000);
         return;
@@ -1237,7 +1368,7 @@
       }
     });
     try {
-      port.postMessage({ type: 'generate', requestId, field: targetInfo, page: collectPage() });
+      port.postMessage({ type: 'generate', requestId, field: targetInfo, page: collectPage(), rewritePrompt });
     } catch {
       cleanup();
       settle({ status: 'failed' });
@@ -1246,21 +1377,23 @@
     return completion;
   }
 
-  async function batchSnapshot() {
+  async function batchSnapshot(refill = false) {
     if (!enabled || !scanned || scannedUrl !== location.href) return { scanned: false, enabled };
     scan();
+    const canRefill = refill && hasCompletedFill;
+    const availableForFill = record => !hasAnswer(record.field) || canRefill && record.batchFilled;
     let unavailableChoices = 0;
     for (const record of [...records.values()]) {
-      if (!isSupportedCombobox(record.field) || record.active || record.starting || !isEligible(record.field) || hasAnswer(record.field)) continue;
+      if (!isSupportedCombobox(record.field) || record.active || record.starting || !isEligible(record.field) || !availableForFill(record)) continue;
       try {
         if (!(await discoverComboboxOptions(record.field)).length) unavailableChoices++;
       } catch { unavailableChoices++; }
     }
     return {
       scanned: true, enabled, page: collectPage(), unavailableChoices,
-      targets: [...records.values()].filter(record => record.field.type !== 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field) && (!isSupportedCombobox(record.field) || (comboboxOptions.get(record.field) || []).length))
+      targets: [...records.values()].filter(record => record.field.type !== 'file' && !record.active && !record.starting && isEligible(record.field) && availableForFill(record) && (!isSupportedCombobox(record.field) || (comboboxOptions.get(record.field) || []).length))
         .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
-      uploadTargets: [...records.values()].filter(record => record.field.type === 'file' && !record.active && !record.starting && isEligible(record.field) && !hasAnswer(record.field))
+      uploadTargets: [...records.values()].filter(record => record.field.type === 'file' && !record.active && !record.starting && isEligible(record.field) && (!hasAnswer(record.field) || canRefill && record.batchFilled && record.attachedFile === record.field.files?.[0]))
         .map(record => ({ id: record.id, field: fieldInfo(record.field) })),
     };
   }
@@ -1270,7 +1403,7 @@
     const targets = new Map();
     for (const target of [...(message.targets || []), ...(message.uploadTargets || [])]) {
       const record = [...records.values()].find(item => item.id === target.id);
-      if (record) targets.set(target.id, { record, signature: targetSignature(target.field) });
+      if (record) targets.set(target.id, { record, signature: targetSignature(target.field), original: readValue(record.field), replaceExisting: message.refill === true && record.batchFilled === true, originalFile: record.field.type === 'file' ? record.field.files?.[0] || null : null });
     }
     clearTimeout(batchFeedbackTimer);
     batchFeedback = '';
@@ -1297,7 +1430,12 @@
       const target = batch.targets.get(id);
       if (!target || target.record.field.type !== 'file') { result.skipped++; continue; }
       try {
-        result[attachResume(target.record, message.resumeFile, target.signature, batch.sourceUrl)]++;
+        const status = attachResume(target.record, message.resumeFile, target.signature, batch.sourceUrl, target.replaceExisting ? target.originalFile : null);
+        if (status === 'filled') {
+          target.record.batchFilled = true;
+          target.record.attachedFile = target.record.field.files?.[0] || null;
+        }
+        result[status]++;
       } catch (error) {
         result.failed++;
         result.firstError ||= error.message || 'The resume could not be attached.';
@@ -1313,7 +1451,7 @@
       const target = batch.targets.get(item.fieldId);
       const record = target?.record;
       const field = record?.field;
-      if (!record || records.get(field) !== record || !enabled || !scanned || batch.sourceUrl !== location.href || record.active || record.starting || !isEligible(field) || hasAnswer(field) || targetSignature(fieldInfo(field)) !== target.signature) {
+      if (!record || records.get(field) !== record || !enabled || !scanned || batch.sourceUrl !== location.href || record.active || record.starting || !isEligible(field) || readValue(field) !== target.original || hasAnswer(field) && !target.replaceExisting || targetSignature(fieldInfo(field)) !== target.signature) {
         result.skipped++;
         continue;
       }
@@ -1337,6 +1475,7 @@
       try {
         const written = await writeValue(field, answer);
         if (readValue(field) !== (written === undefined ? answer : written) || !answerMeetsFieldConstraints(field)) throw new Error('The page rejected an answer.');
+        record.batchFilled = true;
         result.filled++;
         logUI('ui.filled', batch.id);
       } catch {
@@ -1356,17 +1495,18 @@
     batch = null;
     clearInterval(ending.heartbeat);
     ending.keepalive?.disconnect();
-    updateBatchButton();
+    const { filled = 0, failed = 0, skipped = 0, unchecked = 0 } = message.summary || {};
+    if (filled > 0) hasCompletedFill = true;
     if (window.top === window) {
-      const { filled = 0, failed = 0, skipped = 0, unchecked = 0 } = message.summary || {};
       const userStopped = message.stopped && (!message.errorMessage || ['FILL stopped.', 'FILL ALL stopped.', 'Generation cancelled.'].includes(message.errorMessage));
       const detail = userStopped ? '' : message.errorMessage || message.fieldError || (failed ? `${failed} ${failed === 1 ? 'field could' : 'fields could'} not be filled.` : '');
       if (detail) toast('FILL needs attention', `${detail} ${filled ? `${filled} filled. ` : ''}${skipped ? `${skipped} skipped. ` : ''}${unchecked ? `${unchecked} left unchecked. ` : ''}Review the form before submitting.`, 'error', [], 20000);
-      if (!detail) batchFeedback = message.stopped ? 'Stopped' : `${filled} filled`;
-      updateBatchButton();
+      if (!detail && !hasCompletedFill) batchFeedback = message.stopped ? 'Stopped' : `${filled} filled`;
       clearTimeout(batchFeedbackTimer);
       batchFeedbackTimer = setTimeout(() => { batchFeedback = ''; if (!batch) updateBatchButton(); }, 3000);
+      chrome.runtime.sendMessage({ type: 'WC_FILL_UI_DONE' }).catch(() => {});
     }
+    updateBatchButton();
     return { finished: true };
   }
 
@@ -1431,9 +1571,9 @@
       respond({ received: true });
     } else if (message?.type === 'WC_GET_PAGE_STATUS') {
       if (scanned && scannedUrl !== location.href) resetScan('The page changed. Scan it again to show fillable fields.');
-      respond({ count: records.size, scanned, enabled });
+      respond({ count: records.size, scanned, enabled, refill: hasCompletedFill, filling: Boolean(batch) || batchPending });
     } else if (message?.type === 'WC_BATCH_SNAPSHOT') {
-      void batchSnapshot().then(respond).catch(() => respond({ scanned: false, enabled }));
+      void batchSnapshot(message.refill === true).then(respond).catch(() => respond({ scanned: false, enabled }));
       return true;
     } else if (message?.type === 'WC_BATCH_BEGIN') {
       respond(beginBatch(message));

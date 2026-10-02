@@ -17,6 +17,13 @@ let lastError = '';
 let pageTabId = null;
 let customModel = '';
 
+function setFillButtonMode(refill) {
+  const button = $('do-all-button');
+  button.dataset.refill = String(refill);
+  button.querySelector('.action-label').textContent = refill ? 'REFILL' : 'FILL';
+  button.setAttribute('aria-label', refill ? 'REFILL: regenerate previously filled answers and fill empty fields' : 'FILL: fill unanswered scanned fields');
+}
+
 function selectedModel() {
   return $('model-preset').value === 'custom' ? $('model').value.trim() : $('model-preset').value;
 }
@@ -181,9 +188,10 @@ async function refreshPage(rescan = false) {
     // Storage is authoritative; the content script may be applying the toggle.
     const enabled = settings.enabled;
     const count = Number.isFinite(status?.count) ? Math.max(0, status.count) : 0;
-    $('page-status').textContent = !enabled ? 'AI filling is paused.' : !status.scanned ? 'Scan page to highlight fillable fields.' : count ? `${count} ${count === 1 ? 'field' : 'fields'} ready to write` : 'No fillable fields found. Try scanning again after the page loads.';
+    setFillButtonMode(status.refill === true);
+    $('page-status').textContent = !enabled ? 'AI filling is paused.' : !status.scanned ? 'Scan page to highlight fillable fields.' : status.filling ? 'Writing answers…' : count ? `${count} ${count === 1 ? 'field' : 'fields'} ready to write` : 'No fillable fields found. Try scanning again after the page loads.';
     $('page-indicator').classList.toggle('ready', enabled && status.scanned && count > 0);
-    doAll.disabled = !(enabled && status.scanned && count > 0);
+    doAll.disabled = !(enabled && status.scanned && count > 0) || status.filling === true;
   } catch {
     $('page-status').textContent = 'Open an application page, or refresh it.';
   } finally {
@@ -475,20 +483,27 @@ $('rescan-button').addEventListener('click', () => refreshPage(true));
 $('do-all-button').addEventListener('click', async () => {
   if (!pageTabId) return;
   const button = $('do-all-button');
+  const refill = button.dataset.refill === 'true';
+  const action = refill ? 'REFILL' : 'FILL';
+  let started = false;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
   $('page-indicator').classList.add('busy');
-  $('page-status').textContent = 'Starting FILL…';
+  $('page-status').textContent = `Starting ${action}…`;
   try {
-    const result = await withTimeout(chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB', tabId: pageTabId }));
-    $('page-status').textContent = result?.started ? `FILL started on ${result.count} empty ${result.count === 1 ? 'input' : 'inputs'}. Watch the page for progress.` : result?.error || 'Could not start FILL.';
+    const result = await withTimeout(chrome.runtime.sendMessage({ type: 'WC_FILL_ALL_TAB', tabId: pageTabId, refill }));
+    started = result?.started === true;
+    $('page-status').textContent = started ? `${action} started on ${result.count} ${result.count === 1 ? 'input' : 'inputs'}. Watch the page for progress.` : result?.error || `Could not start ${action}.`;
   } catch {
-    $('page-status').textContent = 'Could not start FILL. Reload the page and try again.';
+    $('page-status').textContent = `Could not start ${action}. Reload the page and try again.`;
   } finally {
-    button.disabled = false;
+    if (!started) button.disabled = false;
     button.removeAttribute('aria-busy');
     $('page-indicator').classList.remove('busy');
   }
+});
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type === 'WC_FILL_UI_DONE' && sender.tab?.id === pageTabId) void refreshPage(false);
 });
 $('profile-import-button').addEventListener('click', () => $('profile-import').click());
 $('resume-upload-button').addEventListener('click', () => $('resume-upload').click());
