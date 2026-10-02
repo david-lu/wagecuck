@@ -1,6 +1,6 @@
 # AI Input Filler
 
-The popup and the small Wagecuck panel at the bottom left of application pages offer **SCAN PAGE** then **FILL**. Use the panel's minus button to minimize it and click the logo to restore it. The panel shows the number of fillable inputs after scanning, including inputs in available frames. Scanning reveals purple outlines on supported form fields; hover or focus a field to show its yellow Write button. Resume/CV PDF inputs get an **Attach PDF** button. FILL attaches the saved PDF to empty resume inputs and drafts answers for unanswered fields across available frames in one agent request, including factual checkboxes, native dropdowns, and supported custom dropdowns. Review the results before submitting; the extension never submits the form.
+The popup and the small Wagecuck panel at the bottom left of application pages offer **SCAN PAGE** then **FILL**. The panel starts minimized; click the logo to open it and the minus button to minimize it again. The panel shows the number of fillable inputs after scanning, including inputs in available frames. Scanning reveals purple outlines on supported form fields; hover or focus a field to show its yellow Write button. Resume/CV PDF inputs get an **Attach PDF** button. FILL attaches the saved PDF to empty resume inputs and drafts answers for unanswered fields across available frames in one agent request, including factual checkboxes, native dropdowns, and supported custom dropdowns. Review the results before submitting; the extension never submits the form.
 
 ## Install in Chrome
 

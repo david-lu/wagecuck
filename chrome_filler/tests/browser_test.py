@@ -168,7 +168,7 @@ class BrowserSuite:
         self.page.goto(self.url)
         expect(self.page.locator("#wc-ai-root")).to_have_count(1)
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.page.get_by_role("button", name=re.compile("Fill with AI: .*Why do you want to work here", re.I), include_hidden=True)).to_have_count(1)
         expect(self.button("Why do you want to work here")).to_be_visible()
 
@@ -178,7 +178,7 @@ class BrowserSuite:
         self.page.goto(self.url.replace("application.html", "labels.html"))
         expect(self.page.locator("#wc-ai-root")).to_have_count(1)
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.page.get_by_role("button", name=re.compile("Fill with AI: .*Legal first name", re.I), include_hidden=True)).to_have_count(1)
         expect(self.button("Legal first name")).to_be_visible()
 
@@ -217,6 +217,17 @@ class BrowserSuite:
         if button.count() == 1:
             button.evaluate("node => node.dispatchEvent(new PointerEvent('pointerenter'))")
         return button
+
+    def open_panel(self):
+        toggle = self.page.locator("#wc-ai-root .wc-panel-toggle")
+        if toggle.get_attribute("aria-expanded") == "false":
+            toggle.click()
+
+    def scan_page(self):
+        self.open_panel()
+        scan = self.page.locator("#wc-ai-root .wc-scan-button")
+        scan.click()
+        expect(scan).to_have_attribute("aria-busy", "false")
 
     def resume_button(self, label):
         button = self.page.get_by_role("button", name=f"Attach resume: {label}", exact=True, include_hidden=True)
@@ -311,7 +322,7 @@ class BrowserSuite:
         self.page.goto(self.url)
         self.page.locator("#name").evaluate("node => { node.style.outline = '1px dashed red'; node.style.outlineOffset = '4px'; }")
         scan = self.page.locator("#wc-ai-root .wc-scan-button")
-        expect(scan).to_be_visible()
+        expect(scan).to_be_hidden()
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
         expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
         assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(255, 0, 0)"
@@ -332,10 +343,10 @@ class BrowserSuite:
             assert color == "rgb(139, 92, 246)", color
             assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineOffset") == "2px"
             self.page.reload()
-            expect(self.page.locator("#wc-ai-root .wc-scan-button")).to_be_visible()
+            expect(self.page.locator("#wc-ai-root .wc-scan-button")).to_be_hidden()
             expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
             expect(self.page.locator("#wc-ai-root .wc-field-outline")).to_have_count(0)
-            self.page.locator("#wc-ai-root .wc-scan-button").click()
+            self.scan_page()
             expect(self.button("Why do you want to work here")).to_be_visible()
             self.page.locator("#name").evaluate("node => { node.style.outlineColor = 'blue'; }")
             self.page.evaluate("history.pushState({}, '', '?newApplication=1'); document.body.appendChild(document.createElement('div'))")
@@ -354,12 +365,13 @@ class BrowserSuite:
         rect = panel.bounding_box()
         assert abs(rect["x"] - 16) < 2
         assert abs(rect["y"] + rect["height"] - 884) < 2
-        toggle.click()
         expect(panel).to_have_attribute("data-collapsed", "true")
         expect(toggle).to_have_attribute("aria-label", "Restore Wagecuck controls")
         expect(scan).to_be_hidden()
         assert panel.bounding_box()["width"] < 80
         toggle.click()
+        expect(panel).to_have_attribute("data-collapsed", "false")
+        expect(toggle).to_have_attribute("aria-label", "Minimize Wagecuck controls")
         expect(scan).to_be_visible()
         scan.click()
         expect(panel.locator(".wc-panel-count")).to_be_visible()
@@ -373,6 +385,8 @@ class BrowserSuite:
         self.seed()
         self.page.goto(self.url)
         scan = self.page.locator("#wc-ai-root .wc-scan-button")
+        expect(scan).to_be_hidden()
+        self.open_panel()
         expect(scan).to_be_visible()
         assert self.page.locator("#wc-ai-root").evaluate("node => node.matches(':popover-open')")
         assert self.page.evaluate("""() => {
@@ -424,7 +438,7 @@ class BrowserSuite:
         self.page.goto(self.url)
         self.page.locator("#name").evaluate("node => { node.style.outline = '1px dashed red'; node.style.outlineOffset = '4px'; }")
         self.page.locator("#motivation").evaluate("node => { node.style.borderColor = 'green'; }")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.button("Full name")).to_have_count(1)
         assert self.page.locator("#name").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
         assert self.page.locator("#motivation").evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
@@ -440,7 +454,7 @@ class BrowserSuite:
         self.seed()
         self.mock(answer="Jordan Example")
         self.page.goto(self.url)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         button = self.page.get_by_role("button", name="Fill with AI: Full name", exact=True, include_hidden=True)
         expect(button).to_have_count(1)
         assert not button.is_visible(), "Field button should be hidden until hover or focus"
@@ -458,6 +472,7 @@ class BrowserSuite:
         self.mock(delay=25)
         self.page.goto(self.url.replace("application.html", "frame_only.html"))
         scan = self.page.locator("#wc-ai-root .wc-scan-button")
+        self.open_panel()
         expect(scan).to_be_visible()
         self.page.evaluate("""() => {
           window.scanButtonStates = [];
@@ -486,7 +501,7 @@ class BrowserSuite:
         self.seed()
         self.page.goto(self.url.replace("application.html", "frame_only.html"))
         self.page.frame_locator('iframe[title="Application questions"]').locator("#frame-answer").wait_for()
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.page.locator("#wc-ai-root .wc-panel-count")).to_have_text("1")
         expect(self.page.locator("#wc-ai-root .wc-do-all-button")).to_be_visible()
 
@@ -498,7 +513,7 @@ class BrowserSuite:
         expect(self.page.locator("#wc-ai-root .wc-do-all-button")).to_be_hidden()
         expect(new_frame.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
 
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(new_frame.get_by_role("button", name=re.compile("Fill with AI: .*Why do you want to work here", re.I), include_hidden=True)).to_have_count(1)
         assert int(self.page.locator("#wc-ai-root .wc-panel-count").inner_text()) > 1
 
@@ -526,7 +541,7 @@ class BrowserSuite:
         assert self.worker.evaluate("self.__qaRequests") == []
         self.page.locator("#name").fill("My own name")
         self.page.locator("#existing-work").uncheck()
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(do_all).to_be_visible()
         expect(do_all).to_have_text("FILL")
         popup = self.context.new_page()
@@ -598,7 +613,7 @@ class BrowserSuite:
           select.append(option);
           document.querySelector('#application').prepend(label, select);
         }""")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.button("Preferred test track")).to_have_count(1)
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
         expect(self.page.locator("#motivation")).to_have_value(ANSWER)
@@ -616,7 +631,7 @@ class BrowserSuite:
         self.seed(resumeFile=self.saved_resume())
         self.mock(delay=25)
         self.page.goto(self.url)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#upload").scroll_into_view_if_needed()
         expect(self.resume_button("Resume file")).to_be_visible()
         expect(self.resume_button("Upload CV")).to_have_count(1)
@@ -647,7 +662,7 @@ class BrowserSuite:
     def greenhouse_resume_upload(self):
         self.seed(apiKey="", resumeFile=self.saved_resume())
         self.page.goto(self.url)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator('[aria-labelledby="upload-label-greenhouse-resume"]').scroll_into_view_if_needed()
         self.page.evaluate("window.dispatchEvent(new Event('scroll'))")
         expect(self.resume_button("Resume/CV")).to_be_visible()
@@ -675,7 +690,7 @@ class BrowserSuite:
             <select id="work-location"><option value="">Select...</option><option value="yes">Yes</option><option value="no">No</option></select>
           `);
         }""")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.button("AI Policy for Application")).to_have_count(1)
         expect(self.button("Agreement to Arbitrate")).to_have_count(1)
         expect(self.button("I certify my application is accurate")).to_have_count(0)
@@ -698,7 +713,7 @@ class BrowserSuite:
         self.seed(apiKey="", resumeFile=self.saved_resume())
         self.mock()
         self.page.goto(self.url)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#upload").scroll_into_view_if_needed()
         self.resume_button("Resume file").click()
         self.page.wait_for_function("() => document.querySelector('#upload').files.length === 1")
@@ -721,7 +736,7 @@ class BrowserSuite:
         self.seed()
         self.mock(delay=3000)
         self.page.goto(self.url)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
         deadline = time.monotonic() + 5
         while len(self.worker.evaluate("self.__qaRequests")) < 1 and time.monotonic() < deadline:
@@ -753,7 +768,7 @@ class BrowserSuite:
         self.seed()
         self.mock(delay=600)
         self.page.goto(self.url)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
         deadline = time.monotonic() + 5
         while not self.worker.evaluate("self.__qaRequests") and time.monotonic() < deadline:
@@ -989,7 +1004,7 @@ class BrowserSuite:
         mock = MOCK_FETCH.replace('accessible interfaces|design systems|I utilize Terraform daily|I prefer not to answer', 'Canada')
         self.worker.evaluate(mock, {"answer": "Canada", "mode": "success", "delay": 25, "email": "jordan@example.test"})
         self.page.goto(self.url.replace("application.html", "stripe_checklist.html"))
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         question = "Please select the country or countries you anticipate working in for the role in which you are applying."
         expect(self.button(question)).to_have_count(1)
         self.button(question).click()
@@ -1001,7 +1016,7 @@ class BrowserSuite:
 
         self.page.reload()
         self.worker.evaluate(mock, {"answer": "Canada", "mode": "success", "delay": 25, "email": "jordan@example.test"})
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
         expect(options.nth(1)).to_be_checked()
         expect(options.nth(0)).not_to_be_checked()
@@ -1012,7 +1027,7 @@ class BrowserSuite:
         self.mock(delay=25)
         self.page.goto(self.url.replace("application.html", "choice_groups.html"))
         self.page.locator('input[name="wrapper_two"]').evaluate("node => { node.checked = true; }")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(9)
         for selector in ("#workable-question", "#greenhouse-question", "#ashby-question", "#custom-radio-question", "#custom-checkbox-question"):
             assert self.page.locator(selector).evaluate("node => getComputedStyle(node).outlineColor") == "rgb(139, 92, 246)"
@@ -1041,7 +1056,7 @@ class BrowserSuite:
 
         self.page.reload()
         self.mock(delay=25)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
         expect(self.page.locator('input[name="wrapper_one"]')).to_be_checked()
         expect(self.page.locator('#workable-yes-no [role="radio"]').first).to_have_attribute("aria-checked", "true")
@@ -1062,7 +1077,7 @@ class BrowserSuite:
         self.seed()
         self.mock(delay=25, answer="false")
         self.page.goto(self.url.replace("application.html", "choice_groups.html"))
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.button("Are you eligible to work in the country you are applying?")).to_have_count(1)
         expect(self.button("Can you confirm that everything in this application is true and your own?")).to_have_count(0)
         self.button("Are you eligible to work in the country you are applying?").click()
@@ -1077,7 +1092,7 @@ class BrowserSuite:
 
         self.page.reload()
         self.mock(delay=25, answer="true")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.button("Are you eligible to work in the country you are applying?").click()
         expect(self.page.locator('#workable-yes-no [role="radio"]').first).to_have_attribute("aria-checked", "true")
         expect(self.page.locator('input[name="workable-eligibility"]').first).to_be_checked()
@@ -1087,7 +1102,7 @@ class BrowserSuite:
         self.seed()
         self.mock(delay=25)
         self.page.goto(self.url.replace("application.html", "edge_controls.html"))
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(3)
         expect(self.button("How did you hear about ElevenLabs?")).to_have_count(1)
         expect(self.button("If other, please specify below")).to_have_count(1)
@@ -1110,7 +1125,7 @@ class BrowserSuite:
 
         self.page.reload()
         self.mock(delay=25)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
         expect(self.page.locator('input[name="referral"]').first).to_be_checked()
         expect(self.page.locator("#other-detail")).to_have_value(ANSWER)
@@ -1129,6 +1144,7 @@ class BrowserSuite:
         assert panel.evaluate("node => getComputedStyle(node).borderTopColor") == "rgb(227, 24, 0)"
         assert panel.locator(".wc-panel-logo").evaluate("node => node.complete && node.naturalWidth > 0")
         expect(panel.locator(".wc-do-all-button")).to_be_hidden()
+        self.open_panel()
         panel.locator(".wc-scan-button").click()
         expect(panel.locator(".wc-panel-status")).to_have_text("4 inputs found")
         expect(panel.locator(".wc-panel-count")).to_have_text("4")
@@ -1151,14 +1167,14 @@ class BrowserSuite:
 
         self.page.reload()
         self.mock(delay=25, answer="Atlantis")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.button("Which city and country do you intend to work from?").click()
         expect(self.toast()).to_contain_text("No exact location suggestion")
         expect(self.page.locator(".ashby-application-form-input-autocomplete")).to_have_value("")
 
         self.page.reload()
         self.mock(delay=25, answer="No")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.button("Are you authorized to work in this location?").click()
         expect(self.page.locator('button[data-option="no"]')).to_have_attribute("aria-pressed", "true")
         expect(self.page.locator('button[data-option="yes"]')).to_have_attribute("aria-pressed", "false")
@@ -1166,7 +1182,7 @@ class BrowserSuite:
 
         self.page.reload()
         self.mock(delay=25, answer="Canada")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
         expect(self.page.locator("#experience-no")).to_be_checked()
         expect(self.page.locator('button[data-option="yes"]')).to_have_attribute("aria-pressed", "true")
@@ -1183,7 +1199,7 @@ class BrowserSuite:
     def arize_paragraph_radio_questions(self):
         self.seed()
         self.page.goto(self.url.replace("application.html", "arize_controls.html"))
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.page.locator("#wc-ai-root .wc-panel-status")).to_have_text("3 inputs found")
         expect(self.button("Will you now or in the future require sponsorship for employment?")).to_have_count(1)
         expect(self.button("Veteran Status")).to_have_count(1)
@@ -1197,7 +1213,7 @@ class BrowserSuite:
         self.seed()
         self.mock(delay=25)
         self.page.goto(self.url.replace("application.html", "ashby_eeoc.html"))
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.button("Gender")).to_have_count(1)
         expect(self.button("Veteran Status")).to_have_count(1)
         self.page.locator("#wc-ai-root .wc-do-all-button").click()
@@ -1214,7 +1230,7 @@ class BrowserSuite:
 
         self.page.reload()
         self.mock(delay=25, answer="Female")
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#gender-female").scroll_into_view_if_needed()
         self.button("Gender").click()
         expect(self.page.locator("#gender-female")).to_be_checked()
@@ -1252,7 +1268,7 @@ class BrowserSuite:
         self.seed()
         self.mock(delay=25, answer="Canada")
         self.page.goto(self.url.replace("application.html", "lever_country.html"))
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         expect(self.button("Which country do you intend to primarily work from?")).to_have_count(1)
         self.button("Which country do you intend to primarily work from?").click()
         expect(self.page.locator("#country")).to_have_value("Canada")
@@ -1380,7 +1396,7 @@ class BrowserSuite:
         expect(self.page.locator(".wc-fill-button")).to_have_count(0)
         self.seed(enabled=True, apiKey="")
         expect(self.page.locator("#wc-ai-root .wc-fill-button")).to_have_count(0)
-        self.page.locator("#wc-ai-root .wc-scan-button").click()
+        self.scan_page()
         self.page.locator("#motivation").scroll_into_view_if_needed()
         expect(self.button("Why do you want to work here")).to_be_visible()
         self.button("Why do you want to work here").click()

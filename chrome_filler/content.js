@@ -25,7 +25,7 @@
   let panelState;
   let panelCount;
   let controlPanel;
-  let panelCollapsed = false;
+  let panelCollapsed = true;
   let scannedInputCount = null;
   let localScannedCount = 0;
   let batch = null;
