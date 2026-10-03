@@ -18,24 +18,28 @@
   </header>
 
   <main id="home-screen" class="home-screen">
-    <div class="home-intro"><span class="eyebrow">YOUR APPLICATION COPILOT</span><h2>Ready when you are.</h2><p>Scan an application, then write its answers in one pass.</p></div>
-    <div id="setup-banner" class="setup-banner">
-      <div><strong id="setup-title">Make it yours</strong><p id="setup-description">Add your background and connect AI to get started.</p></div>
-      <button id="setup-action" type="button" class="small-button">AI settings</button>
+    <div class="home-content">
+      <div class="home-intro"><span class="eyebrow">YOUR APPLICATION COPILOT</span><h2>Ready when you are.</h2><p>Scan an application, then write its answers in one pass.</p></div>
+      <div id="setup-banner" class="setup-banner">
+        <div><strong id="setup-title">Make it yours</strong><p id="setup-description">Add your background and connect AI to get started.</p></div>
+        <button id="setup-action" type="button" class="small-button">AI settings</button>
+      </div>
+      <nav class="home-nav" aria-label="Extension sections">
+        <button id="open-profile" type="button" class="nav-card"><span class="nav-icon" aria-hidden="true">&#9786;</span><span><strong>Edit profile</strong><small>Resume, details, notes, and voice</small></span><span class="nav-arrow" aria-hidden="true">&#8250;</span></button>
+        <button id="open-connection" type="button" class="nav-card"><span class="nav-icon" aria-hidden="true">&#9881;</span><span><strong>AI settings</strong><small>API key, model, and diagnostics</small></span><span class="nav-arrow" aria-hidden="true">&#8250;</span></button>
+      </nav>
     </div>
-    <div class="page-card">
-      <span id="page-indicator" class="status-dot" aria-hidden="true"></span>
-      <div><span class="eyebrow">CURRENT PAGE</span><p id="page-status" role="status">Checking page...</p></div>
+    <div class="home-action-panel">
+      <div class="page-card">
+        <span id="page-indicator" class="status-dot" aria-hidden="true"></span>
+        <div><span class="eyebrow">CURRENT PAGE</span><p id="page-status" role="status">Checking page...</p></div>
+      </div>
+      <div class="primary-actions">
+        <button id="rescan-button" type="button" class="primary-button scan-button" aria-label="Scan the current page">SCAN PAGE</button>
+        <button id="do-all-button" type="button" class="primary-button write-button" aria-label="FILL: fill unanswered scanned fields" disabled><span class="action-label">FILL</span> <span aria-hidden="true">&#8594;</span></button>
+        <p class="action-help">Review every answer before submitting the application.</p>
+      </div>
     </div>
-    <div class="primary-actions">
-      <button id="rescan-button" type="button" class="primary-button scan-button" aria-label="Scan the current page">SCAN PAGE</button>
-      <button id="do-all-button" type="button" class="primary-button write-button" aria-label="FILL: fill unanswered scanned fields" disabled><span class="action-label">FILL</span> <span aria-hidden="true">&#8594;</span></button>
-      <p class="action-help">Review every answer before submitting the application.</p>
-    </div>
-    <nav class="home-nav" aria-label="Extension sections">
-      <button id="open-profile" type="button" class="nav-card"><span class="nav-icon" aria-hidden="true">&#9786;</span><span><strong>Edit profile</strong><small>Resume, details, notes, and voice</small></span><span class="nav-arrow" aria-hidden="true">&#8250;</span></button>
-      <button id="open-connection" type="button" class="nav-card"><span class="nav-icon" aria-hidden="true">&#9881;</span><span><strong>AI settings</strong><small>API key, model, and diagnostics</small></span><span class="nav-arrow" aria-hidden="true">&#8250;</span></button>
-    </nav>
   </main>
 
   <form id="settings-form" class="editor-screen" novalidate hidden>

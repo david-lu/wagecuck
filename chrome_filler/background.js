@@ -1,11 +1,11 @@
 import { SETTINGS_KEY, LOGS_KEY, loadSettings } from './lib/config.js';
 import { AgentError, combinePageSnapshots, errorToPublic, generateAnswer, generateBatchAnswers, validateField, validateFieldAndPage, validatePageContext } from './lib/agent.js';
-import { logEvent } from './lib/logging.js';
+import { logEvent, redactMetadata } from './lib/logging.js';
 
 const activeRequests = new Map();
 const batchRuns = new Map();
 const REQUEST_ID = /^[a-zA-Z0-9_.:-]{1,120}$/;
-// Restrict storage before configuration access. Only the saved PDF is sent to a content script for an explicit attach action.
+// Restrict storage before configuration access. Content scripts receive only explicit, limited data through validated messages.
 const storageReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 storageReady.catch(() => console.error('[Wagecuck Input Filler] Could not restrict settings storage. Generation is disabled.'));
 
@@ -290,6 +290,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === 'WC_GET_LOGS' && trustedExtensionPage(sender)) {
     void storageReady.then(() => chrome.storage.local.get(LOGS_KEY)).then(values => sendResponse({ logs: Array.isArray(values[LOGS_KEY]) ? values[LOGS_KEY] : [] })).catch(() => sendResponse({ logs: [] }));
+    return true;
+  }
+  if (message.type === 'WC_GET_TRACE_LOGS' && trustedContent(sender)) {
+    const requestId = typeof message.requestId === 'string' && REQUEST_ID.test(message.requestId) ? message.requestId : '';
+    void storageReady.then(() => chrome.storage.local.get(LOGS_KEY)).then(values => {
+      const logs = Array.isArray(values[LOGS_KEY]) ? values[LOGS_KEY] : [];
+      const selected = logs.filter(entry => entry && typeof entry === 'object' && (!requestId || entry.requestId === requestId)).slice(-10);
+      sendResponse({ logs: selected.map(entry => ({
+        timestamp: typeof entry?.timestamp === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(entry.timestamp) ? entry.timestamp : '',
+        level: ['info', 'warn', 'error'].includes(entry?.level) ? entry.level : 'info',
+        event: typeof entry?.event === 'string' && /^[a-zA-Z0-9_.:-]{1,80}$/.test(entry.event) ? entry.event : 'unknown',
+        ...redactMetadata(entry),
+      })) });
+    }).catch(() => sendResponse({ logs: [] }));
     return true;
   }
   if (message.type === 'WC_LOG_EVENT' && trustedContent(sender)) {

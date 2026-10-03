@@ -113,7 +113,7 @@
     .wc-toast[data-kind=error] { border-color:#dfbbb1; background:#fff8f5; }
     .wc-toast-title { display:flex; align-items:center; gap:8px; font-weight:650; }
     .wc-toast-detail { margin-top:4px; color:#64695b; overflow-wrap:anywhere; }
-    .wc-toast-actions { display:flex; gap:8px; margin-top:10px; }
+    .wc-toast-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     .wc-toast button { padding:8px 12px; min-height:34px; border:1px solid #d3d6c8; border-radius:7px; background:#f1f3e9; color:#344124; font-size:12px; font-weight:600; }
     @keyframes wc-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
     @media(prefers-reduced-motion:reduce) { *, *::before { animation:none!important; transition:none!important; } }
@@ -972,9 +972,62 @@
     }
   }
 
-  function toast(title, detail = '', kind = 'error', actions = [], duration = 0) {
+  function traceText(value, maxLength = 500) {
+    return String(value || '').replace(/\bsk-[a-zA-Z0-9_-]{8,}/g, '[redacted]').slice(0, maxLength);
+  }
+
+  function traceLogs(logs, requestId) {
+    if (!Array.isArray(logs)) return [];
+    const allowed = new Set(['timestamp', 'level', 'event', 'code', 'status', 'durationMs', 'fieldType', 'model', 'pageChars', 'answerChars', 'frameCount', 'unavailableFrames', 'requestId']);
+    const safe = logs.slice(-100).filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry)).map(entry => {
+      const record = {};
+      for (const [key, value] of Object.entries(entry)) {
+        if (!allowed.has(key)) continue;
+        if (typeof value === 'string' && /^[a-zA-Z0-9_.:-]{1,160}$/.test(value)) record[key] = value;
+        else if (typeof value === 'number' && Number.isFinite(value)) record[key] = value;
+      }
+      return record;
+    });
+    const matching = requestId ? safe.filter(entry => entry.requestId === requestId) : [];
+    return (matching.length ? matching : safe).slice(-10);
+  }
+
+  function errorTrace(title, detail, context, createdAt, logs) {
+    let version = 'unavailable';
+    try { version = chrome.runtime.getManifest().version; } catch { /* The extension may have been reloaded. */ }
+    const lines = [
+      'Wagecuck error trace',
+      `Time: ${createdAt}`,
+      `Extension version: ${version}`,
+      `Page host: ${location.hostname}`,
+      `Error: ${traceText(title, 160)}`,
+      `Details: ${traceText(detail)}`,
+    ];
+    if (context.code) lines.push(`Code: ${traceText(context.code, 80)}`);
+    if (context.requestId) lines.push(`Request ID: ${traceText(context.requestId, 80)}`);
+    const frames = typeof context.error?.stack === 'string' ? context.error.stack.split('\n').slice(1)
+      .filter(line => /chrome-extension:\/\/[a-p]{32}\//.test(line)).slice(0, 8)
+      .map(line => line.trim().replace(/chrome-extension:\/\/[a-p]{32}/g, 'chrome-extension://<extension>')) : [];
+    if (frames.length) lines.push('Stack:', ...frames);
+    const recent = traceLogs(logs, context.requestId);
+    lines.push('Diagnostic events:', ...(recent.length ? recent.map(entry => JSON.stringify(entry)) : ['None available.']));
+    return lines.join('\n');
+  }
+
+  function toast(title, detail = '', kind = 'error', actions = [], duration = 0, traceContext = {}) {
     if (kind !== 'error') throw new Error('Toasts are reserved for errors.');
     ensureUI();
+    const createdAt = new Date().toISOString();
+    let logs = [];
+    const refreshLogs = () => {
+      try {
+        chrome.runtime.sendMessage({ type: 'WC_GET_TRACE_LOGS', requestId: traceContext.requestId })
+          .then(result => { logs = result?.logs || []; }).catch(() => {});
+      } catch { /* The error toast must still work after an extension reload. */ }
+    };
+    refreshLogs();
+    // Background records some failures just after it sends the error to this frame.
+    setTimeout(refreshLogs, 250);
     const element = document.createElement('div');
     element.className = 'wc-toast';
     element.dataset.kind = kind;
@@ -997,6 +1050,17 @@
       button.addEventListener('click', event => { if (event.isTrusted) action.run(element); });
       controls.append(button);
     }
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.textContent = 'Copy trace';
+    copy.addEventListener('click', event => {
+      if (!event.isTrusted) return;
+      const report = errorTrace(title, detail, traceContext, createdAt, logs);
+      if (!navigator.clipboard?.writeText) { copy.textContent = 'Copy unavailable'; return; }
+      navigator.clipboard.writeText(report).then(() => { copy.textContent = 'Copied'; })
+        .catch(() => { copy.textContent = 'Copy failed'; });
+    });
+    controls.append(copy);
     if (duration) {
       const close = document.createElement('button');
       close.type = 'button';
@@ -1150,7 +1214,7 @@
       if (readValue(field) !== undo.original) throw new Error('The website did not restore the previous answer.');
       logUI('ui.undo', undo.requestId);
     } catch (error) {
-      toast('Couldn’t undo this answer', error.message || 'Edit the field manually.', 'error', [], 14000);
+      toast('Couldn’t undo this answer', error.message || 'Edit the field manually.', 'error', [], 14000, { code: 'UNDO_FAILED', requestId: undo.requestId, error });
     }
     schedulePosition();
   }
@@ -1290,7 +1354,7 @@
       cleanup();
       settle({ status: 'cancelled' });
       logUI('ui.cancelled', requestId);
-      if (/too long/i.test(reason)) toast('Answer timed out', reason, 'error', [], 14000);
+      if (/too long/i.test(reason)) toast('Answer timed out', reason, 'error', [], 14000, { code: 'TIMEOUT', requestId });
     }
     record.active = { cancel };
     updateHoverButton(record);
@@ -1299,7 +1363,7 @@
         const message = chrome.runtime.lastError?.message;
         cleanup();
         settle({ status: 'failed', code: 'CONNECTION_INTERRUPTED' });
-        toast('Connection interrupted', message ? 'Reload the page and try again.' : 'The AI session stopped. Click AI to try again.', 'error', [], 14000);
+        toast('Connection interrupted', message ? 'Reload the page and try again.' : 'The AI session stopped. Click AI to try again.', 'error', [], 14000, { code: 'CONNECTION_INTERRUPTED', requestId });
       }
     });
     port.onMessage.addListener(async message => {
@@ -1315,14 +1379,14 @@
         settle({ status: 'failed', code: message.code });
         const actions = [{ label: 'Try again', run: element => { element.remove(); startFill(record, rewritePrompt); } }];
         if (['MISSING_INFORMATION', 'AUTHENTICATION', 'NOT_CONFIGURED', 'ACCESS_DENIED', 'API_REQUEST'].includes(message.code)) actions.push({ label: message.code === 'MISSING_INFORMATION' ? 'Edit profile' : 'Open settings', run: () => chrome.runtime.sendMessage({ type: 'WC_OPEN_SETTINGS' }).catch(() => {}) });
-        toast('Couldn’t write this answer', message.message || 'Click Write to try again.', 'error', actions, 20000);
+        toast('Couldn’t write this answer', message.message || 'Click Write to try again.', 'error', actions, 20000, { code: message.code, requestId });
         return;
       }
       if (message.type !== 'result') return;
       cleanup();
       if (!enabled || !isEligible(field)) {
         settle({ status: 'skipped' });
-        toast('Couldn’t fill this field', 'The field is no longer available. Scan the page again.', 'error', [], 12000);
+        toast('Couldn’t fill this field', 'The field is no longer available. Scan the page again.', 'error', [], 12000, { code: 'FIELD_UNAVAILABLE', requestId });
         return;
       }
       if (edited || readValue(field) !== original) {
@@ -1338,7 +1402,7 @@
       const answer = normalizedAnswer(field, message.answer);
       if (answer === null) {
         settle({ status: 'failed' });
-        toast('Answer does not fit this field', 'The generated choice or format is no longer available. Scan again and retry.', 'error', [], 14000);
+        toast('Answer does not fit this field', 'The generated choice or format is no longer available. Scan again and retry.', 'error', [], 14000, { code: 'INVALID_ANSWER', requestId });
         return;
       }
       if ((globalThis.WCFieldContext.choiceKind(field) || field.tagName === 'SELECT' || isSupportedCombobox(field)) && answer === original) {
@@ -1364,7 +1428,7 @@
       } catch (error) {
         settle({ status: 'failed' });
         logUI('ui.insert_failed', requestId, 'INSERT_FAILED');
-        toast('Couldn’t insert the answer', error.message, 'error', [], 14000);
+        toast('Couldn’t insert the answer', error.message, 'error', [], 14000, { code: 'INSERT_FAILED', requestId, error });
       }
     });
     try {
@@ -1372,7 +1436,7 @@
     } catch {
       cleanup();
       settle({ status: 'failed' });
-      toast('Couldn’t read this page', 'Reload the page and try again.', 'error', [], 14000);
+      toast('Couldn’t read this page', 'Reload the page and try again.', 'error', [], 14000, { code: 'INVALID_REQUEST', requestId });
     }
     return completion;
   }
@@ -1500,7 +1564,7 @@
     if (window.top === window) {
       const userStopped = message.stopped && (!message.errorMessage || ['FILL stopped.', 'FILL ALL stopped.', 'Generation cancelled.'].includes(message.errorMessage));
       const detail = userStopped ? '' : message.errorMessage || message.fieldError || (failed ? `${failed} ${failed === 1 ? 'field could' : 'fields could'} not be filled.` : '');
-      if (detail) toast('FILL needs attention', `${detail} ${filled ? `${filled} filled. ` : ''}${skipped ? `${skipped} skipped. ` : ''}${unchecked ? `${unchecked} left unchecked. ` : ''}Review the form before submitting.`, 'error', [], 20000);
+      if (detail) toast('FILL needs attention', `${detail} ${filled ? `${filled} filled. ` : ''}${skipped ? `${skipped} skipped. ` : ''}${unchecked ? `${unchecked} left unchecked. ` : ''}Review the form before submitting.`, 'error', [], 20000, { requestId: ending.id });
       if (!detail && !hasCompletedFill) batchFeedback = message.stopped ? 'Stopped' : `${filled} filled`;
       clearTimeout(batchFeedbackTimer);
       batchFeedbackTimer = setTimeout(() => { batchFeedback = ''; if (!batch) updateBatchButton(); }, 3000);

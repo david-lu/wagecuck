@@ -1414,9 +1414,21 @@ class BrowserSuite:
 
     def error_and_retry(self):
         self.fresh()
+        self.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=self.url.split("/application.html")[0])
         self.mock(mode="error")
         self.button("Why do you want to work here").click()
         expect(self.toast()).to_contain_text(re.compile("rate limit|error|failed|try again", re.I))
+        self.page.wait_for_timeout(350)
+        self.toast().get_by_role("button", name="Copy trace").click()
+        expect(self.toast().get_by_role("button", name="Copied")).to_be_visible()
+        trace = self.page.evaluate("() => navigator.clipboard.readText()")
+        assert "Wagecuck error trace" in trace
+        assert "Code: RATE_LIMIT" in trace
+        assert "Request ID:" in trace
+        assert '"event":"generation.failed"' in trace
+        assert "Page host: 127.0.0.1" in trace
+        assert KEY not in trace and SETTINGS["profile"] not in trace and ANSWER not in trace
+        assert "application.html" not in trace
         expect(self.page.locator("#motivation")).to_have_value("")
         expect(self.button("Why do you want to work here")).to_be_enabled()
         self.screenshot("api-error")

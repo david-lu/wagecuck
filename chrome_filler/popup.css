@@ -17,7 +17,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .switch-track::after { content:""; position:absolute; top:3px; left:3px; width:15px; height:15px; border-radius:50%; background:#fff; box-shadow:0 1px 3px #0003; transition:transform .15s; }
 .switch input:checked + .switch-track { background:var(--brand-red); }
 .switch input:checked + .switch-track::after { transform:translateX(23px); }
-.home-screen { flex:1; overflow:auto; padding:16px 20px; }
+.home-screen { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.home-content { flex:1; min-height:0; overflow:auto; padding:16px 20px; }
+.home-action-panel { flex:none; padding:12px 20px 16px; border-top:1px solid var(--line); background:#fffdf7; box-shadow:0 -6px 18px #401d100d; }
 .eyebrow { display:block; color:#b52b17; font-size:10px; font-weight:800; letter-spacing:1.25px; }
 .home-intro h2 { margin:7px 0 5px; font-size:28px; letter-spacing:-1.2px; line-height:1.15; }
 .home-intro p { margin:0 0 12px; color:var(--muted); font-size:12px; }
@@ -32,8 +34,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .status-dot { flex:none; width:8px; height:8px; margin-top:4px; border-radius:50%; background:#a5a0ad; }
 .status-dot.ready { background:#34a36b; box-shadow:0 0 0 4px #e4f5eb; }
 .status-dot.busy { background:var(--brand-red); box-shadow:0 0 0 4px #ffe0d2; }
-#page-status { margin:5px 0 0; font-size:12px; line-height:1.4; }
-.primary-actions { display:grid; gap:7px; margin:10px 0 13px; }
+#page-status { max-height:72px; margin:5px 0 0; overflow:auto; font-size:12px; line-height:1.4; }
+.primary-actions { display:grid; gap:7px; margin:10px 0 0; }
 .primary-button { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:50px; border-radius:12px; border:0; font-size:15px; font-weight:800; letter-spacing:.35px; transition:background .15s,box-shadow .15s; }
 .primary-button[aria-busy=true] { opacity:1; cursor:progress; }
 .primary-button[aria-busy=true]::before { content:''; width:16px; height:16px; flex:none; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:wc-popup-spin .7s linear infinite; }
